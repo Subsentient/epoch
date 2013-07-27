@@ -63,7 +63,7 @@ int main(int argc, char **argv)
 	
 	if (!(TempDescriptor = fopen(TmpBuf, "r")))
 	{
-		fprintf(stderr, "Failed to read session ID file for ourselves. Aborting.");
+		fprintf(stderr, "Failed to read session ID file for ourselves. Aborting.\n");
 		return 1;
 	}
 	
@@ -93,7 +93,7 @@ int main(int argc, char **argv)
 			
 			if (!(TempDescriptor = fopen(TmpBuf, "r")))
 			{
-				fprintf(stderr, "Failed to read session ID file for process %lu. Aborting.", CurPID);
+				fprintf(stderr, "Failed to read session ID file for process %lu. Aborting.\n", CurPID);
 				return 1;
 			}
 			
