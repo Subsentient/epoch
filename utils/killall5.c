@@ -2,7 +2,7 @@
 * This software is public domain.
 * Please read the file LICENSE.TXT for more information.*/
 
-/**Version 0.2**/
+/**Version whatever. In development.**/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,8 +27,8 @@ int main(int argc, char **argv)
 	
 	if (argc > 2) /*Hmm, looks like we are being passed more than one argument.*/
 	{
-		fprintf(stderr, "Mauri killall5: Please specify a signal number such as -9,\n"
-						"or nothing to default to -15.\n");
+		SpitWarning("Please specify a signal number such as -9,\n"
+						"or nothing to default to -15.");
 		return 1;
 	}
 	else if (argc == 1) /*They are just running us with no arguments. Assume signal 15.*/
@@ -50,8 +50,8 @@ int main(int argc, char **argv)
 		
 		if (InSignal > OSCTL_SIGNAL_STOP || InSignal <= 0)
 		{
-			fprintf(stderr, "Mauri killall5: %s",
-				"Bad argument provided. Please enter a valid signal number.\n");
+			SpitWarning("Bad argument provided. Please enter a valid signal number.");
+			return 1;
 		}
 	}
 
@@ -63,7 +63,7 @@ int main(int argc, char **argv)
 	
 	if (!(TempDescriptor = fopen(TmpBuf, "r")))
 	{
-		fprintf(stderr, "Failed to read session ID file for ourselves. Aborting.\n");
+		SpitError("Failed to read session ID file for ourselves. Aborting.");
 		return 1;
 	}
 	
@@ -93,7 +93,7 @@ int main(int argc, char **argv)
 			
 			if (!(TempDescriptor = fopen(TmpBuf, "r")))
 			{
-				fprintf(stderr, "Failed to read session ID file for process %lu. Aborting.\n", CurPID);
+				SpitError("Failed to read session ID file for process %lu. Aborting.");
 				return 1;
 			}
 			

@@ -44,6 +44,17 @@
 #define OSCTL_LINUX_DISABLE_CTRLALTDEL 0 /*Now isn't this hilarious. It's zero.*/
 #define OSCTL_LINUX_ENABLE_CTRLALTDEL 0x89abcdef
 
+/*Colors for text output.*/
+#define CONSOLE_COLOR_BLACK "\033[30m"
+#define CONSOLE_COLOR_RED "\033[31m"
+#define CONSOLE_COLOR_GREEN "\033[32m"
+#define CONSOLE_COLOR_YELLOW "\033[33m"
+#define CONSOLE_COLOR_BLUE "\033[34m"
+#define CONSOLE_COLOR_MAGENTA "\033[35m"
+#define CONSOLE_COLOR_CYAN "\033[36m"
+#define CONSOLE_COLOR_WHITE "\033[37m"
+#define CONSOLE_ENDCOLOR "\033[0m"
+
 /**Types, enums, structs and whatnot**/
 
 
@@ -79,14 +90,19 @@ typedef struct _MauriObjectTable
 extern rStatus InitConfig(void);
 extern void ShutdownConfig(void);
 extern ObjTable *LookupObjectInTable(unsigned long ObjectID);
+extern void PrintStatusReport(const char *InStream, rStatus State);
 
 /**Tiny utility functions here.**/
 
 void SpitError(char *INErr)
 {
-	fprintf(stderr, "Mauri: %s\n", INErr);
+	fprintf(stderr, CONSOLE_COLOR_RED "Mauri: %s\n" CONSOLE_ENDCOLOR, INErr);
 }
 
+void SpitWarning(char *INErr)
+{
+	fprintf(stderr, CONSOLE_COLOR_YELLOW "Mauri: %s\n" CONSOLE_ENDCOLOR, INErr);
+}
 
 #endif /* __MAURI_H__ */
 

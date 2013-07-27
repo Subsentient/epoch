@@ -1,0 +1,88 @@
+/*This code is part of Mauri. Mauri is maintained by Subsentient.
+* This software is public domain.
+* Please read the file LICENSE.TXT for more information.*/
+
+/**This file is for console related stuff, like status reports and whatnot.
+ * I can't see this file getting too big.**/
+
+#include <stdio.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include "../mauri.h"
+
+/*Sends a status report aligned to the end of WSize.ws_col horiz characters.*/
+void PrintStatusReport(const char *InStream, rStatus State)
+{
+	unsigned long StreamLength, Inc = 0;
+	char OutMsg[8192];
+	char StatusFormat[1024];
+	struct winsize WSize;
+	
+	/*Get terminal width so we can adjust the status report.*/
+    ioctl(0, TIOCGWINSZ, &WSize);
+    StreamLength = WSize.ws_col;
+    
+	strncpy(OutMsg, InStream, 8192);
+	
+	switch (State)
+	{
+		case FAILURE:
+		{
+			snprintf(StatusFormat, 1024, "[%s]\n", CONSOLE_COLOR_RED "FAILURE" CONSOLE_ENDCOLOR);
+			break;
+		}
+		case SUCCESS:
+		{
+			snprintf(StatusFormat, 1024, "[%s]\n", CONSOLE_COLOR_GREEN "Success" CONSOLE_ENDCOLOR);
+			break;
+		}
+		case WARNING:
+		{
+			snprintf(StatusFormat, 1024, "[%s]\n", CONSOLE_COLOR_YELLOW "WARNING" CONSOLE_ENDCOLOR);
+			break;
+		}
+		default:
+		{
+			SpitWarning("Bad parameter passed to PrintStatusReport() in console.c.");
+			return;
+		}
+	}
+	
+	switch (State)
+	{ /*Take our status reporting into account, but not with the color characters and newlines and stuff, 
+		because that gives misleading results due to the extra characters that you can't see.*/
+		case SUCCESS:
+			StreamLength -= strlen("[Success]");
+			break;
+		case FAILURE:
+			StreamLength -= strlen("[FAILURE]");
+			break;
+		case WARNING:
+			StreamLength -= strlen("[WARNING]");
+			break;
+		default:
+			SpitWarning("Bad parameter passed to PrintStatusReport() in console.c");
+			return;
+	}
+	
+	if (strlen(OutMsg) >= StreamLength)
+	{
+		OutMsg[StreamLength] = '\0'; 
+		/*Don't allow ridiculously long names that mess up the status reporting.
+		* Keep it clean and keep it uniform.*/
+	}
+	
+	StreamLength -= strlen(OutMsg);
+	
+	/*Appropriate spacing.*/
+	for (; Inc < StreamLength; ++Inc)
+	{
+		strcat(OutMsg, " ");
+	}
+	
+	strcat(OutMsg, StatusFormat);
+	
+	printf("%s", OutMsg);
+	
+	return;
+}
