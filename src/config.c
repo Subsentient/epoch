@@ -43,6 +43,7 @@ rStatus InitConfig(void)
 	char *ConfigStream = NULL, *Worker = NULL;
 	ObjTable *CurObj = NULL;
 	char DelimCurr[MAX_DESCRIPT_SIZE];
+	unsigned long LineNum = 0;
 
 	/*Get the file size of the config file.*/
 	if (stat(CONFIGDIR CONF_NAME, &FileStat) != 0)
@@ -86,7 +87,14 @@ rStatus InitConfig(void)
 		else if (!strncmp(Worker, "ObjectID", strlen("ObjectID")))
 		{ /*Used as both identifier and order of execution specifier.*/
 
-			GetLineDelim(Worker, DelimCurr);
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectID in mauri.conf line %lu.", LineNum);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
+			}
 
 			CurObj = AddObjectToTable(atoi(DelimCurr)); /*Sets this as our current object.*/
 
@@ -94,20 +102,46 @@ rStatus InitConfig(void)
 		}
 		else if (!strncmp(Worker, "ObjectName", strlen("ObjectName")))
 		{ /*It's description.*/
-			GetLineDelim(Worker, DelimCurr);
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectName in mauri.conf line %lu.", LineNum);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
+			}
+			
 			strncpy(CurObj->ObjectName, DelimCurr, MAX_DESCRIPT_SIZE);
 
 			continue;
 		}
 		else if (!strncmp(Worker, "ObjectStartCommand", strlen("ObjectStartCommand")))
 		{ /*What we execute to start it.*/
-			GetLineDelim(Worker, DelimCurr);
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStartCommand in mauri.conf line %lu.", LineNum);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
+			}
+			
 			strncpy(CurObj->ObjectStartCommand, DelimCurr, MAX_DESCRIPT_SIZE);
 			continue;
 		}
 		else if (!strncmp(Worker, "ObjectStopCommand", strlen("ObjectStopCommand")))
 		{ /*If it's "PID", then we know that we need to kill the process ID only. If it's "NONE", well, self explanitory.*/
-			GetLineDelim(Worker, DelimCurr);
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStopCommand in mauri.conf line %lu.", LineNum);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
+			}
 
 			if (!strncmp(DelimCurr, "PID", MAX_DESCRIPT_SIZE))
 			{
@@ -126,17 +160,28 @@ rStatus InitConfig(void)
 		}
 		else if (!strncmp(Worker, "ObjectRunlevel", strlen("ObjectRunLevel")))
 		{ /*Runlevel.*/
-			GetLineDelim(Worker, DelimCurr);
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectRunlevel in mauri.conf line %lu.", LineNum);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
+			}
 
 			strncpy(CurObj->ObjectRunlevel, DelimCurr, MAX_DESCRIPT_SIZE);
 			continue;
 		}
 		else
 		{
-			SpitError("Unidentified attribute in mauri.conf.");
+			char TmpBuf[1024];
+			snprintf(TmpBuf, 1024, "Unidentified attribute in mauri.conf on line %lu.", LineNum);
+			SpitError(TmpBuf);
+			
 			return FAILURE;
 		}
-	} while ((Worker = NextLine(Worker)));
+	} while (++LineNum, (Worker = NextLine(Worker)));
 
 	free(ConfigStream); /*Release ConfigStream, since we only use the object table now.*/
 
