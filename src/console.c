@@ -28,12 +28,12 @@ void PrintStatusReport(const char *InStream, rStatus State)
 	{
 		case FAILURE:
 		{
-			snprintf(StatusFormat, 1024, "[%s]\n", CONSOLE_COLOR_RED "FAILURE" CONSOLE_ENDCOLOR);
+			snprintf(StatusFormat, 1024, "[%s]\n", CONSOLE_COLOR_RED "FAILED" CONSOLE_ENDCOLOR);
 			break;
 		}
 		case SUCCESS:
 		{
-			snprintf(StatusFormat, 1024, "[%s]\n", CONSOLE_COLOR_GREEN "Success" CONSOLE_ENDCOLOR);
+			snprintf(StatusFormat, 1024, "[%s]\n", CONSOLE_COLOR_GREEN "Done" CONSOLE_ENDCOLOR);
 			break;
 		}
 		case WARNING:
@@ -52,10 +52,10 @@ void PrintStatusReport(const char *InStream, rStatus State)
 	{ /*Take our status reporting into account, but not with the color characters and newlines and stuff, 
 		because that gives misleading results due to the extra characters that you can't see.*/
 		case SUCCESS:
-			StreamLength -= strlen("[Success]");
+			StreamLength -= strlen("[Done]");
 			break;
 		case FAILURE:
-			StreamLength -= strlen("[FAILURE]");
+			StreamLength -= strlen("[FAILED]");
 			break;
 		case WARNING:
 			StreamLength -= strlen("[WARNING]");
