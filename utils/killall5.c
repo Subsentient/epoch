@@ -1,4 +1,6 @@
-/*This code is part of Mauri. Mauri is released under the SubText License version 1.2.*/
+/*This code is part of Mauri. Mauri is maintained by Subsentient.
+* This software is public domain.
+* Please read the file LICENSE.TXT for more information.*/
 
 /**Version 0.1**/
 
