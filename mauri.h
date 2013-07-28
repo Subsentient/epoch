@@ -92,6 +92,7 @@ typedef struct _MauriObjectTable
 extern rStatus InitConfig(void);
 extern void ShutdownConfig(void);
 extern ObjTable *LookupObjectInTable(const char *ObjectID);
+extern ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority, unsigned long ObjectPriority);
 extern void PrintStatusReport(const char *InStream, rStatus State);
 
 /**Tiny utility functions here.**/

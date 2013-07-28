@@ -333,6 +333,23 @@ ObjTable *LookupObjectInTable(const char *ObjectID)
 	return NULL;
 }
 
+ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority, unsigned long ObjectPriority)
+{ /*The primary lookup function to be used when executing commands.*/
+	ObjTable *Worker = ObjectTable;
+	
+	while (Worker->Next)
+	{
+		if (!strcmp(Worker->ObjectRunlevel, ObjectRunlevel) &&  /*As you can see by below, I obfuscate with efficiency!*/
+		(WantStartPriority ? Worker->ObjectStartPriority : Worker->ObjectStopPriority) == ObjectPriority)
+		{
+			return Worker;
+		}
+		Worker = Worker->Next;
+	}
+	
+	return NULL;
+}
+
 void ShutdownConfig(void)
 {
 	ObjTable *Worker = ObjectTable, *Temp;
