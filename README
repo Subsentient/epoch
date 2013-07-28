@@ -1,4 +1,4 @@
-Mauri is a boot system for Linux by Subsentient.
+Epoch is a boot system for Linux by Subsentient.
 It is intended as a lightweight solution for lightweight distributions
 that don't want a huge mess just to boot up. It has one unified configuration file,
 is very small in size, and it has no external dependencies besides glibc.
