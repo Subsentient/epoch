@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
-#include "../epoch.h"
+#include "epoch.h"
 
 
 /*Give this function the string you just printed, and it'll print a status report at the end of it, aligned to right.*/

@@ -9,7 +9,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <ctype.h>
-#include "../epoch.h"
+#include "epoch.h"
 
 /*We want the only interface for this to be LookupObjectInTable().*/
 static ObjTable *ObjectTable = NULL;
