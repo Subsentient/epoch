@@ -8,13 +8,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <ctype.h>
 #include "../mauri.h"
 
 /*We want the only interface for this to be LookupObjectInTable().*/
 static ObjTable *ObjectTable = NULL;
 
 /*Function forward declarations for all the statics.*/
-static ObjTable *AddObjectToTable(unsigned long ObjectID);
+static ObjTable *AddObjectToTable(const char *ObjectID);
 static char *NextLine(char *InStream);
 static rStatus GetLineDelim(const char *InStream, char *OutStream);
 
@@ -85,7 +86,7 @@ rStatus InitConfig(void)
 		}
 		/*Now we get into the actual attribute tags.*/
 		else if (!strncmp(Worker, "ObjectID", strlen("ObjectID")))
-		{ /*Used as both identifier and order of execution specifier.*/
+		{ /*ASCII value used to identify this object internally, and also a kind of short name for it.*/
 
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
@@ -96,7 +97,7 @@ rStatus InitConfig(void)
 				return FAILURE;
 			}
 
-			CurObj = AddObjectToTable(atoi(DelimCurr)); /*Sets this as our current object.*/
+			CurObj = AddObjectToTable(DelimCurr); /*Sets this as our current object.*/
 
 			continue;
 		}
@@ -156,6 +157,55 @@ rStatus InitConfig(void)
 				CurObj->StopMode = STOP_COMMAND;
 				strncpy(CurObj->ObjectStopCommand, DelimCurr, MAX_DESCRIPT_SIZE);
 			}
+			continue;
+		}
+		else if (!strncmp(Worker, "ObjectStartPriority", strlen("ObjectStartPriority")))
+		{
+			/*The order in which this item is started. If it is disabled in this runlevel, the next object in line is executed, IF
+			 * and only IF it is enabled. If not, the one after that and so on.*/
+			 if (!GetLineDelim(Worker, DelimCurr))
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStartPriority in mauri.conf line %lu.", LineNum);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
+			}
+			
+			if (!isdigit(DelimCurr[0])) /*Make sure we are getting a number, not Shakespeare.*/
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Bad non-integer value for attribute ObjectStartPriority in mauri.conf line %lu.", LineNum);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
+			}
+			
+			CurObj->ObjectStartPriority = atoi(DelimCurr);
+			continue;
+		}
+		else if (!strncmp(Worker, "ObjectStopPriority", strlen("ObjectStopPriority")))
+		{
+			/*Same as above, but used for when the object is being shut down.*/
+			 if (!GetLineDelim(Worker, DelimCurr))
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStopPriority in mauri.conf line %lu.", LineNum);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
+			}
+			
+			if (!isdigit(DelimCurr[0]))
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Bad non-integer value for attribute ObjectStopPriority in mauri.conf line %lu.", LineNum);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
+			}
+			
+			CurObj->ObjectStopPriority = atoi(DelimCurr);
 			continue;
 		}
 		else if (!strncmp(Worker, "ObjectRunlevel", strlen("ObjectRunLevel")))
@@ -231,7 +281,7 @@ static rStatus GetLineDelim(const char *InStream, char *OutStream)
 }
 
 /*Adds an object to the table and, if the first run, sets up the table.*/
-static ObjTable *AddObjectToTable(unsigned long ObjectID)
+static ObjTable *AddObjectToTable(const char *ObjectID)
 {
 	ObjTable *Worker = ObjectTable;
 	static Bool FirstTime = true;
@@ -259,7 +309,7 @@ static ObjTable *AddObjectToTable(unsigned long ObjectID)
 		Worker->Next->Next = NULL;
 	}
 
-	Worker->ObjectID = ObjectID;
+	strncpy(Worker->ObjectID, ObjectID, MAX_DESCRIPT_SIZE);
 
 	return Worker;
 }
@@ -267,13 +317,13 @@ static ObjTable *AddObjectToTable(unsigned long ObjectID)
 /*Find an object in the table and return a pointer to it. This function is public
  * because while we don't want other places adding to the table, we do want read
  * access to the table.*/
-ObjTable *LookupObjectInTable(unsigned long ObjectID)
+ObjTable *LookupObjectInTable(const char *ObjectID)
 {
 	ObjTable *Worker = ObjectTable;
 
 	while (Worker->Next)
 	{
-		if (Worker->ObjectID == ObjectID)
+		if (!strcmp(Worker->ObjectID, ObjectID))
 		{
 			return Worker;
 		}

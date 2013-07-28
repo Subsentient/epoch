@@ -73,10 +73,12 @@ typedef enum { FAILURE, SUCCESS, WARNING } rStatus;
 /**Structures go here.**/
 typedef struct _MauriObjectTable
 {
-	unsigned long ObjectID; /*The integer ID given to this item by whoever configured Mauri.*/
+	char ObjectID[MAX_DESCRIPT_SIZE]; /*The integer ID given to this item by whoever configured Mauri.*/
 	char ObjectName[MAX_DESCRIPT_SIZE]; /*The description of the object.*/
 	char ObjectStartCommand[MAX_DESCRIPT_SIZE]; /*The command to be executed.*/
 	char ObjectStopCommand[MAX_DESCRIPT_SIZE]; /*How to shut it down.*/
+	unsigned long ObjectStartPriority;
+	unsigned long ObjectStopPriority;
 	StopType StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
 	unsigned long ObjectPID; /*The process ID, used for shutting down.*/
 	char ObjectRunlevel[MAX_DESCRIPT_SIZE];
@@ -89,7 +91,7 @@ typedef struct _MauriObjectTable
 
 extern rStatus InitConfig(void);
 extern void ShutdownConfig(void);
-extern ObjTable *LookupObjectInTable(unsigned long ObjectID);
+extern ObjTable *LookupObjectInTable(const char *ObjectID);
 extern void PrintStatusReport(const char *InStream, rStatus State);
 
 /**Tiny utility functions here.**/
