@@ -15,7 +15,7 @@
 void PrintStatusReport(const char *InStream, rStatus State)
 {
 	unsigned long StreamLength, Inc = 0;
-	char OutMsg[8192] = { '\0' }, IP2[8192];
+	char OutMsg[2048] = { '\0' }, IP2[256];
 	char StatusFormat[1024];
 	struct winsize WSize;
 	
@@ -23,7 +23,7 @@ void PrintStatusReport(const char *InStream, rStatus State)
     ioctl(0, TIOCGWINSZ, &WSize);
     StreamLength = WSize.ws_col;
     
-	strncpy(IP2, InStream, 8192);
+	strncpy(IP2, InStream, 256);
 	
 	switch (State)
 	{
