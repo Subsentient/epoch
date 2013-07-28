@@ -1,12 +1,12 @@
-/*This code is part of Mauri. Mauri is maintained by Subsentient.
+/*This code is part of Epoch. Epoch is maintained by Subsentient.
 * This software is public domain.
 * Please read the file LICENSE.TXT for more information.*/
 
 
-/**This is the only header file we will ever need for Mauri, in all likelihood.**/
+/**This is the only header file we will ever need for Epoch, in all likelihood.**/
 
-#ifndef __MAURI_H__
-#define __MAURI_H__
+#ifndef __EPOCH_H__
+#define __EPOCH_H__
 
 /**Defines go here.**/
 
@@ -20,10 +20,10 @@
 #define CONFIGDIR "/etc"
 #endif
 
-#define CONF_NAME "mauri.conf"
+#define CONF_NAME "epoch.conf"
 
 /*Version.*/
-#define VERSIONSTRING "Mauri Boot System v0.1"
+#define VERSIONSTRING "Epoch Boot System v0.1"
 
 /*Linux signals. Not everything that calls OSsendSignal() will have signal.h included.*/
 #define OSCTL_SIGNAL_HUP 1
@@ -71,9 +71,9 @@ typedef enum { STOP_NONE, STOP_COMMAND, STOP_PID } StopType;
 typedef enum { FAILURE, SUCCESS, WARNING } rStatus;
 
 /**Structures go here.**/
-typedef struct _MauriObjectTable
+typedef struct _EpochObjectTable
 {
-	char ObjectID[MAX_DESCRIPT_SIZE]; /*The ASCII ID given to this item by whoever configured Mauri.*/
+	char ObjectID[MAX_DESCRIPT_SIZE]; /*The ASCII ID given to this item by whoever configured Epoch.*/
 	char ObjectName[MAX_DESCRIPT_SIZE]; /*The description of the object.*/
 	char ObjectStartCommand[MAX_DESCRIPT_SIZE]; /*The command to be executed.*/
 	char ObjectStopCommand[MAX_DESCRIPT_SIZE]; /*How to shut it down.*/
@@ -83,7 +83,7 @@ typedef struct _MauriObjectTable
 	unsigned long ObjectPID; /*The process ID, used for shutting down.*/
 	char ObjectRunlevel[MAX_DESCRIPT_SIZE];
 	
-	struct _MauriObjectTable *Next;
+	struct _EpochObjectTable *Next;
 } ObjTable;
 
 
@@ -99,13 +99,13 @@ extern void PrintStatusReport(const char *InStream, rStatus State);
 
 void SpitError(char *INErr)
 {
-	fprintf(stderr, CONSOLE_COLOR_RED "Mauri: %s\n" CONSOLE_ENDCOLOR, INErr);
+	fprintf(stderr, CONSOLE_COLOR_RED "Epoch: %s\n" CONSOLE_ENDCOLOR, INErr);
 }
 
 void SpitWarning(char *INErr)
 {
-	fprintf(stderr, CONSOLE_COLOR_YELLOW "Mauri: %s\n" CONSOLE_ENDCOLOR, INErr);
+	fprintf(stderr, CONSOLE_COLOR_YELLOW "Epoch: %s\n" CONSOLE_ENDCOLOR, INErr);
 }
 
-#endif /* __MAURI_H__ */
+#endif /* __EPOCH_H__ */
 

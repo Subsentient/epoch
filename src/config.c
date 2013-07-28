@@ -1,15 +1,15 @@
-/*This code is part of Mauri. Mauri is maintained by Subsentient.
+/*This code is part of Epoch. Epoch is maintained by Subsentient.
 * This software is public domain.
 * Please read the file LICENSE.TXT for more information.*/
 
-/**This file handles the parsing of mauri.conf, our configuration file.
+/**This file handles the parsing of epoch.conf, our configuration file.
  * It adds everything into the object table.**/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <ctype.h>
-#include "../mauri.h"
+#include "../epoch.h"
 
 /*We want the only interface for this to be LookupObjectInTable().*/
 static ObjTable *ObjectTable = NULL;
@@ -49,12 +49,12 @@ rStatus InitConfig(void)
 	/*Get the file size of the config file.*/
 	if (stat(CONFIGDIR CONF_NAME, &FileStat) != 0)
 	{ /*Failure?*/
-		SpitError("Failed to obtain information about configuration file mauri.conf. Does it exist?");
+		SpitError("Failed to obtain information about configuration file epoch.conf. Does it exist?");
 		return FAILURE;
 	}
 	else
 	{ /*No? Use the file size to allocate space in memory, since a char is a byte big.
-	* If it's not a byte on your platform, your OS is not UNIX, and Mauri was not designed for you.*/
+	* If it's not a byte on your platform, your OS is not UNIX, and Epoch was not designed for you.*/
 		ConfigStream = malloc(FileStat.st_size);
 	}
 
@@ -70,7 +70,7 @@ rStatus InitConfig(void)
 	/*Empty file?*/
 	if (*Worker == '\n' || *Worker == '\0')
 	{
-		SpitError("Seems that mauri.conf is empty or corrupted.");
+		SpitError("Seems that epoch.conf is empty or corrupted.");
 		return FAILURE;
 	}
 
@@ -91,7 +91,7 @@ rStatus InitConfig(void)
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectID in mauri.conf line %lu.", LineNum);
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectID in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
 				
 				return FAILURE;
@@ -107,7 +107,7 @@ rStatus InitConfig(void)
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectName in mauri.conf line %lu.", LineNum);
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectName in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
 				
 				return FAILURE;
@@ -123,7 +123,7 @@ rStatus InitConfig(void)
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStartCommand in mauri.conf line %lu.", LineNum);
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStartCommand in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
 				
 				return FAILURE;
@@ -138,7 +138,7 @@ rStatus InitConfig(void)
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStopCommand in mauri.conf line %lu.", LineNum);
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStopCommand in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
 				
 				return FAILURE;
@@ -166,7 +166,7 @@ rStatus InitConfig(void)
 			 if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStartPriority in mauri.conf line %lu.", LineNum);
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStartPriority in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
 				
 				return FAILURE;
@@ -175,7 +175,7 @@ rStatus InitConfig(void)
 			if (!isdigit(DelimCurr[0])) /*Make sure we are getting a number, not Shakespeare.*/
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Bad non-integer value for attribute ObjectStartPriority in mauri.conf line %lu.", LineNum);
+				snprintf(TmpBuf, 1024, "Bad non-integer value for attribute ObjectStartPriority in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
 				
 				return FAILURE;
@@ -190,7 +190,7 @@ rStatus InitConfig(void)
 			 if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStopPriority in mauri.conf line %lu.", LineNum);
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStopPriority in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
 				
 				return FAILURE;
@@ -199,7 +199,7 @@ rStatus InitConfig(void)
 			if (!isdigit(DelimCurr[0]))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Bad non-integer value for attribute ObjectStopPriority in mauri.conf line %lu.", LineNum);
+				snprintf(TmpBuf, 1024, "Bad non-integer value for attribute ObjectStopPriority in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
 				
 				return FAILURE;
@@ -214,7 +214,7 @@ rStatus InitConfig(void)
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectRunlevel in mauri.conf line %lu.", LineNum);
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectRunlevel in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
 				
 				return FAILURE;
@@ -226,7 +226,7 @@ rStatus InitConfig(void)
 		else
 		{
 			char TmpBuf[1024];
-			snprintf(TmpBuf, 1024, "Unidentified attribute in mauri.conf on line %lu.", LineNum);
+			snprintf(TmpBuf, 1024, "Unidentified attribute in epoch.conf on line %lu.", LineNum);
 			SpitError(TmpBuf);
 			
 			return FAILURE;
@@ -258,7 +258,7 @@ static rStatus GetLineDelim(const char *InStream, char *OutStream)
 		}
 		ObjectInQuestion[IncT] = '\0';
 
-		snprintf(TmpBuf, 1024, "No parameter for identifier \"%s\" in mauri.conf.", ObjectInQuestion);
+		snprintf(TmpBuf, 1024, "No parameter for identifier \"%s\" in epoch.conf.", ObjectInQuestion);
 
 		SpitError(TmpBuf);
 

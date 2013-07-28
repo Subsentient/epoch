@@ -1,4 +1,4 @@
-/*This code is part of Mauri. Mauri is maintained by Subsentient.
+/*This code is part of Epoch. Epoch is maintained by Subsentient.
 * This software is public domain.
 * Please read the file LICENSE.TXT for more information.*/
 
@@ -12,7 +12,7 @@
 #include <sys/types.h>
 #include <ctype.h>
 #include <dirent.h>
-#include "../mauri.h"
+#include "../epoch.h"
 
 int main(int argc, char **argv)
 {

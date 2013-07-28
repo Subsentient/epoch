@@ -1,4 +1,4 @@
-/*This code is part of Mauri. Mauri is maintained by Subsentient.
+/*This code is part of Epoch. Epoch is maintained by Subsentient.
 * This software is public domain.
 * Please read the file LICENSE.TXT for more information.*/
 
@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
-#include "../mauri.h"
+#include "../epoch.h"
 
 
 /*Give this function the string you just printed, and it'll print a status report at the end of it, aligned to right.*/
