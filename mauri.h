@@ -73,7 +73,7 @@ typedef enum { FAILURE, SUCCESS, WARNING } rStatus;
 /**Structures go here.**/
 typedef struct _MauriObjectTable
 {
-	char ObjectID[MAX_DESCRIPT_SIZE]; /*The integer ID given to this item by whoever configured Mauri.*/
+	char ObjectID[MAX_DESCRIPT_SIZE]; /*The ASCII ID given to this item by whoever configured Mauri.*/
 	char ObjectName[MAX_DESCRIPT_SIZE]; /*The description of the object.*/
 	char ObjectStartCommand[MAX_DESCRIPT_SIZE]; /*The command to be executed.*/
 	char ObjectStopCommand[MAX_DESCRIPT_SIZE]; /*How to shut it down.*/
