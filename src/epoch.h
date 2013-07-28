@@ -27,7 +27,7 @@
 /*Version.*/
 #define VERSIONSTRING "Epoch Boot System v0.1"
 
-/*Linux signals. Not everything that calls OSsendSignal() will have signal.h included.*/
+/*Linux signals.*/
 #define OSCTL_SIGNAL_HUP 1
 #define OSCTL_SIGNAL_INT 2
 #define OSCTL_SIGNAL_QUIT 3
