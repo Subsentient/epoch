@@ -10,11 +10,12 @@
 #include <sys/ioctl.h>
 #include "../mauri.h"
 
-/*Sends a status report aligned to the end of WSize.ws_col horiz characters.*/
+
+/*Give this function the string you just printed, and it'll print a status report at the end of it, aligned to right.*/
 void PrintStatusReport(const char *InStream, rStatus State)
 {
 	unsigned long StreamLength, Inc = 0;
-	char OutMsg[8192];
+	char OutMsg[8192] = { '\0' }, IP2[8192];
 	char StatusFormat[1024];
 	struct winsize WSize;
 	
@@ -22,7 +23,7 @@ void PrintStatusReport(const char *InStream, rStatus State)
     ioctl(0, TIOCGWINSZ, &WSize);
     StreamLength = WSize.ws_col;
     
-	strncpy(OutMsg, InStream, 8192);
+	strncpy(IP2, InStream, 8192);
 	
 	switch (State)
 	{
@@ -65,14 +66,14 @@ void PrintStatusReport(const char *InStream, rStatus State)
 			return;
 	}
 	
-	if (strlen(OutMsg) >= StreamLength)
-	{
-		OutMsg[StreamLength] = '\0'; 
-		/*Don't allow ridiculously long names that mess up the status reporting.
-		* Keep it clean and keep it uniform.*/
+	if (strlen(IP2) >= StreamLength)
+	{ /*Keep it aligned if we are printing a multi-line report.*/
+		strcat(OutMsg, "\n");
 	}
-	
-	StreamLength -= strlen(OutMsg);
+	else
+	{
+		StreamLength -= strlen(IP2);
+	}
 	
 	/*Appropriate spacing.*/
 	for (; Inc < StreamLength; ++Inc)
