@@ -8,6 +8,8 @@
 #ifndef __EPOCH_H__
 #define __EPOCH_H__
 
+#include <stdio.h> /*For SpitWarning and SpitError*/
+
 /**Defines go here.**/
 
 /*Limits and stuff.*/
@@ -86,6 +88,16 @@ typedef struct _EpochObjectTable
 	struct _EpochObjectTable *Next;
 } ObjTable;
 
+struct _BootBanner
+{
+	Bool ShowBanner;
+	char BannerText[256];
+	char BannerColor[64];
+};
+
+/**Globals go here.**/
+
+extern struct _BootBanner BootBanner;
 
 /**Function forward declarations.*/
 
@@ -97,12 +109,12 @@ extern void PrintStatusReport(const char *InStream, rStatus State);
 
 /**Tiny utility functions here.**/
 
-void SpitError(char *INErr)
+static void SpitError(char *INErr)
 {
 	fprintf(stderr, CONSOLE_COLOR_RED "Epoch: %s\n" CONSOLE_ENDCOLOR, INErr);
 }
 
-void SpitWarning(char *INErr)
+static void SpitWarning(char *INErr)
 {
 	fprintf(stderr, CONSOLE_COLOR_YELLOW "Epoch: %s\n" CONSOLE_ENDCOLOR, INErr);
 }

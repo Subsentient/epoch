@@ -13,11 +13,14 @@
 
 /*We want the only interface for this to be LookupObjectInTable().*/
 static ObjTable *ObjectTable = NULL;
+/*The banner we show upon startup.*/
+struct _BootBanner BootBanner = { false, { '\0' }, { '\0' } };
 
 /*Function forward declarations for all the statics.*/
 static ObjTable *AddObjectToTable(const char *ObjectID);
 static char *NextLine(char *InStream);
 static rStatus GetLineDelim(const char *InStream, char *OutStream);
+static void SetBannerColor(const char *InChoice);
 
 /*Actual functions.*/
 static char *NextLine(char *InStream)
@@ -45,7 +48,7 @@ rStatus InitConfig(void)
 	ObjTable *CurObj = NULL;
 	char DelimCurr[MAX_DESCRIPT_SIZE];
 	unsigned long LineNum = 0;
-
+	
 	/*Get the file size of the config file.*/
 	if (stat(CONFIGDIR CONF_NAME, &FileStat) != 0)
 	{ /*Failure?*/
@@ -85,6 +88,48 @@ rStatus InitConfig(void)
 			continue;
 		}
 		/*Now we get into the actual attribute tags.*/
+		else if (!strncmp(Worker, "BootBannerText", strlen("BootBannerText")))
+		{ /*The text shown at boot up as a kind of greeter, before we start executing objects. Can be disabled, off by default.*/
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute BootBannerText in epoch.conf line %lu.", LineNum);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
+			}
+			
+			if (!strcmp(DelimCurr, "NONE")) /*So, they decided to explicitly opt out of banner display. Ok.*/
+			{
+				BootBanner.BannerText[0] = '\0';
+				BootBanner.BannerColor[0] = '\0';
+				BootBanner.ShowBanner = false; /*Should already be false, but to prevent possible bugs...*/
+				continue;
+			}
+			snprintf(BootBanner.BannerText, 256, "%s%s\n\n", DelimCurr, CONSOLE_ENDCOLOR); /*We add ENDCOLOR to the end regardless of if we are going to show a color.*/
+			BootBanner.ShowBanner = true;
+			continue;
+		}
+		else if (!strncmp(Worker, "BootBannerColor", strlen("BootBannerColor")))
+		{ /*Color for boot banner.*/
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute BootBannerColor in epoch.conf line %lu.", LineNum);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
+			}
+			
+			if (!strcmp(DelimCurr, "NONE")) /*They don't want a color.*/
+			{
+				BootBanner.BannerColor[0] = '\0';
+				continue;
+			}
+			
+			SetBannerColor(DelimCurr); /*Function to be found elsewhere will do this for us, otherwise this loop would be even bigger.*/
+			continue;
+		}
 		else if (!strncmp(Worker, "ObjectID", strlen("ObjectID")))
 		{ /*ASCII value used to identify this object internally, and also a kind of short name for it.*/
 
@@ -236,6 +281,50 @@ rStatus InitConfig(void)
 	free(ConfigStream); /*Release ConfigStream, since we only use the object table now.*/
 
 	return SUCCESS;
+}
+
+static void SetBannerColor(const char *InChoice)
+{
+	if (!strcmp(InChoice, "BLACK"))
+	{
+		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_BLACK, 64);
+	}
+	else if (!strcmp(InChoice, "BLUE"))
+	{
+		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_BLUE, 64);
+	}
+	else if (!strcmp(InChoice, "RED"))
+	{
+		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_RED, 64);
+	}
+	else if (!strcmp(InChoice, "GREEN"))
+	{
+		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_GREEN, 64);
+	}
+	else if (!strcmp(InChoice, "YELLOW"))
+	{
+		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_YELLOW, 64);
+	}
+	else if (!strcmp(InChoice, "MAGENTA"))
+	{
+		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_MAGENTA, 64);
+	}
+	else if (!strcmp(InChoice, "CYAN"))
+	{
+		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_CYAN, 64);
+	}
+	else if (!strcmp(InChoice, "WHITE"))
+	{
+		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_WHITE, 64);
+	}
+	else
+	{ /*Bad value? Warn and then set no color.*/
+		char TmpBuf[1024];
+		
+		BootBanner.BannerColor[0] = '\0';
+		snprintf(TmpBuf, 1024, "Bad color value \"%s\" specified for boot banner. Setting no color.", InChoice);
+		SpitWarning(TmpBuf);
+	}
 }
 
 static rStatus GetLineDelim(const char *InStream, char *OutStream)
