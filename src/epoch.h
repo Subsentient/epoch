@@ -106,18 +106,7 @@ extern void ShutdownConfig(void);
 extern ObjTable *LookupObjectInTable(const char *ObjectID);
 extern ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority, unsigned long ObjectPriority);
 extern void PrintStatusReport(const char *InStream, rStatus State);
-
-/**Tiny utility functions here.**/
-
-static void SpitError(char *INErr)
-{
-	fprintf(stderr, CONSOLE_COLOR_RED "Epoch: %s\n" CONSOLE_ENDCOLOR, INErr);
-}
-
-static void SpitWarning(char *INErr)
-{
-	fprintf(stderr, CONSOLE_COLOR_YELLOW "Epoch: %s\n" CONSOLE_ENDCOLOR, INErr);
-}
-
+extern void SpitWarning(char *INWarning);
+extern void SpitError(char *INErr);
 #endif /* __EPOCH_H__ */
 

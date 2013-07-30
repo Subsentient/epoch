@@ -12,7 +12,28 @@
 #include <sys/types.h>
 #include <ctype.h>
 #include <dirent.h>
-#include "../epoch.h"
+
+#define SIGSTOP 19
+
+#define CONSOLE_COLOR_BLACK "\033[30m"
+#define CONSOLE_COLOR_RED "\033[31m"
+#define CONSOLE_COLOR_GREEN "\033[32m"
+#define CONSOLE_COLOR_YELLOW "\033[33m"
+#define CONSOLE_COLOR_BLUE "\033[34m"
+#define CONSOLE_COLOR_MAGENTA "\033[35m"
+#define CONSOLE_COLOR_CYAN "\033[36m"
+#define CONSOLE_COLOR_WHITE "\033[37m"
+#define CONSOLE_ENDCOLOR "\033[0m"
+
+static void SpitError(char *INErr)
+{
+	fprintf(stderr, CONSOLE_COLOR_RED "Epoch: %s\n" CONSOLE_ENDCOLOR, INErr);
+}
+
+static void SpitWarning(char *INWarning)
+{
+	fprintf(stderr, CONSOLE_COLOR_YELLOW "Epoch: %s\n" CONSOLE_ENDCOLOR, INWarning);
+}
 
 int main(int argc, char **argv)
 {
@@ -48,7 +69,7 @@ int main(int argc, char **argv)
 		
 		InSignal = atoi(InArg);
 		
-		if (InSignal > OSCTL_SIGNAL_STOP || InSignal <= 0)
+		if (InSignal > SIGSTOP || InSignal <= 0)
 		{
 			SpitWarning("Bad argument provided. Please enter a valid signal number.");
 			return 1;
