@@ -108,7 +108,7 @@ extern ObjTable *LookupObjectInTable(const char *ObjectID);
 extern ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority, unsigned long ObjectPriority);
 
 /*parse.c*/
-rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode);
+extern rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode);
 
 /*console.c*/
 extern void PrintStatusReport(const char *InStream, rStatus State);
