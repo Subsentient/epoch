@@ -101,12 +101,19 @@ extern struct _BootBanner BootBanner;
 
 /**Function forward declarations.*/
 
+/*config.c*/
 extern rStatus InitConfig(void);
 extern void ShutdownConfig(void);
 extern ObjTable *LookupObjectInTable(const char *ObjectID);
 extern ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority, unsigned long ObjectPriority);
+
+/*parse.c*/
+rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode);
+
+/*console.c*/
 extern void PrintStatusReport(const char *InStream, rStatus State);
 extern void SpitWarning(char *INWarning);
 extern void SpitError(char *INErr);
-#endif /* __EPOCH_H__ */
 
+
+#endif /* __EPOCH_H__ */
