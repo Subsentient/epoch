@@ -189,11 +189,26 @@ rStatus InitConfig(void)
 				return FAILURE;
 			}
 
-			if (!strncmp(DelimCurr, "PID", MAX_DESCRIPT_SIZE))
+			if (!strncmp(DelimCurr, "PID", strlen("PID")))
 			{
 				CurObj->StopMode = STOP_PID;
 			}
-			else if (!strncmp(DelimCurr, "NONE", MAX_DESCRIPT_SIZE))
+			else if (!strncmp(DelimCurr, "PIDFILE", strlen("PIDFILE")))
+			{ /*They want us to kill a PID file on exit.*/
+				char *Worker = DelimCurr;
+				
+				Worker += strlen("PIDFILE");
+				
+				while (*Worker == ' ')
+				{ /*Skip past all spaces.*/
+					++Worker;
+				}
+				
+				strncpy(CurObj->ObjectPIDFile, Worker, MAX_DESCRIPT_SIZE);
+				
+				CurObj->StopMode = STOP_PIDFILE;
+			}
+			else if (!strncmp(DelimCurr, "NONE", strlen("NONE")))
 			{
 				CurObj->StopMode = STOP_NONE;
 			}

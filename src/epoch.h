@@ -67,7 +67,7 @@ enum { false, true }; /*I don't want to use stdbool.*/
 typedef signed char Bool; /*Might want to check for other values however.*/
 
 /*How objects are stopped on shutdown.*/
-typedef enum { STOP_NONE, STOP_COMMAND, STOP_PID } StopType;
+typedef enum { STOP_NONE, STOP_COMMAND, STOP_PID, STOP_PIDFILE } StopType;
 
 /*Trinary return values for functions.*/
 typedef enum { FAILURE, SUCCESS, WARNING } rStatus;
@@ -79,6 +79,7 @@ typedef struct _EpochObjectTable
 	char ObjectName[MAX_DESCRIPT_SIZE]; /*The description of the object.*/
 	char ObjectStartCommand[MAX_DESCRIPT_SIZE]; /*The command to be executed.*/
 	char ObjectStopCommand[MAX_DESCRIPT_SIZE]; /*How to shut it down.*/
+	char ObjectPIDFile[MAX_DESCRIPT_SIZE];
 	unsigned long ObjectStartPriority;
 	unsigned long ObjectStopPriority;
 	StopType StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
