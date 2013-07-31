@@ -8,8 +8,6 @@
 #ifndef __EPOCH_H__
 #define __EPOCH_H__
 
-#include <stdio.h> /*For SpitWarning and SpitError*/
-
 /**Defines go here.**/
 
 /*Limits and stuff.*/
