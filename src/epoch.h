@@ -58,6 +58,16 @@
 /*The key for the shared memory bus and related stuff.*/
 #define MEMKEY 3047162
 #define MEMBUS_SIZE 1024
+/*The codes that are sent over the bus.*/
+#define MEMBUS_CODE_HALT "INIT_HALT"
+#define MEMBUS_CODE_POWEROFF "INIT_POWEROFF"
+#define MEMBUS_CODE_REBOOT "INIT_REBOOT"
+#define MEMBUS_CODE_RESET "EPOCH_REINIT" /*Forces a reset of the object table.*/
+/*Codes that one expects to find information after.*/
+#define MEMBUS_CODE_OBJSTART "EPOCH_OBJSTART"
+#define MEMBUS_CODE_OBJSTOP "EPOCH_OBJSTOP"
+#define MEMBUS_CODE_STATUS_SEND "EPOCH_OBJSTAT_OUT"
+#define MEMBUS_CODE_STATUS_RECV "EPOCH_OBJSTAT_IN"
 
 /**Types, enums, structs and whatnot**/
 

@@ -171,6 +171,7 @@ rStatus RunAllObjects(Bool IsStartingMode)
 			fflush(NULL); /*Things tend to get clogged up when we don't flush.*/
 			
 			ExitStatus = ExecuteConfigObject(CurObj, IsStartingMode); /*Don't bother with return value here.*/
+			CurObj->Started = (ExitStatus ? true : false); /*Mark the process dead or alive.*/
 			PrintStatusReport(PrintOutStream, ExitStatus);
 		}
 		else
@@ -182,6 +183,7 @@ rStatus RunAllObjects(Bool IsStartingMode)
 					fflush(NULL);
 					
 					ExitStatus = ExecuteConfigObject(CurObj, IsStartingMode);
+					CurObj->Started = (ExitStatus ? false : true); /*Mark the process dead.*/
 					
 					PrintStatusReport(PrintOutStream, ExitStatus);
 					break;
@@ -200,6 +202,9 @@ rStatus RunAllObjects(Bool IsStartingMode)
 					{
 						ExitStatus = FAILURE;
 					}
+					
+					CurObj->Started = (ExitStatus ? false : true);
+					
 					PrintStatusReport(PrintOutStream, ExitStatus);
 					
 					break;
@@ -249,7 +254,7 @@ rStatus RunAllObjects(Bool IsStartingMode)
 					{
 						ExitStatus = FAILURE;
 					}
-					
+					CurObj->Started = (ExitStatus ? false : true);
 					PrintStatusReport(PrintOutStream, ExitStatus);
 					
 					break;
