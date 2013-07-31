@@ -91,10 +91,10 @@ void PrintStatusReport(const char *InStream, rStatus State)
 /*Two little error handling functions. Yay!*/
 void SpitError(char *INErr)
 {
-	fprintf(stderr, CONSOLE_COLOR_RED "Epoch: %s\n" CONSOLE_ENDCOLOR, INErr);
+	fprintf(stderr, CONSOLE_COLOR_RED "Epoch: ERROR: %s\n" CONSOLE_ENDCOLOR, INErr);
 }
 
 void SpitWarning(char *INWarning)
 {
-	fprintf(stderr, CONSOLE_COLOR_YELLOW "Epoch: %s\n" CONSOLE_ENDCOLOR, INWarning);
+	fprintf(stderr, CONSOLE_COLOR_YELLOW "Epoch: WARNING: %s\n" CONSOLE_ENDCOLOR, INWarning);
 }

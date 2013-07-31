@@ -67,7 +67,7 @@ enum { false, true }; /*I don't want to use stdbool.*/
 typedef signed char Bool;
 
 /*How objects are stopped on shutdown.*/
-typedef enum { STOP_NONE, STOP_COMMAND, STOP_PID, STOP_PIDFILE } StopType;
+typedef enum { STOP_NONE, STOP_COMMAND, STOP_PID, STOP_PIDFILE, STOP_INVALID } StopType;
 
 /*Trinary return values for functions.*/
 typedef enum { FAILURE, SUCCESS, WARNING } rStatus;

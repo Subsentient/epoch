@@ -21,6 +21,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID);
 static char *NextLine(char *InStream);
 static rStatus GetLineDelim(const char *InStream, char *OutStream);
 static void SetBannerColor(const char *InChoice);
+static rStatus ScanConfigIntegrity(void);
 
 /*Actual functions.*/
 static char *NextLine(char *InStream)
@@ -292,7 +293,16 @@ rStatus InitConfig(void)
 			return FAILURE;
 		}
 	} while (++LineNum, (Worker = NextLine(Worker)));
-
+	
+	if (!ScanConfigIntegrity())
+	{ /*We failed integrity checking.*/
+		fprintf(stderr, CONSOLE_COLOR_MAGENTA "Beginning dump of epoch.conf to console.\n" CONSOLE_ENDCOLOR);
+		fprintf(stderr, "%s", ConfigStream);
+		fflush(NULL);
+		
+		return FAILURE;
+	}
+		
 	free(ConfigStream); /*Release ConfigStream, since we only use the object table now.*/
 
 	return SUCCESS;
@@ -400,6 +410,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 		ObjectTable->Next = malloc(sizeof(ObjTable));
 		ObjectTable->Next->Next = NULL;
 		ObjectTable->Next->Prev = ObjectTable;
+		ObjectTable->Prev = NULL;
 
 		Worker = ObjectTable;
 	}
@@ -415,12 +426,68 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 		Worker->Next->Prev = Worker;
 	}
 
+	/*This is the first thing that must ever be initialized, because it's how we tell objects apart.*/
 	strncpy(Worker->ObjectID, ObjectID, MAX_DESCRIPT_SIZE);
+	
+	/*Initialize these to their default values. Used to test integrity before execution begins.*/
 	Worker->Started = false;
-
+	Worker->ObjectName[0] = '\0';
+	Worker->ObjectStartCommand[0] = '\0';
+	Worker->ObjectStopCommand[0] = '\0';
+	Worker->ObjectPIDFile[0] = '\0';
+	Worker->ObjectStartPriority = 0;
+	Worker->ObjectStopPriority = 0;
+	Worker->StopMode = STOP_INVALID;
+	Worker->ObjectPID = 0;
+	Worker->ObjectRunlevel[0] = '\0';
+	
 	return Worker;
 }
 
+static rStatus ScanConfigIntegrity(void)
+{ /*Here we check common mistakes and problems.*/
+	ObjTable *Worker = ObjectTable;
+	char TmpBuf[1024];
+	
+	while (Worker->Next)
+	{
+		if (*Worker->ObjectName == '\0')
+		{
+			snprintf(TmpBuf, 1024, "Object %s has no attribute ObjectName.", Worker->ObjectID);
+			SpitError(TmpBuf);
+			return FAILURE;
+		}
+		else if (*Worker->ObjectStartCommand == '\0' && *Worker->ObjectStopCommand == '\0')
+		{
+			snprintf(TmpBuf, 1024, "Object %s has neither ObjectStopCommand nor ObjectStartCommand attributes.", Worker->ObjectID);
+			SpitError(TmpBuf);
+			return FAILURE;
+		}
+		else if (Worker->StopMode == STOP_INVALID)
+		{
+			snprintf(TmpBuf, 1024, "Internal error when loading StopMode for Object \"%s\".", Worker->ObjectID);
+			SpitError(TmpBuf);
+			return FAILURE;
+		}
+		else if (*Worker->ObjectRunlevel == '\0')
+		{
+			snprintf(TmpBuf, 1024, "Object \"%s\" has no attribute ObjectRunlevel.", Worker->ObjectID);
+			SpitError(TmpBuf);
+			return FAILURE;
+		}
+		else if (Worker->Prev != NULL && !strcmp(Worker->Prev->ObjectID, Worker->ObjectID))
+		{
+			snprintf(TmpBuf, 1024, "Two objects in configuration with ObjectID \"%s\".", Worker->ObjectID);
+			SpitError(TmpBuf);
+			return FAILURE;
+		}
+		
+		Worker = Worker->Next;
+	}
+	
+	return SUCCESS;
+}
+	
 /*Find an object in the table and return a pointer to it. This function is public
  * because while we don't want other places adding to the table, we do want read
  * access to the table.*/
