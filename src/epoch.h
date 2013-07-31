@@ -85,6 +85,7 @@ typedef struct _EpochObjectTable
 	unsigned long ObjectPID; /*The process ID, used for shutting down.*/
 	char ObjectRunlevel[MAX_DESCRIPT_SIZE];
 	
+	struct _EpochObjectTable *Prev;
 	struct _EpochObjectTable *Next;
 } ObjTable;
 
@@ -98,6 +99,7 @@ struct _BootBanner
 /**Globals go here.**/
 
 extern struct _BootBanner BootBanner;
+extern char CurRunlevel[MAX_DESCRIPT_SIZE];
 
 /**Function forward declarations.*/
 
@@ -106,9 +108,11 @@ extern rStatus InitConfig(void);
 extern void ShutdownConfig(void);
 extern ObjTable *LookupObjectInTable(const char *ObjectID);
 extern ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority, unsigned long ObjectPriority);
+extern unsigned long GetHighestPriority(Bool WantStartPriority);
 
 /*parse.c*/
 extern rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode);
+extern rStatus RunAllObjects(Bool IsStartingMode);
 
 /*console.c*/
 extern void PrintStatusReport(const char *InStream, rStatus State);

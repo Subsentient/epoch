@@ -52,7 +52,7 @@ rStatus InitConfig(void)
 	/*Get the file size of the config file.*/
 	if (stat(CONFIGDIR CONF_NAME, &FileStat) != 0)
 	{ /*Failure?*/
-		SpitError("Failed to obtain information about configuration file epoch.conf. Does it exist?");
+		SpitError("Failed to obtain information about configuration file epoch.conf.\nDoes it exist?");
 		return FAILURE;
 	}
 	else
@@ -384,6 +384,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 		ObjectTable = malloc(sizeof(ObjTable));
 		ObjectTable->Next = malloc(sizeof(ObjTable));
 		ObjectTable->Next->Next = NULL;
+		ObjectTable->Next->Prev = ObjectTable;
 
 		Worker = ObjectTable;
 	}
@@ -396,6 +397,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 
 		Worker->Next = malloc(sizeof(ObjTable));
 		Worker->Next->Next = NULL;
+		Worker->Next->Prev = Worker;
 	}
 
 	strncpy(Worker->ObjectID, ObjectID, MAX_DESCRIPT_SIZE);
@@ -420,6 +422,42 @@ ObjTable *LookupObjectInTable(const char *ObjectID)
 	}
 
 	return NULL;
+}
+
+/*Get the max priority number we need to scan.*/
+unsigned long GetHighestPriority(Bool WantStartPriority)
+{
+	ObjTable *Worker = ObjectTable;
+	unsigned long CurHighest = 0;
+	unsigned long TempNum;
+	
+	while (Worker->Next)
+	{
+		TempNum = (WantStartPriority ? Worker->ObjectStartPriority : Worker->ObjectStopPriority);
+		
+		if (TempNum > CurHighest)
+		{
+			CurHighest = TempNum;
+		}
+		else if (TempNum == 0)
+		{ /*We always skip anything with a priority of zero. That's like saying "DISABLED".*/
+			Worker = Worker->Next;
+			continue;
+		}
+		else if (TempNum == CurHighest)
+		{ /*Bad. BAD. BAAAD.*/
+			char TmpBuf[1024];
+			
+			snprintf(TmpBuf, 1024, "Objects %s and %s have the same priority!\n"
+							"That's really bad. Please fix this when you can.\n"
+							"%s will not be executed.", Worker->Prev->ObjectID, Worker->ObjectID, Worker->ObjectID);
+			SpitError(TmpBuf);
+		}
+		
+		Worker = Worker->Next;
+	}
+	
+	return CurHighest;
 }
 
 ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority, unsigned long ObjectPriority)
