@@ -27,12 +27,12 @@
 
 static void SpitError(char *INErr)
 {
-	fprintf(stderr, CONSOLE_COLOR_RED "Epoch: %s\n" CONSOLE_ENDCOLOR, INErr);
+	fprintf(stderr, CONSOLE_COLOR_RED "Epoch killall5: ERROR: %s\n" CONSOLE_ENDCOLOR, INErr);
 }
 
 static void SpitWarning(char *INWarning)
 {
-	fprintf(stderr, CONSOLE_COLOR_YELLOW "Epoch: %s\n" CONSOLE_ENDCOLOR, INWarning);
+	fprintf(stderr, CONSOLE_COLOR_YELLOW "Epoch killall5: WARNING: %s\n" CONSOLE_ENDCOLOR, INWarning);
 }
 
 int main(int argc, char **argv)
