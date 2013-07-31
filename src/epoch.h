@@ -55,6 +55,10 @@
 #define CONSOLE_COLOR_WHITE "\033[37m"
 #define CONSOLE_ENDCOLOR "\033[0m"
 
+/*The key for the shared memory bus and related stuff.*/
+#define MEMKEY 3047162
+#define MEMBUS_SIZE 1024
+
 /**Types, enums, structs and whatnot**/
 
 
@@ -101,6 +105,8 @@ struct _BootBanner
 
 extern struct _BootBanner BootBanner;
 extern char CurRunlevel[MAX_LINE_SIZE];
+extern int MemDescriptor;
+extern char *MemData;
 
 /**Function forward declarations.*/
 
@@ -114,6 +120,12 @@ extern unsigned long GetHighestPriority(Bool WantStartPriority);
 /*parse.c*/
 extern rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode);
 extern rStatus RunAllObjects(Bool IsStartingMode);
+
+/*actions.c*/
+extern void LaunchBootup(void);
+extern rStatus InitMemBus(void);
+extern rStatus ShutdownMemBus(void);
+extern void EmergencyShell(void);
 
 /*console.c*/
 extern void PrintBootBanner(void);
