@@ -46,7 +46,7 @@ rStatus InitConfig(void)
 	char *ConfigStream = NULL, *Worker = NULL;
 	ObjTable *CurObj = NULL;
 	char DelimCurr[MAX_LINE_SIZE];
-	unsigned long LineNum = 0;
+	unsigned long LineNum = 1;
 	
 	/*Get the file size of the config file.*/
 	if (stat(CONFIGDIR CONF_NAME, &FileStat) != 0)
@@ -318,12 +318,12 @@ rStatus InitConfig(void)
 			continue;
 		}
 		else
-		{
+		{ /*No big deal.*/
 			char TmpBuf[1024];
 			snprintf(TmpBuf, 1024, "Unidentified attribute in epoch.conf on line %lu.", LineNum);
-			SpitError(TmpBuf);
+			SpitWarning(TmpBuf);
 			
-			return FAILURE;
+			continue;
 		}
 	} while (++LineNum, (Worker = NextLine(Worker)));
 	
