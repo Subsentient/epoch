@@ -30,11 +30,6 @@ static void SpitError(char *INErr)
 	fprintf(stderr, CONSOLE_COLOR_RED "Epoch killall5: ERROR: %s\n" CONSOLE_ENDCOLOR, INErr);
 }
 
-static void SpitWarning(char *INWarning)
-{
-	fprintf(stderr, CONSOLE_COLOR_YELLOW "Epoch killall5: WARNING: %s\n" CONSOLE_ENDCOLOR, INWarning);
-}
-
 int main(int argc, char **argv)
 {
 	unsigned char InSignal;
@@ -48,7 +43,7 @@ int main(int argc, char **argv)
 	
 	if (argc > 2) /*Hmm, looks like we are being passed more than one argument.*/
 	{
-		SpitWarning("Please specify a signal number such as -9,\n"
+		SpitError("Please specify a signal number such as -9,\n"
 						"or nothing to default to -15.");
 		return 1;
 	}
@@ -71,7 +66,7 @@ int main(int argc, char **argv)
 		
 		if (InSignal > SIGSTOP || InSignal <= 0)
 		{
-			SpitWarning("Bad argument provided. Please enter a valid signal number.");
+			SpitError("Bad argument provided.\nPlease enter a valid signal number.");
 			return 1;
 		}
 	}
@@ -114,13 +109,15 @@ int main(int argc, char **argv)
 			
 			if (!(TempDescriptor = fopen(TmpBuf, "r")))
 			{
-				SpitError("Failed to read session ID file for process %lu. Aborting.");
+				snprintf(TmpBuf, 1024, "Failed to read session ID file for process %lu. Aborting.", CurPID);
+				
+				SpitError(TmpBuf);
 				return 1;
 			}
 			
 			/*Copy in the contents of the file sessionid, using EOF to know when to stop. NOW SHUT UP ABOUT THE LOOPS!
 			 * I can't really do this with fread() because these files report zero length!*/
-			for (Inc = 0; (TChar = getc(TempDescriptor)) != EOF; ++Inc)
+			for (Inc = 0; (TChar = getc(TempDescriptor)) != EOF && Inc < 8192; ++Inc)
 			{
 				SessionID_Targ[Inc] = TChar;
 			}
