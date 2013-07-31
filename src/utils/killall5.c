@@ -71,7 +71,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	OurPID = getpid(); /*We need this so we don't kill ourselves.*/
+	OurPID = (unsigned long)getpid(); /*We need this so we don't kill ourselves.*/
 	
 	/*Get our Session ID in ASCII, because it's often too big to fit in a 32 bit integer.
 	 * Anything in our session ID must live so that our shell lives.*/
