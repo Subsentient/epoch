@@ -72,6 +72,7 @@ rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 		ShellPath = "busybox";
 		ShellDissolves = false;
 	}
+#ifndef WEIRDSHELLPERMITTED
 	else /*Found no other shells. Assume fossil, spit warning.*/
 	{
 		static Bool DidWarn = false; /*Don't spam this warning.*/
@@ -80,13 +81,12 @@ rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 		if (!DidWarn)
 		{	 
 			DidWarn = true;
-#ifndef WEIRDSHELLPERMITTED
 			SpitWarning("No known shell found. Using /bin/sh.\n"
 			"Best if you install one of these: bash, dash, csh, zsh, or busybox.\n"
 			"This matters because PID detection is affected by the way shells handle sh -c.");
-#endif
 		}
 	}
+#endif
 	
 	/**Here be where we execute commands.---------------**/
 	LaunchPID = fork();
@@ -103,7 +103,7 @@ rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 		execlp(ShellPath, "sh", "-c", CurCmd, NULL); /*I bet you think that this is going to return the PID of sh. No.*/
 		/*We still around to talk about it? We were supposed to be imaged with the new command!*/
 		
-		snprintf(TmpBuf, 1024, "Failed to execute %s: execvp() failure.", InObj->ObjectID);
+		snprintf(TmpBuf, 1024, "Failed to execute %s: execlp() failure.", InObj->ObjectID);
 		SpitError(TmpBuf);
 		exit(1);
 	}
