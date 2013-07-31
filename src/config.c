@@ -446,7 +446,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 
 static rStatus ScanConfigIntegrity(void)
 { /*Here we check common mistakes and problems.*/
-	ObjTable *Worker = ObjectTable;
+	ObjTable *Worker = ObjectTable, *TOffender;
 	char TmpBuf[1024];
 	
 	while (Worker->Next)
@@ -485,6 +485,22 @@ static rStatus ScanConfigIntegrity(void)
 		Worker = Worker->Next;
 	}
 	
+	Worker = ObjectTable;
+	
+	while (Worker->Next)
+	{
+		if (((TOffender = GetObjectByPriority(Worker->ObjectRunlevel, true, Worker->ObjectStartPriority)) != NULL ||
+			(TOffender = GetObjectByPriority(Worker->ObjectRunlevel, false, Worker->ObjectStopPriority)) != NULL) &&
+			strcmp(TOffender->ObjectID, Worker->ObjectID) != 0) /*Make sure it's not the same one we already have.*/
+		{ /*We got a priority collision.*/
+			snprintf(TmpBuf, 1024, "Two objects in configuration with the same priority.\n"
+			"They are \"%s\" and \"%s\". This could lead to strange behaviour.", Worker->ObjectID, TOffender->ObjectID);
+			SpitWarning(TmpBuf);
+			return WARNING;
+		}
+		
+		Worker = Worker->Next;
+	}
 	return SUCCESS;
 }
 	
@@ -526,15 +542,6 @@ unsigned long GetHighestPriority(Bool WantStartPriority)
 		{ /*We always skip anything with a priority of zero. That's like saying "DISABLED".*/
 			Worker = Worker->Next;
 			continue;
-		}
-		else if (TempNum == CurHighest)
-		{ /*Bad. BAD. BAAAD.*/
-			char TmpBuf[1024];
-			
-			snprintf(TmpBuf, 1024, "Objects %s and %s have the same priority!\n"
-							"That's really bad. Please fix this when you can.\n"
-							"%s will not be executed.", Worker->Prev->ObjectID, Worker->ObjectID, Worker->ObjectID);
-			SpitError(TmpBuf);
 		}
 		
 		Worker = Worker->Next;
