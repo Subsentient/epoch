@@ -13,7 +13,7 @@
 /**Defines go here.**/
 
 /*Limits and stuff.*/
-#define MAX_DESCRIPT_SIZE 8192
+#define MAX_DESCRIPT_SIZE 1024
 #define MAX_LINE_SIZE 8192
 #define MIN_CONFIG_SIZE 16384
 
@@ -77,15 +77,15 @@ typedef struct _EpochObjectTable
 {
 	char ObjectID[MAX_DESCRIPT_SIZE]; /*The ASCII ID given to this item by whoever configured Epoch.*/
 	char ObjectName[MAX_DESCRIPT_SIZE]; /*The description of the object.*/
-	char ObjectStartCommand[MAX_DESCRIPT_SIZE]; /*The command to be executed.*/
-	char ObjectStopCommand[MAX_DESCRIPT_SIZE]; /*How to shut it down.*/
-	char ObjectPIDFile[MAX_DESCRIPT_SIZE];
+	char ObjectStartCommand[MAX_LINE_SIZE]; /*The command to be executed.*/
+	char ObjectStopCommand[MAX_LINE_SIZE]; /*How to shut it down.*/
+	char ObjectPIDFile[MAX_LINE_SIZE];
 	unsigned long ObjectStartPriority;
 	unsigned long ObjectStopPriority;
 	Bool Started;
 	StopType StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
 	unsigned long ObjectPID; /*The process ID, used for shutting down.*/
-	char ObjectRunlevel[MAX_DESCRIPT_SIZE];
+	char ObjectRunlevel[MAX_LINE_SIZE];
 	
 	struct _EpochObjectTable *Prev;
 	struct _EpochObjectTable *Next;
@@ -101,7 +101,7 @@ struct _BootBanner
 /**Globals go here.**/
 
 extern struct _BootBanner BootBanner;
-extern char CurRunlevel[MAX_DESCRIPT_SIZE];
+extern char CurRunlevel[MAX_LINE_SIZE];
 
 /**Function forward declarations.*/
 

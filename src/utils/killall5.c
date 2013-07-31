@@ -88,7 +88,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	
-	for (Inc = 0; (TChar = getc(TempDescriptor)) != EOF; ++Inc)
+	for (Inc = 0; (TChar = getc(TempDescriptor)) != EOF && Inc < 8192; ++Inc)
 	{
 		SessionID[Inc] = TChar;
 	}

@@ -13,7 +13,7 @@
 #include "epoch.h"
 
 /*We store the current runlevel here.*/
-char CurRunlevel[MAX_DESCRIPT_SIZE] = "default";
+char CurRunlevel[MAX_LINE_SIZE] = "default";
 
 static Bool FileUsable(const char *FileName)
 {
@@ -201,12 +201,12 @@ rStatus RunAllObjects(Bool IsStartingMode)
 				{
 					FILE *Tdesc = fopen(CurObj->ObjectPIDFile, "r");
 					unsigned long Inc = 0, TruePID = 0;
-					char Buf[MAX_DESCRIPT_SIZE], WChar, *TWorker;
+					char Buf[MAX_LINE_SIZE], WChar, *TWorker;
 					
 					printf(PrintOutStream);
 					fflush(NULL);
 					
-					for (; (WChar = getc(Tdesc)) != EOF; ++Inc)
+					for (; (WChar = getc(Tdesc)) != EOF && Inc < MAX_LINE_SIZE; ++Inc)
 					{
 						Buf[Inc] = WChar;
 					}

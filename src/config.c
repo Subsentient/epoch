@@ -47,7 +47,7 @@ rStatus InitConfig(void)
 	struct stat FileStat;
 	char *ConfigStream = NULL, *Worker = NULL;
 	ObjTable *CurObj = NULL;
-	char DelimCurr[MAX_DESCRIPT_SIZE];
+	char DelimCurr[MAX_LINE_SIZE];
 	unsigned long LineNum = 0;
 	
 	/*Get the file size of the config file.*/
@@ -175,7 +175,7 @@ rStatus InitConfig(void)
 				return FAILURE;
 			}
 			
-			strncpy(CurObj->ObjectStartCommand, DelimCurr, MAX_DESCRIPT_SIZE);
+			strncpy(CurObj->ObjectStartCommand, DelimCurr, MAX_LINE_SIZE);
 			continue;
 		}
 		else if (!strncmp(Worker, "ObjectStopCommand", strlen("ObjectStopCommand")))
@@ -205,7 +205,7 @@ rStatus InitConfig(void)
 					++Worker;
 				}
 				
-				strncpy(CurObj->ObjectPIDFile, Worker, MAX_DESCRIPT_SIZE);
+				strncpy(CurObj->ObjectPIDFile, Worker, MAX_LINE_SIZE);
 				
 				CurObj->StopMode = STOP_PIDFILE;
 			}
@@ -216,7 +216,7 @@ rStatus InitConfig(void)
 			else
 			{
 				CurObj->StopMode = STOP_COMMAND;
-				strncpy(CurObj->ObjectStopCommand, DelimCurr, MAX_DESCRIPT_SIZE);
+				strncpy(CurObj->ObjectStopCommand, DelimCurr, MAX_LINE_SIZE);
 			}
 			continue;
 		}
@@ -281,7 +281,7 @@ rStatus InitConfig(void)
 				return FAILURE;
 			}
 
-			strncpy(CurObj->ObjectRunlevel, DelimCurr, MAX_DESCRIPT_SIZE);
+			strncpy(CurObj->ObjectRunlevel, DelimCurr, MAX_LINE_SIZE);
 			continue;
 		}
 		else
@@ -385,7 +385,7 @@ static rStatus GetLineDelim(const char *InStream, char *OutStream)
 	cOffset = Inc; /*Store this offset.*/
 
 	/*Copy over the argument to the parameter. Quit whining about the loop copy.*/
-	for (Inc = 0; InStream[Inc + cOffset] != '\n' && InStream[Inc + cOffset] != '\0'; ++Inc)
+	for (Inc = 0; InStream[Inc + cOffset] != '\n' && InStream[Inc + cOffset] != '\0' && Inc < MAX_LINE_SIZE; ++Inc)
 	{
 		OutStream[Inc] = InStream[Inc + cOffset];
 	}
