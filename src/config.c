@@ -13,8 +13,6 @@
 
 /*We want the only interface for this to be LookupObjectInTable().*/
 static ObjTable *ObjectTable = NULL;
-/*The banner we show upon startup.*/
-struct _BootBanner BootBanner = { false, { '\0' }, { '\0' } };
 
 /*Function forward declarations for all the statics.*/
 static ObjTable *AddObjectToTable(const char *ObjectID);
@@ -107,7 +105,8 @@ rStatus InitConfig(void)
 				BootBanner.ShowBanner = false; /*Should already be false, but to prevent possible bugs...*/
 				continue;
 			}
-			snprintf(BootBanner.BannerText, 256, "%s%s\n\n", DelimCurr, CONSOLE_ENDCOLOR); /*We add ENDCOLOR to the end regardless of if we are going to show a color.*/
+			strncat(BootBanner.BannerText, DelimCurr, 512);
+			
 			BootBanner.ShowBanner = true;
 			continue;
 		}

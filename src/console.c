@@ -10,6 +10,62 @@
 #include <sys/ioctl.h>
 #include "epoch.h"
 
+/*The banner we show upon startup.*/
+struct _BootBanner BootBanner = { false, { '\0' }, { '\0' } };
+
+void PrintBootBanner(void)
+{ /*Real simple stuff.*/
+	if (!BootBanner.ShowBanner)
+	{
+		return;
+	}
+	
+	if (!strncmp(BootBanner.BannerText, "FILE", strlen("FILE")))
+	{ /*Now we read the file and copy it into the new array.*/
+		char *Worker, *TW, TChar;
+		FILE *TempDescriptor;
+		unsigned long Inc = 0;
+		
+		BootBanner.BannerText[Inc] = '\0';	
+		
+		Worker = BootBanner.BannerText + strlen("FILE");
+		
+		for (Inc = 0; Worker[Inc] == ' ' || Worker[Inc] == '\t'; ++Inc);
+		
+		Worker += Inc;
+		
+		if ((TW = strstr(Worker, "\n")))
+		{
+			*TW = '\0';
+		}
+		
+		if (!(TempDescriptor = fopen(Worker, "r")))
+		{
+			char TmpBuf[1024];
+			
+			snprintf(TmpBuf, 1024, "Failed to display boot banner, can't open file \"%s\".", Worker);
+			SpitWarning(TmpBuf);
+			return;
+		}
+		
+		for (Inc = 0; (TChar = getc(TempDescriptor)) != EOF && Inc < 512; ++Inc)
+		{ /*It's a loop copy. Get over it.*/
+			BootBanner.BannerText[Inc] = TChar;
+		}
+		BootBanner.BannerText[Inc] = '\0';
+		
+		fclose(TempDescriptor);
+	}
+	
+	if (*BootBanner.BannerColor)
+	{
+		printf("\n%s%s%s\n", BootBanner.BannerColor, BootBanner.BannerText, CONSOLE_ENDCOLOR);
+	}
+	else
+	{
+		printf("\n%s\n", BootBanner.BannerText);
+	}
+}
 
 /*Give this function the string you just printed, and it'll print a status report at the end of it, aligned to right.*/
 void PrintStatusReport(const char *InStream, rStatus State)

@@ -94,7 +94,7 @@ typedef struct _EpochObjectTable
 struct _BootBanner
 {
 	Bool ShowBanner;
-	char BannerText[256];
+	char BannerText[512];
 	char BannerColor[64];
 };
 
@@ -117,6 +117,7 @@ extern rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode);
 extern rStatus RunAllObjects(Bool IsStartingMode);
 
 /*console.c*/
+extern void PrintBootBanner(void);
 extern void PrintStatusReport(const char *InStream, rStatus State);
 extern void SpitWarning(char *INWarning);
 extern void SpitError(char *INErr);
