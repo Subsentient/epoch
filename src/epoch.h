@@ -86,6 +86,7 @@ typedef struct _EpochObjectTable
 	StopType StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
 	unsigned long ObjectPID; /*The process ID, used for shutting down.*/
 	char ObjectRunlevel[MAX_LINE_SIZE];
+	Bool Enabled;
 	
 	struct _EpochObjectTable *Prev;
 	struct _EpochObjectTable *Next;

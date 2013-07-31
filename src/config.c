@@ -146,6 +146,40 @@ rStatus InitConfig(void)
 
 			continue;
 		}
+		else if (!strncmp(Worker, "ObjectEnabled", strlen("ObjectEnabled")))
+		{
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectEnabled in epoch.conf line %lu.", LineNum);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
+			}
+			
+			if (!strcmp(DelimCurr, "true"))
+			{
+				CurObj->Enabled = true;
+			}
+			else if (!strcmp(DelimCurr, "false"))
+			{
+				CurObj->Enabled = false;
+			}
+			else
+			{ /*Warn about bad value, then treat as if enabled.*/
+				char TmpBuf[1024];
+				
+				CurObj->Enabled = true;
+				
+				snprintf(TmpBuf, 1024, "Bad value %s for attribute ObjectEnabled for object %s at line %lu.\n"
+						"Valid values are true and false. Assuming enabled.",
+						DelimCurr, CurObj->ObjectID, LineNum);
+
+				SpitWarning(TmpBuf);
+			}
+			
+			continue;
+		}
 		else if (!strncmp(Worker, "ObjectName", strlen("ObjectName")))
 		{ /*It's description.*/
 			
@@ -439,6 +473,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->StopMode = STOP_INVALID;
 	Worker->ObjectPID = 0;
 	Worker->ObjectRunlevel[0] = '\0';
+	Worker->Enabled = true; /*Don't make ObjectEnabled attribute mandatory*/
 	
 	return Worker;
 }
@@ -490,7 +525,7 @@ static rStatus ScanConfigIntegrity(void)
 	{
 		if (((TOffender = GetObjectByPriority(Worker->ObjectRunlevel, true, Worker->ObjectStartPriority)) != NULL ||
 			(TOffender = GetObjectByPriority(Worker->ObjectRunlevel, false, Worker->ObjectStopPriority)) != NULL) &&
-			strcmp(TOffender->ObjectID, Worker->ObjectID) != 0) /*Make sure it's not the same one we already have.*/
+			strcmp(TOffender->ObjectID, Worker->ObjectID) != 0 && TOffender->Enabled && Worker->Enabled)
 		{ /*We got a priority collision.*/
 			snprintf(TmpBuf, 1024, "Two objects in configuration with the same priority.\n"
 			"They are \"%s\" and \"%s\". This could lead to strange behaviour.", Worker->ObjectID, TOffender->ObjectID);

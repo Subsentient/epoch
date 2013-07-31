@@ -157,6 +157,11 @@ rStatus RunAllObjects(Bool IsStartingMode)
 			continue;
 		}
 		
+		if (!CurObj->Enabled)
+		{
+			continue;
+		}
+		
 		/*Copy in the description to be printed to the console.*/
 		snprintf(PrintOutStream, 1024, "%s %s ", (IsStartingMode ? "Starting" : "Stopping"), CurObj->ObjectName);
 		
@@ -180,6 +185,7 @@ rStatus RunAllObjects(Bool IsStartingMode)
 					
 					PrintStatusReport(PrintOutStream, ExitStatus);
 					break;
+				case STOP_INVALID:
 				case STOP_NONE:
 					break;
 				case STOP_PID:
