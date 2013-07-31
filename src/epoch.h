@@ -64,7 +64,7 @@
 
 /*Our own boolean type.*/
 enum { false, true }; /*I don't want to use stdbool.*/
-typedef signed char Bool; /*Might want to check for other values however.*/
+typedef _Bool Bool;
 
 /*How objects are stopped on shutdown.*/
 typedef enum { STOP_NONE, STOP_COMMAND, STOP_PID, STOP_PIDFILE } StopType;
@@ -82,6 +82,7 @@ typedef struct _EpochObjectTable
 	char ObjectPIDFile[MAX_DESCRIPT_SIZE];
 	unsigned long ObjectStartPriority;
 	unsigned long ObjectStopPriority;
+	Bool Started;
 	StopType StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
 	unsigned long ObjectPID; /*The process ID, used for shutting down.*/
 	char ObjectRunlevel[MAX_DESCRIPT_SIZE];

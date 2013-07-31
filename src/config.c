@@ -416,6 +416,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	}
 
 	strncpy(Worker->ObjectID, ObjectID, MAX_DESCRIPT_SIZE);
+	Worker->Started = false;
 
 	return Worker;
 }
