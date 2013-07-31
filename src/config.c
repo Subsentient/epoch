@@ -18,7 +18,6 @@ static ObjTable *ObjectTable = NULL;
 static ObjTable *AddObjectToTable(const char *ObjectID);
 static char *NextLine(char *InStream);
 static rStatus GetLineDelim(const char *InStream, char *OutStream);
-static void SetBannerColor(const char *InChoice);
 static rStatus ScanConfigIntegrity(void);
 
 /*Actual functions.*/
@@ -339,50 +338,6 @@ rStatus InitConfig(void)
 	free(ConfigStream); /*Release ConfigStream, since we only use the object table now.*/
 
 	return SUCCESS;
-}
-
-static void SetBannerColor(const char *InChoice)
-{
-	if (!strcmp(InChoice, "BLACK"))
-	{
-		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_BLACK, 64);
-	}
-	else if (!strcmp(InChoice, "BLUE"))
-	{
-		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_BLUE, 64);
-	}
-	else if (!strcmp(InChoice, "RED"))
-	{
-		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_RED, 64);
-	}
-	else if (!strcmp(InChoice, "GREEN"))
-	{
-		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_GREEN, 64);
-	}
-	else if (!strcmp(InChoice, "YELLOW"))
-	{
-		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_YELLOW, 64);
-	}
-	else if (!strcmp(InChoice, "MAGENTA"))
-	{
-		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_MAGENTA, 64);
-	}
-	else if (!strcmp(InChoice, "CYAN"))
-	{
-		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_CYAN, 64);
-	}
-	else if (!strcmp(InChoice, "WHITE"))
-	{
-		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_WHITE, 64);
-	}
-	else
-	{ /*Bad value? Warn and then set no color.*/
-		char TmpBuf[1024];
-		
-		BootBanner.BannerColor[0] = '\0';
-		snprintf(TmpBuf, 1024, "Bad color value \"%s\" specified for boot banner. Setting no color.", InChoice);
-		SpitWarning(TmpBuf);
-	}
 }
 
 static rStatus GetLineDelim(const char *InStream, char *OutStream)
