@@ -133,6 +133,7 @@ extern struct _BootBanner BootBanner;
 extern char CurRunlevel[MAX_LINE_SIZE];
 extern int MemDescriptor;
 extern char *MemData;
+extern Bool DisableCAD;
 
 /**Function forward declarations.*/
 

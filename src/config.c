@@ -85,6 +85,41 @@ rStatus InitConfig(void)
 		{ /*Line is just a comment.*/
 			continue;
 		}
+		else if (!strncmp(Worker, "DisableCAD", strlen("DisableCAD")))
+		{ /*Should we disable instant reboots on CTRL-ALT-DEL?*/
+
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute DisableCAD in epoch.conf line %lu.", LineNum);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
+			}
+
+			if (!strcmp(DelimCurr, "true"))
+			{
+				DisableCAD = true;
+			}
+			else if (!strcmp(DelimCurr, "false"))
+			{
+				DisableCAD = false;
+			}
+			else
+			{
+				char TmpBuf[1024];
+				
+				DisableCAD = true;
+				
+				snprintf(TmpBuf, 1024, "Bad value %s for attribute DisableCAD at line %lu.\n"
+						"Valid values are true and false. Assuming yes.",
+						DelimCurr, LineNum);
+						
+				SpitWarning(TmpBuf);
+			}
+
+			continue;
+		}
 		/*Now we get into the actual attribute tags.*/
 		else if (!strncmp(Worker, "BootBannerText", strlen("BootBannerText")))
 		{ /*The text shown at boot up as a kind of greeter, before we start executing objects. Can be disabled, off by default.*/

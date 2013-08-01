@@ -219,13 +219,25 @@ void EpochMemBusLoop(void)
 		}
 		else if (BusDataIs(MEMBUS_CODE_CADOFF))
 		{
-			reboot(OSCTL_LINUX_DISABLE_CTRLALTDEL);
-			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_CADOFF, true);
+			if (!reboot(OSCTL_LINUX_DISABLE_CTRLALTDEL))
+			{
+				MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_CADOFF, true);
+			}
+			else
+			{
+				MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_CADOFF, true);
+			}
 		}
 		else if (BusDataIs(MEMBUS_CODE_CADON))
 		{
-			reboot(OSCTL_LINUX_ENABLE_CTRLALTDEL);
-			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_CADON, true);
+			if (!reboot(OSCTL_LINUX_ENABLE_CTRLALTDEL))
+			{
+				MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_CADON, true);
+			}
+			else
+			{
+				MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_CADON, true);
+			}
 		}
 		else
 		{

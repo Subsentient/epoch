@@ -59,6 +59,11 @@ void LaunchBootup(void)
 	
 	PrintBootBanner();
 	
+	if (DisableCAD)
+	{
+		reboot(OSCTL_LINUX_DISABLE_CTRLALTDEL); /*Disable instant reboot on CTRL-ALT-DEL.*/
+	}
+	
 	if (!RunAllObjects(true))
 	{
 		EmergencyShell();
@@ -96,9 +101,14 @@ void LaunchShutdown(unsigned long Signal)
 	}
 	
 	ShutdownConfig();
-	ShutdownMemBus(false);
+	ShutdownMemBus(true);
 	
 	reboot(Signal); /*Send the signal.*/
+	
+	/*Again, not supposed to be here.*/
+	
+	SpitError("Failed to reboot/halt!");
+	EmergencyShell();
 }
 	
 

@@ -12,6 +12,8 @@
 
 /*The banner we show upon startup.*/
 struct _BootBanner BootBanner = { false, { '\0' }, { '\0' } };
+/*Should we Disable CTRL-ALT-DEL instant reboots?*/
+Bool DisableCAD = true;
 
 void PrintBootBanner(void)
 { /*Real simple stuff.*/
