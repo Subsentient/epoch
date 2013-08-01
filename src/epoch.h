@@ -56,7 +56,7 @@
 #define CONSOLE_ENDCOLOR "\033[0m"
 
 /*The key for the shared memory bus and related stuff.*/
-#define MEMKEY 'E' + 'P' + 'O' + 'C' + 'H'
+#define MEMKEY (('E' + 'P' + 'O' + 'C' + 'H') + ('W'+'h'+'i'+'t'+'e' + 'R'+'a'+'t')) * 7 /*Cool, right?*/
 #define MEMBUS_SIZE 1024
 /*The codes that are sent over the bus.*/
 
