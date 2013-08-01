@@ -64,21 +64,26 @@
 /*The codes that are sent over the bus.*/
 
 /*These are what we use to set message types.*/
-#define MEMBUS_NOMSG 0
-#define MEMBUS_MSG 1
+#define MEMBUS_NOMSG 25
+#define MEMBUS_MSG 100
+#define MEMBUS_NEWCONNECTION 50
 
-
+/*These are status for operations.*/
+#define MEMBUS_CODE_ACKNOWLEDGED "OK"
+#define MEMBUS_CODE_WARNING "WARN"
+#define MEMBUS_CODE_FAILURE "FAIL"
+#define MEMBUS_CODE_BADPARAM "BADPARAM"
 /*These are what we actually send.*/
 #define MEMBUS_CODE_HALT "INIT_HALT"
 #define MEMBUS_CODE_POWEROFF "INIT_POWEROFF"
 #define MEMBUS_CODE_REBOOT "INIT_REBOOT"
 #define MEMBUS_CODE_RESET "EPOCH_REINIT" /*Forces a reset of the object table.*/
-#define MEMBUS_CODE_ACKNOWLEDGED "ACKNOWLEDGED"
-#define MEMBUS_CODE_FAILURE "FAILURE"
+#define MEMBUS_CODE_CADON "CADON"
+#define MEMBUS_CODE_CADOFF "CADOFF"
 /*Codes that one expects to find information after.*/
-#define MEMBUS_CODE_OBJSTART "EPOCH_OBJSTART"
-#define MEMBUS_CODE_OBJSTOP "EPOCH_OBJSTOP"
-#define MEMBUS_CODE_STATUS "EPOCH_OBJSTAT"
+#define MEMBUS_CODE_OBJSTART "OBJSTART"
+#define MEMBUS_CODE_OBJSTOP "OBJSTOP"
+#define MEMBUS_CODE_STATUS "OBJSTAT"
 
 /**Types, enums, structs and whatnot**/
 
@@ -145,8 +150,6 @@ extern rStatus RunAllObjects(Bool IsStartingMode);
 /*actions.c*/
 extern void LaunchBootup(void);
 extern void LaunchShutdown(unsigned long Signal);
-extern rStatus InitMemBus(Bool ServerSide);
-extern rStatus ShutdownMemBus(void);
 extern rStatus EmulKillall5(unsigned long InSignal);
 extern void EmergencyShell(void);
 
@@ -154,7 +157,8 @@ extern void EmergencyShell(void);
 extern rStatus InitMemBus(Bool ServerSide);
 extern rStatus MemBus_Write(const char *InStream, Bool ServerSide);
 extern Bool MemBus_Read(char *OutStream, Bool ServerSide);
-extern rStatus ShutdownMemBus(void);
+extern void EpochMemBusLoop(void);
+extern rStatus ShutdownMemBus(Bool ServerSide);
 
 /*console.c*/
 extern void PrintBootBanner(void);

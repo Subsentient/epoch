@@ -28,7 +28,7 @@ void EmergencyShell(void)
 	fprintf(stderr, "Shutting down Epoch...\n");
 	fflush(NULL);
 	ShutdownConfig(); /*Release all memory.*/
-	ShutdownMemBus(); /*Stop the membus.*/
+	ShutdownMemBus(true); /*Stop the membus.*/
 	
 	fprintf(stderr, "Launching the shell...\n");
 	fflush(NULL);
@@ -63,6 +63,13 @@ void LaunchBootup(void)
 	{
 		EmergencyShell();
 	}
+	
+	EpochMemBusLoop(); /*Now enter into limbo of scanning the membus forever.*/
+	
+	/*We were never supposed to get this far.*/
+	SpitError("EpochMemBusLoop() exited! That should never happen!");
+	
+	EmergencyShell();
 }
 
 
@@ -89,7 +96,7 @@ void LaunchShutdown(unsigned long Signal)
 	}
 	
 	ShutdownConfig();
-	ShutdownMemBus();
+	ShutdownMemBus(false);
 	
 	reboot(Signal); /*Send the signal.*/
 }

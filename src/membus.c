@@ -15,6 +15,7 @@
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <sys/reboot.h>
 #include "epoch.h"
 
 /*Memory bus uhh, static globals.*/
@@ -40,9 +41,18 @@ rStatus InitMemBus(Bool ServerSide)
 	if (ServerSide) /*Don't nuke messages on startup if we aren't init.*/
 	{
 		*MemData = MEMBUS_NOMSG; /*Set to no message by default.*/
+		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NEWCONNECTION;
+	}
+	else if (*(MemData + (MEMBUS_SIZE/2)) != MEMBUS_NEWCONNECTION)
+	{ /*Snowball's chance in hell that this will not always work.*/
+		SpitError("InitMemBus() Bus is not running.");
+		return FAILURE;
+	}
+	else
+	{
 		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NOMSG;
 	}
-	
+		
 	return SUCCESS;
 }
 
@@ -50,6 +60,7 @@ rStatus MemBus_Write(const char *InStream, Bool ServerSide)
 {
 	char *BusStatus = NULL;
 	char *BusData = NULL;
+	unsigned short WaitCount = 0;
 	
 	if (ServerSide)
 	{
@@ -62,9 +73,15 @@ rStatus MemBus_Write(const char *InStream, Bool ServerSide)
 	
 	BusData = BusStatus + 1; /*Our actual data goes one byte after the status byte.*/
 	
-	if (*BusStatus != MEMBUS_NOMSG) /*We didn't clear the bit.*/
+	while (*BusStatus != MEMBUS_NOMSG) /*Wait for them to finish eating their last message.*/
 	{
-		return FAILURE;
+		usleep(100000); /*0.1 seconds.*/
+		++WaitCount;
+		
+		if (WaitCount == 100)
+		{ /*Been 10 seconds! Does it take that long to copy a string?*/
+			return FAILURE;
+		}
 	}
 	
 	strncpy(BusData, InStream, (MEMBUS_SIZE/2 - 1));
@@ -131,35 +148,41 @@ void EpochMemBusLoop(void)
 				MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_RESET, true);
 			}
 		}
-		else if (BusDataIs(MEMBUS_CODE_OBJSTART))
+		else if (BusDataIs(MEMBUS_CODE_OBJSTART) || BusDataIs(MEMBUS_CODE_OBJSTOP))
 		{
-			char *TWorker = BusData + strlen(MEMBUS_CODE_OBJSTART " ");
+			char *TWorker = BusData + strlen((BusDataIs(MEMBUS_CODE_OBJSTART) ? MEMBUS_CODE_OBJSTART " " : MEMBUS_CODE_OBJSTOP " "));
 			ObjTable *CurObj = LookupObjectInTable(TWorker);
+			char TmpBuf[MEMBUS_SIZE/2 - 1], *MCode;
+			rStatus DidWork;
 			
 			if (CurObj)
 			{
-				ProcessConfigObject(CurObj, true);
-				MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_OBJSTART, true);
+				DidWork = SUCCESS;
 			}
 			else
 			{
-				MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_OBJSTART, true);
+				DidWork = FAILURE;
 			}
-		}
-		else if (BusDataIs(MEMBUS_CODE_OBJSTOP))
-		{
-			char *TWorker = BusData + strlen(MEMBUS_CODE_OBJSTOP " ");
-			ObjTable *CurObj = LookupObjectInTable(TWorker);
+
+			DidWork = ProcessConfigObject(CurObj, (BusDataIs(MEMBUS_CODE_OBJSTART) ? true : false));
 			
-			if (CurObj)
+			switch (DidWork)
 			{
-				ProcessConfigObject(CurObj, false);
-				MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_OBJSTOP, true);
+				case SUCCESS:
+					MCode = MEMBUS_CODE_ACKNOWLEDGED;
+					break;
+				case WARNING:
+					MCode = MEMBUS_CODE_WARNING;
+					break;
+				case FAILURE:
+					MCode = MEMBUS_CODE_FAILURE;
+					break;
 			}
-			else
-			{
-				MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_OBJSTOP, true);
-			}
+			
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s",
+			MCode, (BusDataIs(MEMBUS_CODE_OBJSTART) ? MEMBUS_CODE_OBJSTART : MEMBUS_CODE_OBJSTOP), TWorker);
+			
+			MemBus_Write(TmpBuf, true);
 		}
 		else if (BusDataIs(MEMBUS_CODE_STATUS))
 		{
@@ -168,9 +191,9 @@ void EpochMemBusLoop(void)
 			
 			if (CurObj)
 			{
-				char TmpBuf[1024];
+				char TmpBuf[MEMBUS_SIZE/2 - 1];
 				
-				snprintf(TmpBuf, 1024, "%s %s %d", MEMBUS_CODE_STATUS, TWorker, CurObj->Started);
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s %d", MEMBUS_CODE_STATUS, TWorker, CurObj->Started);
 				
 				MemBus_Write(TmpBuf, true);
 			}
@@ -179,12 +202,50 @@ void EpochMemBusLoop(void)
 				MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_STATUS, true);
 			}
 		}
-		
+		else if (BusDataIs(MEMBUS_CODE_HALT))
+		{
+			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_HALT, true);
+			LaunchShutdown(OSCTL_LINUX_HALT);
+		}
+		else if (BusDataIs(MEMBUS_CODE_POWEROFF))
+		{
+			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_POWEROFF, true);
+			LaunchShutdown(OSCTL_LINUX_POWEROFF);
+		}
+		else if (BusDataIs(MEMBUS_CODE_REBOOT))
+		{
+			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_REBOOT, true);
+			LaunchShutdown(OSCTL_LINUX_REBOOT);
+		}
+		else if (BusDataIs(MEMBUS_CODE_CADOFF))
+		{
+			reboot(OSCTL_LINUX_DISABLE_CTRLALTDEL);
+			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_CADOFF, true);
+		}
+		else if (BusDataIs(MEMBUS_CODE_CADON))
+		{
+			reboot(OSCTL_LINUX_ENABLE_CTRLALTDEL);
+			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_CADON, true);
+		}
+		else
+		{
+			char TmpBuf[MEMBUS_SIZE/2 - 1];
+			
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+			
+			MemBus_Write(TmpBuf, true);
+		}
 	}
 }
 
-rStatus ShutdownMemBus(void)
+rStatus ShutdownMemBus(Bool ServerSide)
 {
+	if (!ServerSide)
+	{ /*We write to our own code.*/
+		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NEWCONNECTION;
+		return SUCCESS;
+	}
+	
 	if (!MemData)
 	{
 		return SUCCESS;

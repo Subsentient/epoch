@@ -148,6 +148,11 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 	
 	if (IsStartingMode)
 	{
+		if (CurObj->Started)
+		{ /*Membus can sometimes send weird messages.*/
+			return FAILURE;
+		}
+		
 		printf(PrintOutStream);
 		fflush(NULL); /*Things tend to get clogged up when we don't flush.*/
 		
@@ -157,6 +162,11 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 	}
 	else
 	{
+		if (!CurObj->Started)
+		{
+			return FAILURE;
+		}
+		
 		switch (CurObj->StopMode)
 		{
 			case STOP_COMMAND:
