@@ -103,11 +103,29 @@ void LaunchShutdown(unsigned long Signal)
 	ShutdownConfig();
 	ShutdownMemBus(true);
 	
+	printf("\n%s", CONSOLE_COLOR_CYAN);
+	
+	if (Signal == OSCTL_LINUX_HALT)
+	{
+		printf("%s\n", "Attempting to halt the system...");
+	}
+	else if (Signal == OSCTL_LINUX_POWEROFF)
+	{
+		printf("%s\n", "Attempting to power down the system...");
+	}
+	else
+	{
+		printf("%s\n", "Attempting to reboot the system...");
+	}
+	
+	printf("%s", CONSOLE_ENDCOLOR);
+	
+	sync(); /*Force sync of disks in case somebody forgot.*/
 	reboot(Signal); /*Send the signal.*/
 	
 	/*Again, not supposed to be here.*/
 	
-	SpitError("Failed to reboot/halt!");
+	SpitError("Failed to reboot/halt/power down!");
 	EmergencyShell();
 }
 	
