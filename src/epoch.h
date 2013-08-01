@@ -144,8 +144,10 @@ extern rStatus RunAllObjects(Bool IsStartingMode);
 
 /*actions.c*/
 extern void LaunchBootup(void);
+extern void LaunchShutdown(unsigned long Signal);
 extern rStatus InitMemBus(Bool ServerSide);
 extern rStatus ShutdownMemBus(void);
+extern rStatus EmulKillall5(unsigned long InSignal);
 extern void EmergencyShell(void);
 
 /*membus.c*/
