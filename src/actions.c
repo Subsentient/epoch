@@ -5,57 +5,10 @@
 /**Handles bootup, shutdown, poweroff and reboot, etc, and some misc stuff.**/
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/signal.h>
 #include <sys/reboot.h>
-#include <sys/types.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
 #include "epoch.h"
-
-/*Memory bus uhh, static globals.*/
-int MemDescriptor;
-char *MemData = NULL;
-
-rStatus InitMemBus(void)
-{
-	if ((MemDescriptor = shmget((key_t)MEMKEY, MEMBUS_SIZE, IPC_CREAT | 0666)) < 0)
-	{
-		SpitError("Failed to allocate memory bus."); /*should probably use perror*/
-		return FAILURE;
-	}
-	
-	if ((MemData = shmat(MemDescriptor, NULL, 0)) == (void*)-1)
-	{
-		SpitError("Failed to attach memory bus to char *MemData.");
-		MemData = NULL;
-		return FAILURE;
-	}
-	
-	memset(MemData, 0, MEMBUS_SIZE);
-	
-	return SUCCESS;	
-}
-	
-rStatus ShutdownMemBus(void)
-{
-	if (!MemData)
-	{
-		return SUCCESS;
-	}
-	
-	if (shmdt(MemData) != 0)
-	{
-		SpitWarning("Unable to shut down memory bus.");
-		return FAILURE;
-	}
-	else
-	{
-		return SUCCESS;
-	}
-}
 
 /*This does what it sounds like. It exits us to go to a shell in event of catastrophe.*/
 void EmergencyShell(void)
@@ -92,9 +45,10 @@ void LaunchBootup(void)
 		EmergencyShell();
 	}
 	
-	if (!InitMemBus())
+	if (!InitMemBus(true))
 	{
-		EmergencyShell();
+		SpitError("FAILURE IN MEMBUS! You won't be able to shut down the system with Epoch!");
+		putc('\007', stderr); /*Beep.*/
 	}
 	
 	PrintBootBanner();

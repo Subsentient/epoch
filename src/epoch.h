@@ -11,7 +11,7 @@
 /**Defines go here.**/
 
 /*Limits and stuff.*/
-#define MAX_DESCRIPT_SIZE 1024
+#define MAX_DESCRIPT_SIZE 512
 #define MAX_LINE_SIZE 8192
 #define MIN_CONFIG_SIZE 16384
 
@@ -56,18 +56,26 @@
 #define CONSOLE_ENDCOLOR "\033[0m"
 
 /*The key for the shared memory bus and related stuff.*/
-#define MEMKEY 3047162
+#define MEMKEY 'E' + 'P' + 'O' + 'C' + 'H'
 #define MEMBUS_SIZE 1024
 /*The codes that are sent over the bus.*/
+
+/*These are what we use to set message types.*/
+#define MEMBUS_NOMSG 0
+#define MEMBUS_MSG 1
+
+
+/*These are what we actually send.*/
 #define MEMBUS_CODE_HALT "INIT_HALT"
 #define MEMBUS_CODE_POWEROFF "INIT_POWEROFF"
 #define MEMBUS_CODE_REBOOT "INIT_REBOOT"
 #define MEMBUS_CODE_RESET "EPOCH_REINIT" /*Forces a reset of the object table.*/
+#define MEMBUS_CODE_ACKNOWLEDGED "ACKNOWLEDGED"
+#define MEMBUS_CODE_FAILURE "FAILURE"
 /*Codes that one expects to find information after.*/
 #define MEMBUS_CODE_OBJSTART "EPOCH_OBJSTART"
 #define MEMBUS_CODE_OBJSTOP "EPOCH_OBJSTOP"
-#define MEMBUS_CODE_STATUS_SEND "EPOCH_OBJSTAT_OUT"
-#define MEMBUS_CODE_STATUS_RECV "EPOCH_OBJSTAT_IN"
+#define MEMBUS_CODE_STATUS "EPOCH_OBJSTAT"
 
 /**Types, enums, structs and whatnot**/
 
@@ -128,14 +136,20 @@ extern ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartP
 extern unsigned long GetHighestPriority(Bool WantStartPriority);
 
 /*parse.c*/
-extern rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode);
+extern rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode);
 extern rStatus RunAllObjects(Bool IsStartingMode);
 
 /*actions.c*/
 extern void LaunchBootup(void);
-extern rStatus InitMemBus(void);
+extern rStatus InitMemBus(Bool ServerSide);
 extern rStatus ShutdownMemBus(void);
 extern void EmergencyShell(void);
+
+/*membus.c*/
+extern rStatus InitMemBus(Bool ServerSide);
+extern rStatus MemBus_Write(const char *InStream, Bool ServerSide);
+extern Bool MemBus_Read(char *OutStream, Bool ServerSide);
+extern rStatus ShutdownMemBus(void);
 
 /*console.c*/
 extern void PrintBootBanner(void);
