@@ -180,7 +180,9 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 				PrintStatusReport(PrintOutStream, ExitStatus);
 				break;
 			case STOP_INVALID:
+				break;
 			case STOP_NONE:
+				CurObj->Started = false; /*Just say we did it even if nothing to do.*/
 				break;
 			case STOP_PID:
 				printf(PrintOutStream);

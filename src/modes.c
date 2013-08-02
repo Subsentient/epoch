@@ -96,6 +96,113 @@ rStatus TellInitToDo(const char *MembusCode)
 	return SUCCESS;
 }
 
+rStatus ObjStartStop(const char *ObjectID, const char *MemBusSignal)
+{ /*Start and stop services.*/
+	char RemoteResponse[MEMBUS_SIZE/2 - 1];
+	char OutMsg[MEMBUS_SIZE/2 - 1];
+	char PossibleResponses[3][MEMBUS_SIZE/2 - 1];
+	unsigned long cCounter = 0;
+	
+	snprintf(OutMsg, sizeof OutMsg, "%s %s", MemBusSignal, ObjectID);
+	
+	if (!MemBus_Write(OutMsg, false))
+	{
+		return FAILURE;
+	}
+	
+	while (!MemBus_Read(RemoteResponse, false))
+	{
+		usleep(100000); /*0.1 secs*/
+		++cCounter;
+		
+		if (cCounter == 200)
+		{ /*Extra newline because we probably are going to print in a progress report.*/
+			SpitError("\nFailed to get reply via membus.");
+			return FAILURE;
+		}
+	}
+	
+	snprintf(PossibleResponses[0], sizeof PossibleResponses[0], "%s %s %s",
+		MEMBUS_CODE_ACKNOWLEDGED, MemBusSignal, ObjectID);
+		
+	snprintf(PossibleResponses[1], sizeof PossibleResponses[1], "%s %s %s",
+		MEMBUS_CODE_FAILURE, MemBusSignal, ObjectID);
+		
+	snprintf(PossibleResponses[2], sizeof PossibleResponses[2], "%s %s",
+		MEMBUS_CODE_BADPARAM, OutMsg);
+		
+	if (!strcmp(RemoteResponse, PossibleResponses[0]))
+	{
+		return SUCCESS;
+	}
+	else if (!strcmp(RemoteResponse, PossibleResponses[1]))
+	{
+		return FAILURE;
+	}
+	else if (!strcmp(RemoteResponse, PossibleResponses[2]))
+	{
+		SpitError("\nWe are being told that we sent a bad parameter.");
+		return FAILURE;
+	}
+	else
+	{
+		SpitError("\nReceived invalid reply from membus.");
+		return FAILURE;
+	}
+}
+
+Bool AskObjectStarted(const char *ObjectID)
+{ /*Just request if the object is running or not.*/
+	char RemoteResponse[MEMBUS_SIZE/2 - 1];
+	char OutMsg[MEMBUS_SIZE/2 - 1];
+	char PossibleResponses[3][MEMBUS_SIZE/2 - 1];
+	unsigned long cCounter = 0;
+	
+	snprintf(OutMsg, sizeof OutMsg, "%s %s", MEMBUS_CODE_STATUS, ObjectID);
+	
+	if (!MemBus_Write(OutMsg, false))
+	{
+		return -1; /*Yes, you can do that with the Bool type. It's just a char.*/
+	}
+	
+	while (!MemBus_Read(RemoteResponse, false))
+	{ /*Third function, I really am just copying and pasting this part.
+		* Hey, this is exactly what I was going to write anyways! */
+		usleep(100000); /*0.1 secs*/
+		++cCounter;
+		
+		if (cCounter == 200)
+		{ /*Extra newline because we probably are going to print in a progress report.*/
+			SpitError("\nFailed to get reply via membus.");
+			return -1;
+		}
+	}
+	
+	snprintf(PossibleResponses[0], sizeof PossibleResponses[0], "%s %s %s",
+		MEMBUS_CODE_STATUS, ObjectID, "0");
+	snprintf(PossibleResponses[1], sizeof PossibleResponses[1], "%s %s %s",
+		MEMBUS_CODE_STATUS, ObjectID, "1");
+	snprintf(PossibleResponses[2], sizeof PossibleResponses[2], "%s %s",
+		MEMBUS_CODE_FAILURE, MEMBUS_CODE_STATUS);
+		
+	if (!strcmp(RemoteResponse, PossibleResponses[0]))
+	{
+		return false;
+	}
+	else if (!strcmp(RemoteResponse, PossibleResponses[1]))
+	{
+		return true;
+	}
+	else if (!strcmp(RemoteResponse, PossibleResponses[2]))
+	{ /*Not sure why I do this when the statement below returns the same.*/
+		return -1;
+	}
+	else
+	{
+		return -1;
+	}
+}
+	
 rStatus EmulKillall5(unsigned long InSignal)
 { /*Used as the killall5 utility.*/
 	DIR *ProcDir;

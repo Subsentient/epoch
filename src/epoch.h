@@ -157,6 +157,8 @@ extern void EmergencyShell(void);
 /*modes.c*/
 extern rStatus TellInitToDo(const char *MembusCode);
 extern rStatus EmulKillall5(unsigned long InSignal);
+extern Bool AskObjectStarted(const char *ObjectID);
+extern rStatus ObjStartStop(const char *ObjectID, const char *MemBusSignal);
 
 /*membus.c*/
 extern rStatus InitMemBus(Bool ServerSide);

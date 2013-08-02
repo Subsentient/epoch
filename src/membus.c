@@ -151,10 +151,19 @@ void EpochMemBusLoop(void)
 		}
 		else if (BusDataIs(MEMBUS_CODE_OBJSTART) || BusDataIs(MEMBUS_CODE_OBJSTOP))
 		{
-			char *TWorker = BusData + strlen((BusDataIs(MEMBUS_CODE_OBJSTART) ? MEMBUS_CODE_OBJSTART " " : MEMBUS_CODE_OBJSTOP " "));
+			unsigned long LOffset = strlen((BusDataIs(MEMBUS_CODE_OBJSTART) ? MEMBUS_CODE_OBJSTART " " : MEMBUS_CODE_OBJSTOP " "));
+			char *TWorker = BusData + LOffset;
 			ObjTable *CurObj = LookupObjectInTable(TWorker);
 			char TmpBuf[MEMBUS_SIZE/2 - 1], *MCode;
 			rStatus DidWork;
+			
+			if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
+			{ /*No argument?*/
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+				MemBus_Write(TmpBuf, true);
+				
+				continue;
+			}
 			
 			if (CurObj)
 			{
@@ -187,8 +196,18 @@ void EpochMemBusLoop(void)
 		}
 		else if (BusDataIs(MEMBUS_CODE_STATUS))
 		{
-			char *TWorker = BusData + strlen(MEMBUS_CODE_STATUS " ");
+			unsigned long LOffset = strlen(MEMBUS_CODE_STATUS " ");
+			char *TWorker = BusData + LOffset;
 			ObjTable *CurObj = LookupObjectInTable(TWorker);
+			char TmpBuf[MEMBUS_SIZE/2 - 1];
+			
+			if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
+			{ /*No argument?*/
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+				MemBus_Write(TmpBuf, true);
+				
+				continue;
+			}
 			
 			if (CurObj)
 			{
