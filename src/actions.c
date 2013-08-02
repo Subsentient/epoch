@@ -11,9 +11,6 @@
 #include <unistd.h>
 #include <sys/reboot.h>
 #include <sys/types.h>
-#include <signal.h>
-#include <ctype.h>
-#include <dirent.h>
 #include "epoch.h"
 
 /**Functions.**/
