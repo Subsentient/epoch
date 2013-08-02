@@ -1,4 +1,5 @@
-/*This code is part of Epoch. Epoch is maintained by Subsentient.
+/*This code is part of the Epoch Boot System.
+* The Epoch Boot System is maintained by Subsentient.
 * This software is public domain.
 * Please read the file LICENSE.TXT for more information.*/
 
