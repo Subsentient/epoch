@@ -240,13 +240,11 @@ void EpochMemBusLoop(void)
 			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s", MEMBUS_CODE_ACKNOWLEDGED, MEMBUS_CODE_RUNLEVEL, TWorker);
 			MemBus_Write(TmpBuf, true);
 			
-			strncpy(CurRunlevel, TWorker, MAX_DESCRIPT_SIZE); /*Copy in the new runlevel.*/
-			
-			if (!RunAllObjects(true)) /*Switch to it.*/
+			if (!SwitchRunlevels(TWorker)) /*Switch to it.*/
 			{
 				char TmpBuf[1024];
 				
-				snprintf(TmpBuf, sizeof TmpBuf, "Failed to execute all objects for runlevel \"%s\".", CurRunlevel);
+				snprintf(TmpBuf, sizeof TmpBuf, "Failed to switch to runlevel \"%s\".", CurRunlevel);
 				SpitError(TmpBuf);
 			}
 		}
