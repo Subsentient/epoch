@@ -420,6 +420,7 @@ static rStatus GetLineDelim(const char *InStream, char *OutStream)
 
 	return SUCCESS;
 }
+
 rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char *Value)
 { /*Looks up the attribute for the passed ID and replaces the value for that attribute.*/
 	
