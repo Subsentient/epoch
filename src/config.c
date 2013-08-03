@@ -420,6 +420,152 @@ static rStatus GetLineDelim(const char *InStream, char *OutStream)
 
 	return SUCCESS;
 }
+rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char *Value)
+{ /*Looks up the attribute for the passed ID and replaces the value for that attribute.*/
+	
+	/**FIXME: This function is very poorly written. Very poorly written. Clean it up later.**/
+	
+	char *HalfOne, *HalfTwo, *MasterStream, FoundLine[MAX_LINE_SIZE];
+	char *Worker1, *Worker2;
+	unsigned long TempVal, Inc;
+	struct stat FileStat;
+	FILE *Descriptor;
+	
+	if (stat(CONFIGDIR CONF_NAME, &FileStat) != 0)
+	{
+		return FAILURE;
+	}
+	
+	MasterStream = malloc(FileStat.st_size + 1);
+	Descriptor = fopen(CONFIGDIR CONF_NAME, "r");
+	
+	fread(MasterStream, 1, FileStat.st_size, Descriptor);
+	MasterStream[FileStat.st_size] = '\0';
+	
+	fclose(Descriptor);
+	
+	if (!(Worker1 = strstr(MasterStream, ObjectID)))
+	{
+		free(MasterStream);
+		return FAILURE;
+	}
+	
+	Worker1 += strlen(ObjectID);
+	
+	if ((Worker2 = strstr(Worker1, "ObjectID")))
+	{
+		*Worker2 = '\0';
+	}
+	
+	if (!(Worker1 = strstr(Worker1, Attribute)))
+	{
+		free(MasterStream);
+		return FAILURE;
+	}
+	
+	if (Worker2)
+	{
+		*Worker2 = 'O'; /*Set it back to letter "O" (Oh).*/
+	}
+	
+	*Worker1 = '\0';
+	
+	TempVal = strlen(MasterStream) + 1;
+	HalfOne = malloc(TempVal);
+	strncpy(HalfOne, MasterStream, TempVal - 1);
+	
+	*Worker1 = Attribute[0];
+	
+	Worker2 = Worker1;
+	
+	if (strstr(Worker2, "\n"))
+	{
+		while (*Worker2 != '\n')
+		{
+			++Worker2;
+		}
+		
+		TempVal = strlen(Worker2) + 1;
+		HalfTwo = malloc(TempVal);
+		strncpy(HalfTwo, Worker2, TempVal - 1);
+	}
+	
+	for (Inc = 0; Inc < MAX_LINE_SIZE && Worker1[Inc] != '\n' && Worker1[Inc] != '\0'; ++Inc)
+	{
+		FoundLine[Inc] = Worker1[Inc];
+	}
+	FoundLine[Inc] = '\0';
+	
+	/*Change the value now.*/
+	Worker2 = FoundLine;
+	
+	if (strstr(Worker2, " "))
+	{
+		Worker2 = strstr(Worker2, " ");
+	}
+	else if (strstr(Worker2, "\t"))
+	{
+		Worker2 = strstr(Worker2, "\t");
+	}
+	else
+	{
+		char TmpBuf[1024];
+		
+		snprintf(TmpBuf, 1024, "The attribute %s for ObjectID %s has no value.", Attribute, ObjectID);
+		SpitError(TmpBuf);
+		
+		free(HalfOne);
+		if (HalfTwo) free(HalfTwo);
+		free(MasterStream);
+		return FAILURE;
+	}
+		
+	while (*Worker2 == '\t' || *Worker2 == ' ') ++Worker2;
+	
+	TempVal = MAX_LINE_SIZE - (strlen(FoundLine) - strlen(Value)); /*The lazy shall inherit the cake.*/
+	
+	strncpy(Worker2, Value, TempVal);
+	
+	/*Release the memory and do a new alloc.*/
+	free(MasterStream);
+
+	
+	if (HalfTwo)
+	{
+		TempVal = strlen(HalfOne) + strlen(HalfTwo) + strlen(FoundLine) + 1;
+		MasterStream = malloc(TempVal);
+		snprintf(MasterStream, TempVal, "%s%s%s", HalfOne, FoundLine, HalfTwo);
+		
+		free(HalfTwo);
+	}
+	else
+	{
+		TempVal = strlen(HalfOne) + strlen(FoundLine) + 1;
+		MasterStream = malloc(TempVal);
+		snprintf(MasterStream, TempVal, "%s%s", HalfOne, FoundLine);
+	}
+	
+	free(HalfOne);
+	
+	if (!(Descriptor = fopen(CONFIGDIR CONF_NAME, "w")))
+	{
+		SpitError("Failed to open epoch.conf for writing. Check permissions?");
+		free(MasterStream);
+		return FAILURE;
+	}
+
+	Worker1 = MasterStream;
+	
+	while (*Worker1 != '\0')
+	{
+		putc(*Worker1++, Descriptor);
+	}
+	
+	fclose(Descriptor);
+	free(MasterStream);
+
+	return SUCCESS;
+}
 
 /*Adds an object to the table and, if the first run, sets up the table.*/
 static ObjTable *AddObjectToTable(const char *ObjectID)
