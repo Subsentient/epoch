@@ -412,7 +412,7 @@ static rStatus GetLineDelim(const char *InStream, char *OutStream)
 	cOffset = Inc; /*Store this offset.*/
 
 	/*Copy over the argument to the parameter. Quit whining about the loop copy.*/
-	for (Inc = 0; InStream[Inc + cOffset] != '\n' && InStream[Inc + cOffset] != '\0' && Inc < MAX_LINE_SIZE; ++Inc)
+	for (Inc = 0; InStream[Inc + cOffset] != '\n' && InStream[Inc + cOffset] != '\0' && Inc < MAX_LINE_SIZE - 1; ++Inc)
 	{
 		OutStream[Inc] = InStream[Inc + cOffset];
 	}
@@ -490,7 +490,7 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 		strncpy(HalfTwo, Worker2, TempVal - 1);
 	}
 	
-	for (Inc = 0; Inc < MAX_LINE_SIZE && Worker1[Inc] != '\n' && Worker1[Inc] != '\0'; ++Inc)
+	for (Inc = 0; Inc < MAX_LINE_SIZE - 1 && Worker1[Inc] != '\n' && Worker1[Inc] != '\0'; ++Inc)
 	{
 		FoundLine[Inc] = Worker1[Inc];
 	}

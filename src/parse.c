@@ -211,7 +211,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 				printf(PrintOutStream);
 				fflush(NULL);
 				
-				for (; (WChar = getc(Tdesc)) != EOF && Inc < MAX_LINE_SIZE; ++Inc)
+				for (; (WChar = getc(Tdesc)) != EOF && Inc < MAX_LINE_SIZE - 1; ++Inc)
 				{
 					Buf[Inc] = WChar;
 				}
