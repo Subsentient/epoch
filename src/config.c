@@ -57,7 +57,7 @@ rStatus InitConfig(void)
 	else
 	{ /*No? Use the file size to allocate space in memory, since a char is a byte big.
 	* If it's not a byte on your platform, your OS is not UNIX, and Epoch was not designed for you.*/
-		ConfigStream = malloc(FileStat.st_size);
+		ConfigStream = malloc(FileStat.st_size + 1);
 	}
 
 	Descriptor = fopen(CONFIGDIR CONF_NAME, "r"); /*Open the configuration file.*/
@@ -65,6 +65,9 @@ rStatus InitConfig(void)
 	/*Read the file into memory. I don't really trust fread(), but oh well.
 	 * People will whine if I use a loop instead.*/
 	fread(ConfigStream, 1, FileStat.st_size, Descriptor);
+	
+	ConfigStream[FileStat.st_size] = '\0'; /*Null terminate.*/
+	
 	fclose(Descriptor); /*Close the file.*/
 
 	Worker = ConfigStream;
