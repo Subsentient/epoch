@@ -14,7 +14,7 @@
 #include "epoch.h"
 
 /*We store the current runlevel here.*/
-char CurRunlevel[MAX_LINE_SIZE] = "default";
+char CurRunlevel[MAX_DESCRIPT_SIZE] = "default";
 
 /*Function forward declarations.*/
 static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode);
@@ -286,6 +286,55 @@ rStatus RunAllObjects(Bool IsStartingMode)
 		}
 		
 		ProcessConfigObject(CurObj, IsStartingMode);
+	}
+	
+	return SUCCESS;
+}
+
+rStatus SwitchRunlevels(const char *Runlevel)
+{
+	unsigned long NumInRunlevel = 0, CurPriority = 1, MaxPriority;
+	ObjTable *TObj = ObjectTable;
+	/*Check the runlevel has objects first.*/
+	
+	for (; TObj->Next != NULL; TObj = TObj->Next)
+	{ /*I think a while loop would look much better, but if I did that,
+		* I'd get folks asking "why didn't you use a for loop?", so here!*/
+		if (!strcmp(TObj->ObjectRunlevel, Runlevel) && TObj->Enabled && (TObj->ObjectStartPriority > 0 || TObj->ObjectStopPriority > 0))
+		{
+			++NumInRunlevel;
+		}
+	}
+	
+	if (NumInRunlevel == 0)
+	{
+		return FAILURE;
+	}
+	
+	/*Stop everything not meant for this runlevel.*/
+	for (MaxPriority = GetHighestPriority(false); CurPriority <= MaxPriority; ++CurPriority)
+	{
+		TObj = GetObjectByPriority(CurRunlevel, false, CurPriority);
+		
+		if (TObj && TObj->Started && TObj->CanStop)
+		{
+			ProcessConfigObject(TObj, false);
+		}
+	}
+	
+	/*Good to go, so change us to the new runlevel.*/
+	strncpy(CurRunlevel, Runlevel, MAX_DESCRIPT_SIZE);
+	
+	/*Now start the things that ARE meant for our runlevel.*/
+	for (CurPriority = 1, MaxPriority = GetHighestPriority(true);
+		CurPriority <= MaxPriority; ++CurPriority)
+	{
+		TObj = GetObjectByPriority(CurRunlevel, true, CurPriority);
+		
+		if (TObj && !TObj->Started)
+		{
+			ProcessConfigObject(TObj, true);
+		}
 	}
 	
 	return SUCCESS;

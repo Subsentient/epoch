@@ -85,6 +85,7 @@
 #define MEMBUS_CODE_OBJSTART "OBJSTART"
 #define MEMBUS_CODE_OBJSTOP "OBJSTOP"
 #define MEMBUS_CODE_STATUS "OBJSTAT"
+#define MEMBUS_CODE_RUNLEVEL "RUNLEVEL"
 
 /**Types, enums, structs and whatnot**/
 
@@ -112,6 +113,7 @@ typedef struct _EpochObjectTable
 	unsigned long ObjectStartPriority;
 	unsigned long ObjectStopPriority;
 	Bool Started;
+	Bool CanStop;
 	StopType StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
 	unsigned long ObjectPID; /*The process ID, used for shutting down.*/
 	char ObjectRunlevel[MAX_LINE_SIZE];
@@ -130,8 +132,9 @@ struct _BootBanner
 
 /**Globals go here.**/
 
+extern ObjTable *ObjectTable;
 extern struct _BootBanner BootBanner;
-extern char CurRunlevel[MAX_LINE_SIZE];
+extern char CurRunlevel[MAX_DESCRIPT_SIZE];
 extern int MemDescriptor;
 extern char *MemData;
 extern Bool DisableCAD;
@@ -149,6 +152,7 @@ extern rStatus EditConfigValue(const char *ObjectID, const char *Attribute, cons
 /*parse.c*/
 extern rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode);
 extern rStatus RunAllObjects(Bool IsStartingMode);
+extern rStatus SwitchRunlevels(const char *Runlevel);
 
 /*actions.c*/
 extern void LaunchBootup(void);

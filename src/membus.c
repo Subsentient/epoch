@@ -222,6 +222,34 @@ void EpochMemBusLoop(void)
 				MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_STATUS, true);
 			}
 		}
+		else if (BusDataIs(MEMBUS_CODE_RUNLEVEL))
+		{
+			unsigned long LOffset = strlen(MEMBUS_CODE_RUNLEVEL " ");
+			char *TWorker = BusData + LOffset;
+			char TmpBuf[MEMBUS_SIZE/2 - 1];
+			
+			if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
+			{ /*No argument?*/
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+				MemBus_Write(TmpBuf, true);
+				
+				continue;
+			}
+			
+			/*Tell them everything is OK, because we don't want to wait the whole time for the runlevel to start up.*/
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s", MEMBUS_CODE_ACKNOWLEDGED, MEMBUS_CODE_RUNLEVEL, TWorker);
+			MemBus_Write(TmpBuf, true);
+			
+			strncpy(CurRunlevel, TWorker, MAX_DESCRIPT_SIZE); /*Copy in the new runlevel.*/
+			
+			if (!RunAllObjects(true)) /*Switch to it.*/
+			{
+				char TmpBuf[1024];
+				
+				snprintf(TmpBuf, sizeof TmpBuf, "Failed to execute all objects for runlevel \"%s\".", CurRunlevel);
+				SpitError(TmpBuf);
+			}
+		}
 		else if (BusDataIs(MEMBUS_CODE_HALT))
 		{
 			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_HALT, true);

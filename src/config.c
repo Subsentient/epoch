@@ -13,7 +13,7 @@
 #include "epoch.h"
 
 /*We want the only interface for this to be LookupObjectInTable().*/
-static ObjTable *ObjectTable = NULL;
+ObjTable *ObjectTable = NULL;
 
 /*Function forward declarations for all the statics.*/
 static ObjTable *AddObjectToTable(const char *ObjectID);
@@ -214,6 +214,36 @@ rStatus InitConfig(void)
 						DelimCurr, CurObj->ObjectID, LineNum);
 
 				SpitWarning(TmpBuf);
+			}
+			
+			continue;
+		}
+		else if (!strncmp(Worker, "ObjectPersistent", strlen("ObjectPersistent")))
+		{
+			if (!GetLineDelim(Worker, DelimCurr))
+			{ /*It's not just a word.*/
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectPersistent in epoch.conf line %lu.", LineNum);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
+			}
+			
+			if (!strcmp("true", DelimCurr))
+			{
+				CurObj->CanStop = false;
+			}
+			else if (!strcmp("false", DelimCurr))
+			{
+				CurObj->CanStop = true;
+			}
+			else
+			{
+				char TmpBuf[1024];
+				
+				snprintf(TmpBuf, 1024, "Bad value for attribute ObjectPersistent in epoch.conf line %lu.", LineNum);
+				SpitError(TmpBuf);
+				return FAILURE;
 			}
 			
 			continue;
@@ -612,6 +642,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->ObjectStartPriority = 0;
 	Worker->ObjectStopPriority = 0;
 	Worker->StopMode = STOP_INVALID;
+	Worker->CanStop = true;
 	Worker->ObjectPID = 0;
 	Worker->ObjectRunlevel[0] = '\0';
 	Worker->Enabled = true; /*Don't make ObjectEnabled attribute mandatory*/
