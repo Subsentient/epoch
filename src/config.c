@@ -186,6 +186,21 @@ rStatus InitConfig(void)
 			SetBannerColor(DelimCurr); /*Function to be found elsewhere will do this for us, otherwise this loop would be even bigger.*/
 			continue;
 		}
+		else if (!strncmp(Worker, "DefaultRunlevel", strlen("DefaultRunlevel")))
+		{
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute DefaultRunlevel in epoch.conf line %lu.", LineNum);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
+			}	
+			
+			strncpy(CurRunlevel, DelimCurr, MAX_DESCRIPT_SIZE);
+			
+			continue;
+		}
 		else if (!strncmp(Worker, "ObjectID", strlen("ObjectID")))
 		{ /*ASCII value used to identify this object internally, and also a kind of short name for it.*/
 
