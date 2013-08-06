@@ -41,6 +41,8 @@ rStatus InitMemBus(Bool ServerSide)
 	
 	if (ServerSide) /*Don't nuke messages on startup if we aren't init.*/
 	{
+		memset(MemData, 0, MEMBUS_SIZE); /*Zero it out just to be neat. Probably don't really need this.*/
+		
 		*MemData = MEMBUS_NOMSG; /*Set to no message by default.*/
 		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NEWCONNECTION;
 	}
