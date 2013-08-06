@@ -91,7 +91,7 @@ rStatus InitConfig(void)
 	Worker = ConfigStream;
 
 	/*Empty file?*/
-	if (*Worker == '\n' || *Worker == '\0')
+	if ((*Worker == '\n' && *(Worker + 1) == '\0') || *Worker == '\0')
 	{
 		SpitError("Seems that epoch.conf is empty or corrupted.");
 		return FAILURE;
@@ -502,9 +502,7 @@ rStatus InitConfig(void)
 			
 			do
 			{
-				TRL2 = TRL;
-				
-				for (; *TWorker != ' ' && *TWorker != '\t' && *TWorker != '\n' && *TWorker != '\0'; ++TWorker, ++TRL2)
+				for (TRL2 = TRL; *TWorker != ' ' && *TWorker != '\t' && *TWorker != '\n' && *TWorker != '\0'; ++TWorker, ++TRL2)
 				{
 					*TRL2 = *TWorker;
 				}
@@ -543,10 +541,10 @@ rStatus InitConfig(void)
 
 static rStatus GetLineDelim(const char *InStream, char *OutStream)
 {
-	unsigned long cOffset, Inc;
+	unsigned long cOffset, Inc = 0;
 
 	/*Jump to the first tab or space. If we get a newline or null, problem.*/
-	for (Inc = 0; InStream[Inc] != '\t' && InStream[Inc] != ' ' && InStream[Inc] != '\n' && InStream[Inc] != '\0'; ++Inc);
+	while (InStream[Inc] != '\t' && InStream[Inc] != ' ' && InStream[Inc] != '\n' && InStream[Inc] != '\0') ++Inc;
 
 	/*Hit a null or newline before tab or space. ***BAD!!!*** */
 	if (InStream[Inc] == '\0' || InStream[Inc] == '\n')
@@ -569,7 +567,7 @@ static rStatus GetLineDelim(const char *InStream, char *OutStream)
 	}
 
 	/*Continue until we are past all tabs and spaces.*/
-	for (; InStream[Inc] == ' ' || InStream[Inc] == '\t'; ++Inc);
+	while (InStream[Inc] == ' ' || InStream[Inc] == '\t') ++Inc;
 
 	cOffset = Inc; /*Store this offset.*/
 
@@ -643,10 +641,7 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 	
 	if (strstr(Worker2, "\n"))
 	{
-		while (*Worker2 != '\n')
-		{
-			++Worker2;
-		}
+		Worker2 = strstr(Worker2, "\n");
 		
 		TempVal = strlen(Worker2) + 1;
 		HalfTwo = malloc(TempVal);
@@ -719,9 +714,9 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 
 	Worker1 = MasterStream;
 	
-	while (*Worker1 != '\0')
+	for (; *Worker1 != '\0'; ++Worker1)
 	{
-		putc(*Worker1++, Descriptor);
+		putc(*Worker1, Descriptor);
 	}
 	
 	fclose(Descriptor);
@@ -788,7 +783,7 @@ static rStatus ScanConfigIntegrity(void)
 	ObjTable *Worker = ObjectTable, *TOffender;
 	char TmpBuf[1024];
 	
-	while (Worker->Next)
+	for (; Worker->Next != NULL; Worker = Worker->Next)
 	{
 		if (*Worker->ObjectName == '\0')
 		{
@@ -814,19 +809,20 @@ static rStatus ScanConfigIntegrity(void)
 			SpitError(TmpBuf);
 			return FAILURE;
 		}
-		else if (Worker->Prev != NULL && !strcmp(Worker->Prev->ObjectID, Worker->ObjectID))
-		{
-			snprintf(TmpBuf, 1024, "Two objects in configuration with ObjectID \"%s\".", Worker->ObjectID);
-			SpitError(TmpBuf);
-			return FAILURE;
-		}
 		
-		Worker = Worker->Next;
+		/*Check for duplicate ObjectIDs.*/
+		for (TOffender = ObjectTable; TOffender->Next != NULL; TOffender = TOffender->Next)
+		{
+			if (!strcmp(Worker->ObjectID, TOffender->ObjectID) && Worker != TOffender)
+			{
+				snprintf(TmpBuf, 1024, "Two objects in configuration with ObjectID \"%s\".", Worker->ObjectID);
+				SpitError(TmpBuf);
+				return FAILURE;
+			}			
+		}
 	}
 	
-	Worker = ObjectTable;
-	
-	while (Worker->Next)
+	for (Worker = ObjectTable; Worker->Next != NULL; Worker = Worker->Next)
 	{
 		if (((TOffender = GetObjectByPriority(NULL, true, Worker->ObjectStartPriority)) != NULL ||
 			(TOffender = GetObjectByPriority(NULL, false, Worker->ObjectStopPriority)) != NULL) &&
@@ -837,8 +833,6 @@ static rStatus ScanConfigIntegrity(void)
 			SpitWarning(TmpBuf);
 			return WARNING;
 		}
-		
-		Worker = Worker->Next;
 	}
 	return SUCCESS;
 }
@@ -850,13 +844,12 @@ ObjTable *LookupObjectInTable(const char *ObjectID)
 {
 	ObjTable *Worker = ObjectTable;
 
-	while (Worker->Next)
+	for (; Worker->Next; Worker = Worker->Next)
 	{
 		if (!strcmp(Worker->ObjectID, ObjectID))
 		{
 			return Worker;
 		}
-		Worker = Worker->Next;
 	}
 
 	return NULL;
@@ -869,7 +862,7 @@ unsigned long GetHighestPriority(Bool WantStartPriority)
 	unsigned long CurHighest = 0;
 	unsigned long TempNum;
 	
-	while (Worker->Next)
+	for (; Worker->Next; Worker = Worker->Next)
 	{
 		TempNum = (WantStartPriority ? Worker->ObjectStartPriority : Worker->ObjectStopPriority);
 		
@@ -882,8 +875,6 @@ unsigned long GetHighestPriority(Bool WantStartPriority)
 			Worker = Worker->Next;
 			continue;
 		}
-		
-		Worker = Worker->Next;
 	}
 	
 	return CurHighest;
@@ -909,7 +900,7 @@ void ObjRL_AddRunlevel(const char *InRL, ObjTable *InObj)
 {
 	struct _RLTree *Worker = InObj->ObjectRunlevels;
 	
-	for (; Worker->Next != NULL; Worker = Worker->Next);
+	while (Worker->Next != NULL) Worker = Worker->Next;
 	
 	Worker->Next = malloc(sizeof(struct _RLTree));
 	Worker->Next->Next = NULL;
@@ -919,13 +910,12 @@ void ObjRL_AddRunlevel(const char *InRL, ObjTable *InObj)
 
 void ObjRL_ShutdownRunlevels(ObjTable *InObj)
 {
-	struct _RLTree *Worker = InObj->ObjectRunlevels, *ToDel;
+	struct _RLTree *Worker = InObj->ObjectRunlevels, *NDel;
 	
-	while (Worker != NULL)
+	for (; Worker != NULL; Worker = NDel)
 	{
-		ToDel = Worker;
-		Worker = Worker->Next;
-		free(ToDel);
+		NDel = Worker->Next;
+		free(Worker);
 	}
 }
 	
@@ -934,7 +924,7 @@ ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority
 { /*The primary lookup function to be used when executing commands.*/
 	ObjTable *Worker = ObjectTable;
 	
-	while (Worker->Next)
+	for (; Worker->Next != NULL; Worker = Worker->Next)
 	{
 		if ((ObjectRunlevel == NULL || ObjRL_CheckRunlevel(ObjectRunlevel, Worker)) && 
 		/*As you can see by below, I obfuscate with efficiency!*/
@@ -942,7 +932,6 @@ ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority
 		{
 			return Worker;
 		}
-		Worker = Worker->Next;
 	}
 	
 	return NULL;
@@ -952,7 +941,7 @@ void ShutdownConfig(void)
 {
 	ObjTable *Worker = ObjectTable, *Temp;
 
-	while (Worker != NULL)
+	for (; Worker != NULL; Worker = Temp)
 	{
 		if (Worker->Next)
 		{
@@ -961,6 +950,5 @@ void ShutdownConfig(void)
 		
 		Temp = Worker->Next;
 		free(Worker);
-		Worker = Temp;
 	}
 }
