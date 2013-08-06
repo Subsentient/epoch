@@ -188,6 +188,16 @@ rStatus InitConfig(void)
 		}
 		else if (!strncmp(Worker, "DefaultRunlevel", strlen("DefaultRunlevel")))
 		{
+			if (CurObj != NULL)
+			{ /*What the warning says. It'd get all weird if we allowed that.*/
+				char TmpBuf[1024];
+				
+				snprintf(TmpBuf, 1024, "Attribute DefaultRunlevel cannot be set after an ObjectID attribute; epoch.conf line %lu.", LineNum);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
+			}
+			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
@@ -219,6 +229,15 @@ rStatus InitConfig(void)
 		}
 		else if (!strncmp(Worker, "ObjectEnabled", strlen("ObjectEnabled")))
 		{
+			if (!CurObj)
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Attribute ObjectEnabled comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
+				
+				SpitError(TmpBuf);
+				return FAILURE;
+			}
+			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
@@ -253,6 +272,14 @@ rStatus InitConfig(void)
 		}
 		else if (!strncmp(Worker, "ObjectPersistent", strlen("ObjectPersistent")))
 		{
+			if (!CurObj)
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Attribute ObjectPersistent comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
+				
+				SpitError(TmpBuf);
+				return FAILURE;
+			}
 			if (!GetLineDelim(Worker, DelimCurr))
 			{ /*It's not just a word.*/
 				char TmpBuf[1024];
@@ -284,6 +311,15 @@ rStatus InitConfig(void)
 		else if (!strncmp(Worker, "ObjectName", strlen("ObjectName")))
 		{ /*It's description.*/
 			
+			if (!CurObj)
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Attribute ObjectName comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
+				
+				SpitError(TmpBuf);
+				return FAILURE;
+			}
+			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
@@ -300,6 +336,15 @@ rStatus InitConfig(void)
 		else if (!strncmp(Worker, "ObjectStartCommand", strlen("ObjectStartCommand")))
 		{ /*What we execute to start it.*/
 			
+			if (!CurObj)
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Attribute ObjectStartCommand comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
+				
+				SpitError(TmpBuf);
+				return FAILURE;
+			}
+			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
@@ -314,6 +359,15 @@ rStatus InitConfig(void)
 		}
 		else if (!strncmp(Worker, "ObjectStopCommand", strlen("ObjectStopCommand")))
 		{ /*If it's "PID", then we know that we need to kill the process ID only. If it's "NONE", well, self explanitory.*/
+			
+			if (!CurObj)
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Attribute ObjectStopCommand comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
+				
+				SpitError(TmpBuf);
+				return FAILURE;
+			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
@@ -358,7 +412,16 @@ rStatus InitConfig(void)
 		{
 			/*The order in which this item is started. If it is disabled in this runlevel, the next object in line is executed, IF
 			 * and only IF it is enabled. If not, the one after that and so on.*/
-			 if (!GetLineDelim(Worker, DelimCurr))
+			if (!CurObj)
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Attribute ObjectStartPriority comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
+				
+				SpitError(TmpBuf);
+				return FAILURE;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStartPriority in epoch.conf line %lu.", LineNum);
@@ -382,7 +445,16 @@ rStatus InitConfig(void)
 		else if (!strncmp(Worker, "ObjectStopPriority", strlen("ObjectStopPriority")))
 		{
 			/*Same as above, but used for when the object is being shut down.*/
-			 if (!GetLineDelim(Worker, DelimCurr))
+			if (!CurObj)
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Attribute ObjectStopPriority comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
+				
+				SpitError(TmpBuf);
+				return FAILURE;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStopPriority in epoch.conf line %lu.", LineNum);
@@ -407,6 +479,15 @@ rStatus InitConfig(void)
 		{ /*Runlevel.*/
 			char *TWorker;
 			char TRL[MAX_DESCRIPT_SIZE], *TRL2;
+			
+			if (!CurObj)
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Attribute ObjectRunlevels comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
+				
+				SpitError(TmpBuf);
+				return FAILURE;
+			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
