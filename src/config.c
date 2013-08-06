@@ -17,13 +17,13 @@ ObjTable *ObjectTable = NULL;
 
 /*Function forward declarations for all the statics.*/
 static ObjTable *AddObjectToTable(const char *ObjectID);
-static char *NextLine(char *InStream);
-static char *NextSpace(char *InStream);
+static char *NextLine(const char *InStream);
+static char *NextSpace(const char *InStream);
 static rStatus GetLineDelim(const char *InStream, char *OutStream);
 static rStatus ScanConfigIntegrity(void);
 
 /*Actual functions.*/
-static char *NextLine(char *InStream)
+static char *NextLine(const char *InStream)
 {
 	if (!(InStream = strstr(InStream, "\n")))
 	{
@@ -37,10 +37,10 @@ static char *NextLine(char *InStream)
 
 	++InStream; /*Plus one for the newline. We want to skip past it.*/
 
-	return InStream;
+	return (char*)InStream;
 }
 
-static char *NextSpace(char *InStream)
+static char *NextSpace(const char *InStream)
 {  /*This is used for parsing lines that need to be divided by spaces.*/
 	if (!(InStream = strstr(InStream, " ")))
 	{
@@ -54,7 +54,7 @@ static char *NextSpace(char *InStream)
 
 	++InStream;
 
-	return InStream;
+	return (char*)InStream;
 }
 
 rStatus InitConfig(void)

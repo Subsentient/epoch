@@ -40,7 +40,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 	pid_t LaunchPID;
 	const char *CurCmd, *ShellPath = "sh"; /*We try not to use absolute paths here, because some distros don't have normal layouts,
 											*And I'm sure they would rather see a warning than have it just botch up.*/
-	rStatus ExitStatus = 0;
+	rStatus ExitStatus = FAILURE; /*We failed unless we succeeded.*/
 	Bool ShellDissolves;
 	int RawExitStatus;
 	
@@ -98,7 +98,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 	if (LaunchPID < 0)
 	{
 		SpitError("Failed to call fork(). This is a critical error.");
-		exit(1);
+		EmergencyShell();
 	}
 	
 	if (LaunchPID == 0) /**Child process code.**/
@@ -109,7 +109,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 		
 		snprintf(TmpBuf, 1024, "Failed to execute %s: execlp() failure.", InObj->ObjectID);
 		SpitError(TmpBuf);
-		exit(1);
+		EmergencyShell();
 	}
 	
 	/*Get PID*/ /**Parent code resumes.**/
