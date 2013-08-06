@@ -103,6 +103,12 @@ typedef enum { STOP_NONE, STOP_COMMAND, STOP_PID, STOP_PIDFILE, STOP_INVALID } S
 typedef enum { FAILURE, SUCCESS, WARNING } rStatus;
 
 /**Structures go here.**/
+struct _RLTree
+{ /*Runlevel linked list.*/
+	char RL[MAX_DESCRIPT_SIZE];
+	struct _RLTree *Next;
+};
+	
 typedef struct _EpochObjectTable
 {
 	char ObjectID[MAX_DESCRIPT_SIZE]; /*The ASCII ID given to this item by whoever configured Epoch.*/
@@ -116,8 +122,9 @@ typedef struct _EpochObjectTable
 	Bool CanStop;
 	StopType StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
 	unsigned long ObjectPID; /*The process ID, used for shutting down.*/
-	char ObjectRunlevel[MAX_LINE_SIZE];
 	Bool Enabled;
+	
+	struct _RLTree *ObjectRunlevels; /*Dynamically allocated, needless to say.*/
 	
 	struct _EpochObjectTable *Prev;
 	struct _EpochObjectTable *Next;
@@ -148,6 +155,9 @@ extern ObjTable *LookupObjectInTable(const char *ObjectID);
 extern ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority, unsigned long ObjectPriority);
 extern unsigned long GetHighestPriority(Bool WantStartPriority);
 extern rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char *Value);
+extern void ObjRL_AddRunlevel(const char *InRL, ObjTable *InObj);
+extern Bool ObjRL_CheckRunlevel(const char *InRL, ObjTable *InObj);
+extern void ObjRL_ShutdownRunlevels(ObjTable *InObj);
 
 /*parse.c*/
 extern rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode);

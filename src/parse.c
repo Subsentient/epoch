@@ -300,7 +300,7 @@ rStatus SwitchRunlevels(const char *Runlevel)
 	for (; TObj->Next != NULL; TObj = TObj->Next)
 	{ /*I think a while loop would look much better, but if I did that,
 		* I'd get folks asking "why didn't you use a for loop?", so here!*/
-		if (!strcmp(TObj->ObjectRunlevel, Runlevel) && TObj->Enabled && (TObj->ObjectStartPriority > 0 || TObj->ObjectStopPriority > 0))
+		if (ObjRL_CheckRunlevel(Runlevel, TObj) && TObj->Enabled && (TObj->ObjectStartPriority > 0 || TObj->ObjectStopPriority > 0))
 		{
 			++NumInRunlevel;
 		}

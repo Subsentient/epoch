@@ -18,6 +18,7 @@ ObjTable *ObjectTable = NULL;
 /*Function forward declarations for all the statics.*/
 static ObjTable *AddObjectToTable(const char *ObjectID);
 static char *NextLine(char *InStream);
+static char *NextSpace(char *InStream);
 static rStatus GetLineDelim(const char *InStream, char *OutStream);
 static rStatus ScanConfigIntegrity(void);
 
@@ -35,6 +36,23 @@ static char *NextLine(char *InStream)
 	}
 
 	++InStream; /*Plus one for the newline. We want to skip past it.*/
+
+	return InStream;
+}
+
+static char *NextSpace(char *InStream)
+{  /*This is used for parsing lines that need to be divided by spaces.*/
+	if (!(InStream = strstr(InStream, " ")))
+	{
+		return NULL;
+	}
+
+	if (*(InStream + 1) == '\0')
+	{
+		return NULL;
+	}
+
+	++InStream;
 
 	return InStream;
 }
@@ -370,20 +388,38 @@ rStatus InitConfig(void)
 			CurObj->ObjectStopPriority = atoi(DelimCurr);
 			continue;
 		}
-		else if (!strncmp(Worker, "ObjectRunlevel", strlen("ObjectRunLevel")))
+		else if (!strncmp(Worker, "ObjectRunlevels", strlen("ObjectRunlevels")))
 		{ /*Runlevel.*/
+			char *TWorker;
+			char TRL[MAX_DESCRIPT_SIZE], *TRL2;
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectRunlevel in epoch.conf line %lu.", LineNum);
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectRunlevels in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
 				
 				return FAILURE;
 			}
-
-			strncpy(CurObj->ObjectRunlevel, DelimCurr, MAX_LINE_SIZE);
+			
+			TWorker = DelimCurr;
+			
+			do
+			{
+				TRL2 = TRL;
+				
+				for (; *TWorker != ' ' && *TWorker != '\t' && *TWorker != '\n' && *TWorker != '\0'; ++TWorker, ++TRL2)
+				{
+					*TRL2 = *TWorker;
+				}
+				*TRL2 = '\0';
+				
+				ObjRL_AddRunlevel(TRL, CurObj);
+				
+			} while ((TWorker = NextSpace(TWorker)));
+			
 			continue;
+
 		}
 		else
 		{ /*No big deal.*/
@@ -644,7 +680,8 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->StopMode = STOP_INVALID;
 	Worker->CanStop = true;
 	Worker->ObjectPID = 0;
-	Worker->ObjectRunlevel[0] = '\0';
+	Worker->ObjectRunlevels = malloc(sizeof(struct _RLTree));
+	Worker->ObjectRunlevels->Next = NULL;
 	Worker->Enabled = true; /*Don't make ObjectEnabled attribute mandatory*/
 	
 	return Worker;
@@ -675,9 +712,9 @@ static rStatus ScanConfigIntegrity(void)
 			SpitError(TmpBuf);
 			return FAILURE;
 		}
-		else if (*Worker->ObjectRunlevel == '\0')
+		else if (Worker->ObjectRunlevels == NULL)
 		{
-			snprintf(TmpBuf, 1024, "Object \"%s\" has no attribute ObjectRunlevel.", Worker->ObjectID);
+			snprintf(TmpBuf, 1024, "Object \"%s\" has no attribute ObjectRunlevels.", Worker->ObjectID);
 			SpitError(TmpBuf);
 			return FAILURE;
 		}
@@ -695,8 +732,8 @@ static rStatus ScanConfigIntegrity(void)
 	
 	while (Worker->Next)
 	{
-		if (((TOffender = GetObjectByPriority(Worker->ObjectRunlevel, true, Worker->ObjectStartPriority)) != NULL ||
-			(TOffender = GetObjectByPriority(Worker->ObjectRunlevel, false, Worker->ObjectStopPriority)) != NULL) &&
+		if (((TOffender = GetObjectByPriority(NULL, true, Worker->ObjectStartPriority)) != NULL ||
+			(TOffender = GetObjectByPriority(NULL, false, Worker->ObjectStopPriority)) != NULL) &&
 			strcmp(TOffender->ObjectID, Worker->ObjectID) != 0 && TOffender->Enabled && Worker->Enabled)
 		{ /*We got a priority collision.*/
 			snprintf(TmpBuf, 1024, "Two objects in configuration with the same priority.\n"
@@ -756,13 +793,55 @@ unsigned long GetHighestPriority(Bool WantStartPriority)
 	return CurHighest;
 }
 
+/*Functions for runlevel management.*/
+Bool ObjRL_CheckRunlevel(const char *InRL, ObjTable *InObj)
+{
+	struct _RLTree *Worker = InObj->ObjectRunlevels;
+	
+	for (; Worker->Next != NULL; Worker = Worker->Next)
+	{
+		if (!strcmp(Worker->RL, InRL))
+		{
+			return true;
+		}
+	}
+	
+	return false;
+}
+	
+void ObjRL_AddRunlevel(const char *InRL, ObjTable *InObj)
+{
+	struct _RLTree *Worker = InObj->ObjectRunlevels;
+	
+	for (; Worker->Next != NULL; Worker = Worker->Next);
+	
+	Worker->Next = malloc(sizeof(struct _RLTree));
+	Worker->Next->Next = NULL;
+	
+	strncpy(Worker->RL, InRL, MAX_DESCRIPT_SIZE);
+}
+
+void ObjRL_ShutdownRunlevels(ObjTable *InObj)
+{
+	struct _RLTree *Worker = InObj->ObjectRunlevels, *ToDel;
+	
+	while (Worker != NULL)
+	{
+		ToDel = Worker;
+		Worker = Worker->Next;
+		free(ToDel);
+	}
+}
+	
+
 ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority, unsigned long ObjectPriority)
 { /*The primary lookup function to be used when executing commands.*/
 	ObjTable *Worker = ObjectTable;
 	
 	while (Worker->Next)
 	{
-		if (!strcmp(Worker->ObjectRunlevel, ObjectRunlevel) &&  /*As you can see by below, I obfuscate with efficiency!*/
+		if ((ObjectRunlevel == NULL || ObjRL_CheckRunlevel(ObjectRunlevel, Worker)) && 
+		/*As you can see by below, I obfuscate with efficiency!*/
 		(WantStartPriority ? Worker->ObjectStartPriority : Worker->ObjectStopPriority) == ObjectPriority)
 		{
 			return Worker;
@@ -779,6 +858,11 @@ void ShutdownConfig(void)
 
 	while (Worker != NULL)
 	{
+		if (Worker->Next)
+		{
+			ObjRL_ShutdownRunlevels(Worker);
+		}
+		
 		Temp = Worker->Next;
 		free(Worker);
 		Worker = Temp;
