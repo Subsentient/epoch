@@ -729,14 +729,11 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 static ObjTable *AddObjectToTable(const char *ObjectID)
 {
 	ObjTable *Worker = ObjectTable;
-	static Bool FirstTime = true;
-
+	
 	/*See, we actually allocate two cells initially. The base and it's node.
 	 * We always keep a free one open. This is just more convenient.*/
-	if (FirstTime)
+	if (ObjectTable == NULL)
 	{
-		FirstTime = false;
-
 		ObjectTable = malloc(sizeof(ObjTable));
 		ObjectTable->Next = malloc(sizeof(ObjTable));
 		ObjectTable->Next->Next = NULL;
@@ -844,6 +841,11 @@ ObjTable *LookupObjectInTable(const char *ObjectID)
 {
 	ObjTable *Worker = ObjectTable;
 
+	if (!ObjectTable)
+	{
+		return NULL;
+	}
+	
 	for (; Worker->Next; Worker = Worker->Next)
 	{
 		if (!strcmp(Worker->ObjectID, ObjectID))
@@ -862,6 +864,11 @@ unsigned long GetHighestPriority(Bool WantStartPriority)
 	unsigned long CurHighest = 0;
 	unsigned long TempNum;
 	
+	if (!ObjectTable)
+	{
+		return 0;
+	}
+	
 	for (; Worker->Next; Worker = Worker->Next)
 	{
 		TempNum = (WantStartPriority ? Worker->ObjectStartPriority : Worker->ObjectStopPriority);
@@ -872,7 +879,6 @@ unsigned long GetHighestPriority(Bool WantStartPriority)
 		}
 		else if (TempNum == 0)
 		{ /*We always skip anything with a priority of zero. That's like saying "DISABLED".*/
-			Worker = Worker->Next;
 			continue;
 		}
 	}
@@ -917,12 +923,19 @@ void ObjRL_ShutdownRunlevels(ObjTable *InObj)
 		NDel = Worker->Next;
 		free(Worker);
 	}
+	
+	InObj->ObjectRunlevels = NULL;
 }
 	
 
 ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority, unsigned long ObjectPriority)
 { /*The primary lookup function to be used when executing commands.*/
 	ObjTable *Worker = ObjectTable;
+	
+	if (!ObjectTable)
+	{
+		return NULL;
+	}
 	
 	for (; Worker->Next != NULL; Worker = Worker->Next)
 	{
@@ -951,4 +964,6 @@ void ShutdownConfig(void)
 		Temp = Worker->Next;
 		free(Worker);
 	}
+	
+	ObjectTable = NULL;
 }

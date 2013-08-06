@@ -169,14 +169,12 @@ void EpochMemBusLoop(void)
 			
 			if (CurObj)
 			{
-				DidWork = SUCCESS;
+				DidWork = ProcessConfigObject(CurObj, (BusDataIs(MEMBUS_CODE_OBJSTART) ? true : false));
 			}
 			else
 			{
 				DidWork = FAILURE;
 			}
-
-			DidWork = ProcessConfigObject(CurObj, (BusDataIs(MEMBUS_CODE_OBJSTART) ? true : false));
 			
 			switch (DidWork)
 			{
@@ -246,7 +244,7 @@ void EpochMemBusLoop(void)
 			{
 				char TmpBuf[1024];
 				
-				snprintf(TmpBuf, sizeof TmpBuf, "Failed to switch to runlevel \"%s\".", CurRunlevel);
+				snprintf(TmpBuf, sizeof TmpBuf, "Failed to switch to runlevel \"%s\".", TWorker);
 				SpitError(TmpBuf);
 			}
 		}
