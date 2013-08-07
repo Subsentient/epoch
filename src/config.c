@@ -559,7 +559,7 @@ static rStatus GetLineDelim(const char *InStream, char *OutStream)
 		}
 		ObjectInQuestion[IncT] = '\0';
 
-		snprintf(TmpBuf, 1024, "No parameter for identifier \"%s\" in epoch.conf.", ObjectInQuestion);
+		snprintf(TmpBuf, 1024, "No parameter for attribute \"%s\" in epoch.conf.", ObjectInQuestion);
 
 		SpitError(TmpBuf);
 
