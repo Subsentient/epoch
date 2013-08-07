@@ -227,6 +227,8 @@ void EpochMemBusLoop(void)
 			unsigned long LOffset = strlen(MEMBUS_CODE_RUNLEVEL " ");
 			char *TWorker = BusData + LOffset;
 			char TmpBuf[MEMBUS_SIZE/2 - 1];
+			ObjTable *TmpTable = ObjectTable;
+			Bool ValidRL = false;
 			
 			if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
 			{ /*No argument?*/
@@ -236,9 +238,27 @@ void EpochMemBusLoop(void)
 				continue;
 			}
 			
-			/*Tell them everything is OK, because we don't want to wait the whole time for the runlevel to start up.*/
-			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s", MEMBUS_CODE_ACKNOWLEDGED, MEMBUS_CODE_RUNLEVEL, TWorker);
-			MemBus_Write(TmpBuf, true);
+			for (; TmpTable->Next; TmpTable = TmpTable->Next)
+			{ /*Check if anything uses this runlevel at all.*/
+				if (ObjRL_CheckRunlevel(TWorker, TmpTable))
+				{
+					ValidRL = true;
+					break;
+				}
+			}
+			
+			if (ValidRL)
+			{
+				/*Tell them everything is OK, because we don't want to wait the whole time for the runlevel to start up.*/
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s", MEMBUS_CODE_ACKNOWLEDGED, MEMBUS_CODE_RUNLEVEL, TWorker);
+				MemBus_Write(TmpBuf, true);
+			}
+			else
+			{
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s", MEMBUS_CODE_FAILURE, MEMBUS_CODE_RUNLEVEL, TWorker);
+				MemBus_Write(TmpBuf, true);
+				continue;
+			}
 			
 			if (!SwitchRunlevels(TWorker)) /*Switch to it.*/
 			{
