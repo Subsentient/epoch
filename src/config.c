@@ -584,144 +584,134 @@ static rStatus GetLineDelim(const char *InStream, char *OutStream)
 rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char *Value)
 { /*Looks up the attribute for the passed ID and replaces the value for that attribute.*/
 	
-	/**FIXME: This function is very poorly written. Very poorly written. Clean it up later.**/
-	
-	char *HalfOne, *HalfTwo, *MasterStream, FoundLine[MAX_LINE_SIZE];
-	char *Worker1, *Worker2;
-	unsigned long TempVal, Inc;
-	struct stat FileStat;
+	/**Have fun reading this one, boys! Behehehehehh!!!
+	 * I'm going to submit this to one of those bad code
+	 * archive sites!**/
+	char *Worker1, *Worker2, *Worker3;
+	char *MasterStream, *HalfOne, *HalfTwo;
+	char LineWorker[2][MAX_LINE_SIZE];
 	FILE *Descriptor;
+	struct stat FileStat;
+	unsigned long TempVal = 0;
 	
 	if (stat(CONFIGDIR CONF_NAME, &FileStat) != 0)
 	{
+		SpitError("EditConfigValue(): Failed to stat " CONFIGDIR CONF_NAME ". Does the file exist?");
+		return FAILURE;
+	}
+	
+	if ((Descriptor = fopen(CONFIGDIR CONF_NAME, "r")) == NULL)
+	{
+		SpitError("EditConfigValue(): Failed to open " CONFIGDIR CONF_NAME ". Are permissions correct?");
 		return FAILURE;
 	}
 	
 	MasterStream = malloc(FileStat.st_size + 1);
-	Descriptor = fopen(CONFIGDIR CONF_NAME, "r");
 	
 	fread(MasterStream, 1, FileStat.st_size, Descriptor);
 	MasterStream[FileStat.st_size] = '\0';
 	
 	fclose(Descriptor);
 	
-	if (!(Worker1 = strstr(MasterStream, ObjectID)))
+	Worker1 = MasterStream;
+	
+	if (!(Worker1 = strstr(Worker1, ObjectID)))
 	{
+		snprintf(LineWorker[0], MAX_LINE_SIZE, "EditConfigValue(): No ObjectID %s present in epoch.conf.", ObjectID);
+		SpitError(LineWorker[0]);
 		free(MasterStream);
 		return FAILURE;
 	}
-	
-	Worker1 += strlen(ObjectID);
-	
-	if ((Worker2 = strstr(Worker1, "ObjectID")))
-	{
-		*Worker2 = '\0';
-	}
-	
-	if (!(Worker1 = strstr(Worker1, Attribute)))
-	{
-		free(MasterStream);
-		return FAILURE;
-	}
-	
-	if (Worker2)
-	{
-		*Worker2 = 'O'; /*Set it back to letter "O" (Oh).*/
-	}
-	
-	*Worker1 = '\0';
-	
-	TempVal = strlen(MasterStream) + 1;
-	HalfOne = malloc(TempVal);
-	strncpy(HalfOne, MasterStream, TempVal - 1);
-	
-	*Worker1 = Attribute[0];
 	
 	Worker2 = Worker1;
 	
-	if (strstr(Worker2, "\n"))
+	if ((Worker2 = strstr(Worker2, "ObjectID")))
 	{
-		Worker2 = strstr(Worker2, "\n");
-		
-		TempVal = strlen(Worker2) + 1;
-		HalfTwo = malloc(TempVal);
-		strncpy(HalfTwo, Worker2, TempVal - 1);
+		*Worker2 = '\0';
 	}
-	
-	for (Inc = 0; Inc < MAX_LINE_SIZE - 1 && Worker1[Inc] != '\n' && Worker1[Inc] != '\0'; ++Inc)
+
+	if (!(Worker1 = strstr(Worker1, Attribute)))
 	{
-		FoundLine[Inc] = Worker1[Inc];
-	}
-	FoundLine[Inc] = '\0';
-	
-	/*Change the value now.*/
-	Worker2 = FoundLine;
-	
-	if (strstr(Worker2, " "))
-	{
-		Worker2 = strstr(Worker2, " ");
-	}
-	else if (strstr(Worker2, "\t"))
-	{
-		Worker2 = strstr(Worker2, "\t");
-	}
-	else
-	{
-		char TmpBuf[1024];
-		
-		snprintf(TmpBuf, 1024, "The attribute %s for ObjectID %s has no value.", Attribute, ObjectID);
-		SpitError(TmpBuf);
-		
-		free(HalfOne);
-		if (HalfTwo) free(HalfTwo);
+		snprintf(LineWorker[0], MAX_LINE_SIZE, "EditConfigValue(): Object %s specifies no %s attribute.", ObjectID, Attribute);
+		SpitError(LineWorker[0]);
 		free(MasterStream);
 		return FAILURE;
 	}
-		
-	while (*Worker2 == '\t' || *Worker2 == ' ') ++Worker2;
-	
-	TempVal = MAX_LINE_SIZE - (strlen(FoundLine) - strlen(Value)); /*The lazy shall inherit the cake.*/
-	
-	strncpy(Worker2, Value, TempVal);
-	
-	/*Release the memory and do a new alloc.*/
-	free(MasterStream);
 
+	if (Worker2) *Worker2 = 'O'; /*Letter O.*/
 	
-	if (HalfTwo)
+	/*Allocate and copy in HalfOne.*/
+	*Worker1 = '\0';
+	
+	HalfOne = malloc(strlen(MasterStream) + 1);
+	strncpy(HalfOne, MasterStream, strlen(MasterStream));
+	
+	*Worker1 = Attribute[0];
+	
+	/*Now copy in the line with our value.*/
+	Worker2 = Worker1;
+	Worker3 = LineWorker[1];
+	
+	for (; *Worker2 != '\n' && *Worker2 != '\0'; ++Worker2, ++Worker3)
 	{
-		TempVal = strlen(HalfOne) + strlen(HalfTwo) + strlen(FoundLine) + 1;
-		MasterStream = malloc(TempVal);
-		snprintf(MasterStream, TempVal, "%s%s%s", HalfOne, FoundLine, HalfTwo);
+		*Worker3 = *Worker2;
+	}
+	*Worker3 = '\0';
+	
+	/*Allocate and copy in HalfTwo, which is everything beyond our line.*/
+	
+	HalfTwo = malloc(strlen(Worker2) + 1);
+	snprintf(HalfTwo, strlen(Worker2) + 1, Worker2);
+	
+	/*Edit the value.*/
+	Worker3 = LineWorker[1];
+	
+	if (!strstr(Worker3, " "))
+	{
+		if (strlen(Worker3) < (MAX_LINE_SIZE - 1))
+		{
+			TempVal = strlen(Worker3);
+			Worker3[TempVal++] = ' ';
+			Worker3[TempVal] = '\0';
+		}
+		else
+		{
+			snprintf(LineWorker[0], MAX_LINE_SIZE, "EditConfigValue(): Malformed attribute %s for object %s: No value.",
+					Attribute, ObjectID);
+			SpitError(LineWorker[0]);
+			
+			free(HalfOne);
+			free(HalfTwo);
+			free(MasterStream);
+			return FAILURE;
+		}
 		
-		free(HalfTwo);
+	}
+	
+	for (; *Worker3 != ' ' && *Worker3 != '\n' && *Worker3 != '\0'; ++Worker3) ++TempVal; /*We have to get to the spaces anyways. Harvest string length up until a space.*/
+	for (; *Worker3 == ' '; ++Worker3) ++TempVal;
+	
+	strncpy(Worker3, Value, MAX_LINE_SIZE - TempVal);
+	
+	/*Now record it back to disk.*/
+	if ((Descriptor = fopen(CONFIGDIR CONF_NAME, "w")))
+	{
+		free(MasterStream);
+		MasterStream = malloc((TempVal = strlen(HalfOne) + strlen(LineWorker[1]) + strlen(HalfTwo) + 1));
+		snprintf(MasterStream, TempVal, "%s%s%s", HalfOne, LineWorker[1], HalfTwo);
+		
+		fwrite(MasterStream, 1, strlen(MasterStream), Descriptor);
+		fclose(Descriptor);
 	}
 	else
 	{
-		TempVal = strlen(HalfOne) + strlen(FoundLine) + 1;
-		MasterStream = malloc(TempVal);
-		snprintf(MasterStream, TempVal, "%s%s", HalfOne, FoundLine);
+		SpitError("EditConfigValue(): Unable to open " CONFIGDIR CONF_NAME " for writing. No write permission?");
 	}
 	
+	free(MasterStream);
 	free(HalfOne);
+	free(HalfTwo);
 	
-	if (!(Descriptor = fopen(CONFIGDIR CONF_NAME, "w")))
-	{
-		SpitError("Failed to open epoch.conf for writing. Check permissions?");
-		free(MasterStream);
-		return FAILURE;
-	}
-
-	Worker1 = MasterStream;
-	
-	for (; *Worker1 != '\0'; ++Worker1)
-	{
-		putc(*Worker1, Descriptor);
-	}
-	
-	fclose(Descriptor);
-	free(MasterStream);
-
 	return SUCCESS;
 }
 
