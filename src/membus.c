@@ -222,6 +222,54 @@ void EpochMemBusLoop(void)
 				MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_STATUS, true);
 			}
 		}
+		else if (BusDataIs(MEMBUS_CODE_OBJENABLE) || BusDataIs(MEMBUS_CODE_OBJDISABLE))
+		{
+			Bool EnablingThis = (BusDataIs(MEMBUS_CODE_OBJENABLE) ? true : false);
+			unsigned long LOffset = strlen(EnablingThis ? MEMBUS_CODE_OBJENABLE " " : MEMBUS_CODE_OBJDISABLE " ");
+			char *OurSignal = EnablingThis ? MEMBUS_CODE_OBJENABLE : MEMBUS_CODE_OBJDISABLE;
+			char *TWorker = BusData + LOffset;
+			ObjTable *CurObj = LookupObjectInTable(TWorker);
+			char TmpBuf[MEMBUS_SIZE/2 - 1];
+			rStatus DidWork = FAILURE;
+			
+			if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
+			{ /*No argument?*/
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+				MemBus_Write(TmpBuf, true);
+				
+				continue;
+			}
+			
+			if (!CurObj)
+			{
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s", MEMBUS_CODE_FAILURE, OurSignal, TWorker);
+				MemBus_Write(TmpBuf, true);
+				
+				continue;
+			}
+			
+			CurObj->Enabled = (EnablingThis ? true : false);
+			DidWork = EditConfigValue(TWorker, "ObjectEnabled", EnablingThis ? "true" : "false");
+			
+			switch (DidWork)
+			{
+				case SUCCESS:
+					snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, BusData);
+					break;
+				case WARNING:
+					snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_WARNING, BusData);
+					break;
+				case FAILURE:
+					snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+					break;
+				default:
+					snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+					break;
+			}
+				
+				
+			MemBus_Write(TmpBuf, true);
+		}
 		else if (BusDataIs(MEMBUS_CODE_RUNLEVEL))
 		{
 			unsigned long LOffset = strlen(MEMBUS_CODE_RUNLEVEL " ");

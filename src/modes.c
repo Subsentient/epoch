@@ -100,7 +100,7 @@ rStatus ObjStartStop(const char *ObjectID, const char *MemBusSignal)
 { /*Start and stop services.*/
 	char RemoteResponse[MEMBUS_SIZE/2 - 1];
 	char OutMsg[MEMBUS_SIZE/2 - 1];
-	char PossibleResponses[3][MEMBUS_SIZE/2 - 1];
+	char PossibleResponses[4][MEMBUS_SIZE/2 - 1];
 	unsigned long cCounter = 0;
 	
 	snprintf(OutMsg, sizeof OutMsg, "%s %s", MemBusSignal, ObjectID);
@@ -130,6 +130,9 @@ rStatus ObjStartStop(const char *ObjectID, const char *MemBusSignal)
 		
 	snprintf(PossibleResponses[2], sizeof PossibleResponses[2], "%s %s",
 		MEMBUS_CODE_BADPARAM, OutMsg);
+
+	snprintf(PossibleResponses[3], sizeof PossibleResponses[3], "%s %s %s",
+		MEMBUS_CODE_WARNING, MemBusSignal, ObjectID);
 		
 	if (!strcmp(RemoteResponse, PossibleResponses[0]))
 	{
@@ -138,6 +141,10 @@ rStatus ObjStartStop(const char *ObjectID, const char *MemBusSignal)
 	else if (!strcmp(RemoteResponse, PossibleResponses[1]))
 	{
 		return FAILURE;
+	}
+	else if (!strcmp(RemoteResponse, PossibleResponses[3]))
+	{
+		return WARNING;
 	}
 	else if (!strcmp(RemoteResponse, PossibleResponses[2]))
 	{

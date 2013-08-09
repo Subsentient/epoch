@@ -256,16 +256,17 @@ rStatus InitConfig(void)
 				CurObj->Enabled = false;
 			}
 			else
-			{ /*Warn about bad value, then treat as if enabled.*/
+			{
 				char TmpBuf[1024];
 				
 				CurObj->Enabled = true;
 				
 				snprintf(TmpBuf, 1024, "Bad value %s for attribute ObjectEnabled for object %s at line %lu.\n"
-						"Valid values are true and false. Assuming enabled.",
+						"Valid values are true and false.",
 						DelimCurr, CurObj->ObjectID, LineNum);
-
-				SpitWarning(TmpBuf);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
 			}
 			
 			continue;
@@ -588,7 +589,7 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 	 * I'm going to submit this to one of those bad code
 	 * archive sites!**/
 	char *Worker1, *Worker2, *Worker3;
-	char *MasterStream, *HalfOne, *HalfTwo;
+	char *MasterStream, *HalfTwo;
 	char LineWorker[2][MAX_LINE_SIZE];
 	FILE *Descriptor;
 	struct stat FileStat;
@@ -637,20 +638,13 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 		free(MasterStream);
 		return FAILURE;
 	}
-
+	
 	if (Worker2) *Worker2 = 'O'; /*Letter O.*/
-	
-	/*Allocate and copy in HalfOne.*/
-	*Worker1 = '\0';
-	
-	HalfOne = malloc(strlen(MasterStream) + 1);
-	strncpy(HalfOne, MasterStream, strlen(MasterStream));
-	
-	*Worker1 = Attribute[0];
 	
 	/*Now copy in the line with our value.*/
 	Worker2 = Worker1;
 	Worker3 = LineWorker[1];
+	
 	
 	for (; *Worker2 != '\n' && *Worker2 != '\0'; ++Worker2, ++Worker3)
 	{
@@ -658,8 +652,10 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 	}
 	*Worker3 = '\0';
 	
-	/*Allocate and copy in HalfTwo, which is everything beyond our line.*/
+	/*Now, terminate MasterStream at the beginning of our attribute, to keep it as a HalfOne for us.*/
+	*Worker1 = '\0';
 	
+	/*Allocate and copy in HalfTwo, which is everything beyond our line.*/
 	HalfTwo = malloc(strlen(Worker2) + 1);
 	snprintf(HalfTwo, strlen(Worker2) + 1, Worker2);
 	
@@ -680,7 +676,6 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 					Attribute, ObjectID);
 			SpitError(LineWorker[0]);
 			
-			free(HalfOne);
 			free(HalfTwo);
 			free(MasterStream);
 			return FAILURE;
@@ -688,7 +683,8 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 		
 	}
 	
-	for (; *Worker3 != ' ' && *Worker3 != '\n' && *Worker3 != '\0'; ++Worker3) ++TempVal; /*We have to get to the spaces anyways. Harvest string length up until a space.*/
+	for (; *Worker3 != ' ' && *Worker3 != '\n' &&
+		*Worker3 != '\0'; ++Worker3) ++TempVal; /*We have to get to the spaces anyways. Harvest string length up until a space.*/
 	for (; *Worker3 == ' '; ++Worker3) ++TempVal;
 	
 	strncpy(Worker3, Value, MAX_LINE_SIZE - TempVal);
@@ -696,9 +692,10 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 	/*Now record it back to disk.*/
 	if ((Descriptor = fopen(CONFIGDIR CONF_NAME, "w")))
 	{
-		free(MasterStream);
-		MasterStream = malloc((TempVal = strlen(HalfOne) + strlen(LineWorker[1]) + strlen(HalfTwo) + 1));
-		snprintf(MasterStream, TempVal, "%s%s%s", HalfOne, LineWorker[1], HalfTwo);
+		MasterStream = realloc(MasterStream, (TempVal = strlen(MasterStream) + strlen(LineWorker[1]) + strlen(HalfTwo) + 1));
+		
+		/*We do a really ugly hack here. See first argument to snprintf().*/
+		snprintf(&MasterStream[strlen(MasterStream)], TempVal, "%s%s", LineWorker[1], HalfTwo);
 		
 		fwrite(MasterStream, 1, strlen(MasterStream), Descriptor);
 		fclose(Descriptor);
@@ -709,7 +706,6 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 	}
 	
 	free(MasterStream);
-	free(HalfOne);
 	free(HalfTwo);
 	
 	return SUCCESS;
@@ -760,7 +756,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->ObjectPID = 0;
 	Worker->ObjectRunlevels = malloc(sizeof(struct _RLTree));
 	Worker->ObjectRunlevels->Next = NULL;
-	Worker->Enabled = true; /*Don't make ObjectEnabled attribute mandatory*/
+	Worker->Enabled = 2; /*We can indeed store this in a bool you know. There's no 1 bit datatype.*/
 	
 	return Worker;
 }
@@ -793,6 +789,12 @@ static rStatus ScanConfigIntegrity(void)
 		else if (Worker->ObjectRunlevels == NULL)
 		{
 			snprintf(TmpBuf, 1024, "Object \"%s\" has no attribute ObjectRunlevels.", Worker->ObjectID);
+			SpitError(TmpBuf);
+			return FAILURE;
+		}
+		else if (Worker->Enabled == 2)
+		{
+			snprintf(TmpBuf, 1024, "Object \"%s\" has no attribute ObjectEnabled.", Worker->ObjectID);
 			SpitError(TmpBuf);
 			return FAILURE;
 		}
