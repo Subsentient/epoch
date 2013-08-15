@@ -316,6 +316,110 @@ void EpochMemBusLoop(void)
 				SpitError(TmpBuf);
 			}
 		}
+		else if (BusDataIs(MEMBUS_CODE_OBJRLS))
+		{
+			unsigned long LOffset;
+			char *TWorker = NULL;
+			ObjTable *CurObj = NULL;
+			char TmpBuf[MEMBUS_SIZE/2 - 1];
+			char TRL[MAX_DESCRIPT_SIZE];
+			char TID[MAX_DESCRIPT_SIZE];
+			unsigned long Inc = 0;
+			
+			if (BusDataIs(MEMBUS_CODE_OBJRLS_CHECK)) LOffset = strlen(MEMBUS_CODE_OBJRLS_CHECK " ");
+			else if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD)) LOffset = strlen(MEMBUS_CODE_OBJRLS_ADD " ");
+			else if (BusDataIs(MEMBUS_CODE_OBJRLS_DEL)) LOffset = strlen(MEMBUS_CODE_OBJRLS_DEL " ");
+			
+			TWorker = BusData + LOffset;
+			
+			if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
+			{ /*No argument?*/
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+				MemBus_Write(TmpBuf, true);
+
+				continue;
+			}
+			
+			for (; TWorker[Inc] != ' ' && TWorker[Inc] != '\0'; ++Inc)
+			{
+				TID[Inc] = TWorker[Inc];
+			}
+			TID[Inc] = '\0';
+			
+			if ((TWorker = strstr(TWorker, " ")) == NULL)
+			{
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+				MemBus_Write(TmpBuf, true);
+
+				continue;
+			}
+			++TWorker;
+			
+			strncpy(TRL, TWorker, sizeof TRL);
+			
+			if ((CurObj = LookupObjectInTable(TID)))
+			{
+				if (BusDataIs(MEMBUS_CODE_OBJRLS_CHECK))
+				{
+					snprintf(TmpBuf, sizeof TmpBuf, "%s %s %d", MEMBUS_CODE_OBJRLS_CHECK, TWorker, ObjRL_CheckRunlevel(TRL, CurObj));
+				}
+				else if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD) || BusDataIs(MEMBUS_CODE_OBJRLS_DEL))
+				{
+					char *RLStream = malloc(MAX_DESCRIPT_SIZE + 1);
+					struct _RLTree *ObjRLS = CurObj->ObjectRunlevels;
+					
+					if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD))
+					{
+						if (!ObjRL_CheckRunlevel(TRL, CurObj))
+						{
+							ObjRL_AddRunlevel(TRL, CurObj);
+						}
+					}
+					else
+					{
+						if (!ObjRL_DelRunlevel(TRL, CurObj))
+						{
+							snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+							MemBus_Write(TmpBuf, true);
+							free(RLStream);
+							continue;
+						}
+					}
+					
+					*RLStream = '\0';
+					for (; ObjRLS->Next != NULL; ObjRLS = ObjRLS->Next)
+					{
+						strncat(RLStream, ObjRLS->RL, MAX_DESCRIPT_SIZE);
+						
+						if (ObjRLS->Next->Next != NULL)
+						{
+							strncat(RLStream, " ", 1);
+							RLStream = realloc(RLStream, strlen(RLStream) + MAX_DESCRIPT_SIZE);
+						}
+					}
+					
+					if (!EditConfigValue(CurObj->ObjectID, "ObjectRunlevels", RLStream))
+					{
+						snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+						MemBus_Write(TmpBuf, true);
+						free(RLStream);
+						continue;
+					}
+					
+					free(RLStream);
+					
+					snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, BusData);
+					
+				}
+				
+				MemBus_Write(TmpBuf, true);
+			}
+			else
+			{
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s", MEMBUS_CODE_FAILURE, MEMBUS_CODE_OBJRLS_CHECK, TWorker);
+				MemBus_Write(TmpBuf, true);
+			}
+		}
 		else if (BusDataIs(MEMBUS_CODE_HALT))
 		{
 			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_HALT, true);

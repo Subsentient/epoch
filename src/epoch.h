@@ -86,6 +86,10 @@
 #define MEMBUS_CODE_OBJSTOP "OBJSTOP"
 #define MEMBUS_CODE_OBJENABLE "OBJENABLE"
 #define MEMBUS_CODE_OBJDISABLE "OBJDISABLE"
+#define MEMBUS_CODE_OBJRLS "OBJRLS" /*Generic way to detect if we are using one of the OBJRLS commands below.*/
+#define MEMBUS_CODE_OBJRLS_CHECK "OBJRLS_CHECK"
+#define MEMBUS_CODE_OBJRLS_ADD "OBJRLS_ADD"
+#define MEMBUS_CODE_OBJRLS_DEL "OBJRLS_DEL"
 #define MEMBUS_CODE_STATUS "OBJSTAT"
 #define MEMBUS_CODE_RUNLEVEL "RUNLEVEL"
 
@@ -108,6 +112,8 @@ typedef enum { FAILURE, SUCCESS, WARNING } rStatus;
 struct _RLTree
 { /*Runlevel linked list.*/
 	char RL[MAX_DESCRIPT_SIZE];
+	
+	struct _RLTree *Prev;
 	struct _RLTree *Next;
 };
 	
@@ -159,6 +165,7 @@ extern unsigned long GetHighestPriority(Bool WantStartPriority);
 extern rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char *Value);
 extern void ObjRL_AddRunlevel(const char *InRL, ObjTable *InObj);
 extern Bool ObjRL_CheckRunlevel(const char *InRL, ObjTable *InObj);
+extern Bool ObjRL_DelRunlevel(const char *InRL, ObjTable *InObj);
 extern void ObjRL_ShutdownRunlevels(ObjTable *InObj);
 
 /*parse.c*/

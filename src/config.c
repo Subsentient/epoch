@@ -902,8 +902,42 @@ void ObjRL_AddRunlevel(const char *InRL, ObjTable *InObj)
 	
 	Worker->Next = malloc(sizeof(struct _RLTree));
 	Worker->Next->Next = NULL;
+	Worker->Next->Prev = Worker;
 	
 	strncpy(Worker->RL, InRL, MAX_DESCRIPT_SIZE);
+}
+
+Bool ObjRL_DelRunlevel(const char *InRL, ObjTable *InObj)
+{
+	struct _RLTree *Worker = InObj->ObjectRunlevels;
+	
+	for (; Worker->Next != NULL; Worker = Worker->Next)
+	{
+		if (!strcmp(InRL, Worker->RL))
+		{
+			Worker->Next->Prev = Worker->Prev;
+			
+			if (Worker->Prev)
+			{
+				Worker->Prev->Next = Worker->Next;
+			}
+			else if (Worker->Next->Next)
+			{
+				InObj->ObjectRunlevels = Worker->Next;
+			}
+			else
+			{
+				InObj->ObjectRunlevels = NULL;
+				free(Worker->Next);
+			}
+			
+			free(Worker);
+			
+			return true;
+		}
+	}
+	
+	return false;
 }
 
 void ObjRL_ShutdownRunlevels(ObjTable *InObj)
