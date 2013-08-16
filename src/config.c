@@ -993,3 +993,52 @@ void ShutdownConfig(void)
 	
 	ObjectTable = NULL;
 }
+
+rStatus ReloadConfig(void)
+{
+	ObjTable *Worker = ObjectTable;
+	struct _TRunStats
+	{
+		char ObjectID[MAX_DESCRIPT_SIZE];
+		Bool Started;
+		
+		struct _TRunStats *Next;
+	} *RStatStore = malloc(sizeof(struct _TRunStats)), *SWorker = RStatStore, *TDel;
+	
+	for (; Worker->Next != NULL; Worker = Worker->Next)
+	{ /*Store information on what objects are running.*/
+		strncpy(SWorker->ObjectID, Worker->ObjectID, MAX_DESCRIPT_SIZE);
+		SWorker->Started = Worker->Started;
+		
+		if (Worker->Next)
+		{
+			SWorker->Next = malloc(sizeof(struct _TRunStats));
+			SWorker = SWorker->Next;
+		}
+	}
+
+	ShutdownConfig();
+	if (!InitConfig())
+	{
+		SpitError("ReloadConfig(): Failed to reload configuration.");
+		return FAILURE;
+	}
+	
+	for (SWorker = RStatStore; SWorker != NULL; SWorker = SWorker->Next)
+	{
+		if (!(Worker = LookupObjectInTable(SWorker->ObjectID)))
+		{ /*No longer exists? Proceed past it.*/
+			continue;
+		}
+		
+		Worker->Started = SWorker->Started;
+	}
+	
+	for (SWorker = RStatStore; SWorker != NULL; SWorker = TDel)
+	{
+		TDel = SWorker->Next;
+		free(SWorker);
+	}
+	
+	return SUCCESS;
+}

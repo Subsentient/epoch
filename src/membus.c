@@ -26,15 +26,16 @@ rStatus InitMemBus(Bool ServerSide)
 { /*Fire up the memory bus.*/
 	int MemDescriptor;
 	
-	if ((MemDescriptor = shmget((key_t)MEMKEY, MEMBUS_SIZE, (ServerSide ? (IPC_CREAT | 0666) : 0666))) < 0)
+	if ((MemDescriptor = shmget((key_t)MEMKEY, MEMBUS_SIZE, (ServerSide ? (IPC_CREAT | 0660) : 0660))) < 0)
 	{
-		SpitError("InitMemBus() Failed to allocate memory bus."); /*should probably use perror*/
+		if (ServerSide) SpitError("InitMemBus(): Failed to allocate memory bus."); /*should probably use perror*/
+		else SpitError("InitMemBus(): Failed to connect to memory bus. Permissions?");
 		return FAILURE;
 	}
 	
 	if ((MemData = shmat(MemDescriptor, NULL, 0)) == (void*)-1)
 	{
-		SpitError("InitMemBus() Failed to attach memory bus to char *MemData.");
+		SpitError("InitMemBus(): Failed to attach memory bus to char *MemData.");
 		MemData = NULL;
 		return FAILURE;
 	}
@@ -48,7 +49,7 @@ rStatus InitMemBus(Bool ServerSide)
 	}
 	else if (*(MemData + (MEMBUS_SIZE/2)) != MEMBUS_NEWCONNECTION)
 	{ /*Snowball's chance in hell that this will not always work.*/
-		SpitError("InitMemBus() Bus is not running.");
+		SpitError("InitMemBus(): Bus is not running.");
 		return FAILURE;
 	}
 	else
@@ -140,9 +141,7 @@ void EpochMemBusLoop(void)
 		/*If we got a signal over the membus.*/
 		if (BusDataIs(MEMBUS_CODE_RESET))
 		{
-			ShutdownConfig();
-			
-			if (InitConfig())
+			if (ReloadConfig())
 			{
 				MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_RESET, true);
 			}
@@ -485,7 +484,7 @@ rStatus ShutdownMemBus(Bool ServerSide)
 	
 	if (shmdt(MemData) != 0)
 	{
-		SpitWarning("Unable to shut down memory bus.");
+		SpitWarning("ShutdownMemBus(): Unable to shut down memory bus.");
 		return FAILURE;
 	}
 	else
