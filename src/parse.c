@@ -149,7 +149,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 	
 	if (IsStartingMode)
 	{		
-		printf(PrintOutStream);
+		printf("%s", PrintOutStream);
 		fflush(NULL); /*Things tend to get clogged up when we don't flush.*/
 		
 		ExitStatus = ExecuteConfigObject(CurObj, IsStartingMode); /*Don't bother with return value here.*/
@@ -161,7 +161,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 		switch (CurObj->StopMode)
 		{
 			case STOP_COMMAND:
-				printf(PrintOutStream);
+				printf("%s", PrintOutStream);
 				fflush(NULL);
 				
 				ExitStatus = ExecuteConfigObject(CurObj, IsStartingMode);
@@ -175,7 +175,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 				CurObj->Started = false; /*Just say we did it even if nothing to do.*/
 				break;
 			case STOP_PID:
-				printf(PrintOutStream);
+				printf("%s", PrintOutStream);
 				fflush(NULL);
 				
 				if (kill(CurObj->ObjectPID, OSCTL_SIGNAL_TERM) == 0)
@@ -198,7 +198,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 				unsigned long Inc = 0, TruePID = 0;
 				char Buf[MAX_LINE_SIZE], WChar, *TWorker;
 				
-				printf(PrintOutStream);
+				printf("%s", PrintOutStream);
 				fflush(NULL);
 				
 				for (; (WChar = getc(Tdesc)) != EOF && Inc < MAX_LINE_SIZE - 1; ++Inc)

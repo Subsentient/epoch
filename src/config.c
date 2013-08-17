@@ -657,7 +657,7 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 	
 	/*Allocate and copy in HalfTwo, which is everything beyond our line.*/
 	HalfTwo = malloc(strlen(Worker2) + 1);
-	snprintf(HalfTwo, strlen(Worker2) + 1, Worker2);
+	snprintf(HalfTwo, strlen(Worker2) + 1, "%s", Worker2);
 	
 	/*Edit the value.*/
 	Worker3 = LineWorker[1];

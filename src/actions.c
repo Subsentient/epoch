@@ -76,7 +76,7 @@ void LaunchBootup(void)
 }
 
 
-void LaunchShutdown(unsigned long Signal)
+void LaunchShutdown(signed long Signal)
 { /*Responsible for reboot, halt, power down, etc.*/
 	
 	printf("%s", CONSOLE_COLOR_RED);
@@ -87,7 +87,7 @@ void LaunchShutdown(unsigned long Signal)
 	}
 	else
 	{
-		printf("%s", "Rebooting.");
+		printf("%s", "Rebooting.\n");
 	}
 	
 	printf("%s", CONSOLE_ENDCOLOR);
@@ -99,7 +99,11 @@ void LaunchShutdown(unsigned long Signal)
 	}
 	
 	ShutdownConfig();
-	ShutdownMemBus(true);
+	
+	if (!ShutdownMemBus(true))
+	{
+		SpitWarning("Failed to shut down membus interface.");
+	}
 	
 	printf("\n%s", CONSOLE_COLOR_CYAN);
 	

@@ -328,6 +328,12 @@ void EpochMemBusLoop(void)
 			if (BusDataIs(MEMBUS_CODE_OBJRLS_CHECK)) LOffset = strlen(MEMBUS_CODE_OBJRLS_CHECK " ");
 			else if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD)) LOffset = strlen(MEMBUS_CODE_OBJRLS_ADD " ");
 			else if (BusDataIs(MEMBUS_CODE_OBJRLS_DEL)) LOffset = strlen(MEMBUS_CODE_OBJRLS_DEL " ");
+			else
+			{
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+				MemBus_Write(TmpBuf, true);
+				continue;
+			}
 			
 			TWorker = BusData + LOffset;
 			
@@ -419,6 +425,7 @@ void EpochMemBusLoop(void)
 				MemBus_Write(TmpBuf, true);
 			}
 		}
+		/*Power functions that close everything first.*/
 		else if (BusDataIs(MEMBUS_CODE_HALT))
 		{
 			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_HALT, true);
@@ -434,6 +441,26 @@ void EpochMemBusLoop(void)
 			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_REBOOT, true);
 			LaunchShutdown(OSCTL_LINUX_REBOOT);
 		}
+		/*Power functions that nuke everything and reboot/halt us immediately.*/
+		else if (BusDataIs(MEMBUS_CODE_HALTNOW))
+		{
+			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_HALTNOW, true);
+			sync();
+			reboot(OSCTL_LINUX_HALT);
+		}
+		else if (BusDataIs(MEMBUS_CODE_POWEROFFNOW))
+		{
+			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_POWEROFFNOW, true);
+			sync();
+			reboot(OSCTL_LINUX_POWEROFF);
+		}
+		else if (BusDataIs(MEMBUS_CODE_REBOOTNOW))
+		{
+			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_REBOOTNOW, true);
+			sync();
+			reboot(OSCTL_LINUX_REBOOT);
+		}
+		/*Ctrl-Alt-Del control.*/
 		else if (BusDataIs(MEMBUS_CODE_CADOFF))
 		{
 			if (!reboot(OSCTL_LINUX_DISABLE_CTRLALTDEL))
@@ -456,6 +483,7 @@ void EpochMemBusLoop(void)
 				MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_CADON, true);
 			}
 		}
+		/*Something we don't understand. Send BADPARAM.*/
 		else
 		{
 			char TmpBuf[MEMBUS_SIZE/2 - 1];
@@ -481,7 +509,7 @@ rStatus ShutdownMemBus(Bool ServerSide)
 	}
 	
 	*MemData = MEMBUS_NOMSG;
-	
+	*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NOMSG; /*We do this so client applications don't think they are still up.*/
 	if (shmdt(MemData) != 0)
 	{
 		SpitWarning("ShutdownMemBus(): Unable to shut down memory bus.");

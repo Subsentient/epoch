@@ -78,6 +78,10 @@
 #define MEMBUS_CODE_HALT "INIT_HALT"
 #define MEMBUS_CODE_POWEROFF "INIT_POWEROFF"
 #define MEMBUS_CODE_REBOOT "INIT_REBOOT"
+#define MEMBUS_CODE_POWEROFFNOW "INIT_NPOWEROFF"
+#define MEMBUS_CODE_HALTNOW "INIT_NHALT"
+#define MEMBUS_CODE_REBOOTNOW "INIT_NREBOOT"
+
 #define MEMBUS_CODE_RESET "EPOCH_REINIT" /*Forces a reset of the object table.*/
 #define MEMBUS_CODE_CADON "CADON"
 #define MEMBUS_CODE_CADOFF "CADOFF"
@@ -176,7 +180,7 @@ extern rStatus SwitchRunlevels(const char *Runlevel);
 
 /*actions.c*/
 extern void LaunchBootup(void);
-extern void LaunchShutdown(unsigned long Signal);
+extern void LaunchShutdown(signed long Signal);
 extern void EmergencyShell(void);
 
 /*modes.c*/
