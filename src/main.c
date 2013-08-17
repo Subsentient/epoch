@@ -6,6 +6,8 @@
 /**CLI parsing, etc. main() is here.**/
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/reboot.h>
@@ -222,6 +224,39 @@ int main(int argc, char **argv)
 				return 1;
 			}
 		}
+	}
+	else if (CmdIs("killall5"))
+	{
+		const char *CArg = argv[1];
+		
+		if (argc == 2)
+		{
+			if (*CArg == '-')
+			{
+				++CArg;
+			}
+			
+			if (isdigit(*CArg))
+			{
+				return !EmulKillall5(atoi(CArg));
+			}
+			else
+			{
+				SpitError("Bad signal number. Please specify an integer signal number.\nPass no arguments to assume signal 15.");
+				
+				return 1;
+			}
+		}
+		else if (argc == 1)
+		{
+			return !EmulKillall5(OSCTL_SIGNAL_TERM);
+		}
+		else
+		{
+			SpitError("Too many arguments. Syntax is killall5 -signum where signum is the integer signal number to send.");
+			return 1;
+		}
+		
 	}
 	else
 	{
