@@ -112,7 +112,8 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 			}
 			else
 			{
-				printf("%s\n", SuccessMsg);
+				printf("\n%s\n", SuccessMsg);
+				fflush(NULL);
 			}
 			
 		}
@@ -139,7 +140,14 @@ int main(int argc, char **argv)
 	{ /*This is a bit long winded here, however, it's better than devoting a function for it.*/
 		if (argc == 1)
 		{ /*Just us, as init. That means, begin bootup.*/
-			LaunchBootup();
+			if (getpid() == 1)
+			{
+				LaunchBootup();
+			}
+			else
+			{
+				SpitError("Refusing to launch the whole boot sequence if not PID 1.");
+			}
 		}
 		else if (argv[1] != NULL && argc == 2)
 		{

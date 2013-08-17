@@ -111,6 +111,11 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 		SpitError(TmpBuf);
 		EmergencyShell();
 	}
+
+	if (InObj->ForkLaunch)
+	{ /*So, are we going to wait for the process to complete, or are we going to assume all went well?*/
+		return SUCCESS;
+	}
 	
 	/*Get PID*/ /**Parent code resumes.**/
 	InObj->ObjectPID = waitpid(LaunchPID, &RawExitStatus, 0); /*Wait for the process to exit.*/

@@ -135,6 +135,7 @@ typedef struct _EpochObjectTable
 	StopType StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
 	unsigned long ObjectPID; /*The process ID, used for shutting down.*/
 	Bool Enabled;
+	Bool ForkLaunch;
 	
 	struct _RLTree *ObjectRunlevels; /*Dynamically allocated, needless to say.*/
 	
@@ -157,6 +158,7 @@ extern char CurRunlevel[MAX_DESCRIPT_SIZE];
 extern int MemDescriptor;
 extern char *MemData;
 extern Bool DisableCAD;
+extern char Hostname[MAX_LINE_SIZE];
 
 /**Function forward declarations.*/
 

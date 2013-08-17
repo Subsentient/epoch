@@ -15,6 +15,9 @@
 /*We want the only interface for this to be LookupObjectInTable().*/
 ObjTable *ObjectTable = NULL;
 
+/*Holds the system hostname.*/
+char Hostname[MAX_LINE_SIZE] = { '\0' };
+
 /*Function forward declarations for all the statics.*/
 static ObjTable *AddObjectToTable(const char *ObjectID);
 static char *NextLine(const char *InStream);
@@ -211,6 +214,31 @@ rStatus InitConfig(void)
 			
 			continue;
 		}
+		else if (!strncmp(Worker, "Hostname", strlen("Hostname")))
+		{
+			if (CurObj != NULL)
+			{ /*What the warning says. It'd get all weird if we allowed that.*/
+				char TmpBuf[1024];
+				
+				snprintf(TmpBuf, 1024, "Attribute Hostname cannot be set after an ObjectID attribute; epoch.conf line %lu.", LineNum);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute Hostname in epoch.conf line %lu.", LineNum);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
+			}
+			
+			strncpy(Hostname, DelimCurr, MAX_LINE_SIZE);
+			
+			continue;
+		}		
 		else if (!strncmp(Worker, "ObjectID", strlen("ObjectID")))
 		{ /*ASCII value used to identify this object internally, and also a kind of short name for it.*/
 
@@ -263,6 +291,50 @@ rStatus InitConfig(void)
 				
 				snprintf(TmpBuf, 1024, "Bad value %s for attribute ObjectEnabled for object %s at line %lu.\n"
 						"Valid values are true and false.",
+						DelimCurr, CurObj->ObjectID, LineNum);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
+			}
+			
+			continue;
+		}
+		else if (!strncmp(Worker, "ObjectLaunchMode", strlen("ObjectLaunchMode")))
+		{
+			if (!CurObj)
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Attribute ObjectLaunchMode comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
+				
+				SpitError(TmpBuf);
+				return FAILURE;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectLaunchMode in epoch.conf line %lu.", LineNum);
+				SpitError(TmpBuf);
+				
+				return FAILURE;
+			}
+			
+			if (!strcmp(DelimCurr, "NORMAL"))
+			{
+				CurObj->ForkLaunch = false;
+			}
+			else if (!strcmp(DelimCurr, "NOWAIT"))
+			{
+				CurObj->ForkLaunch = true;
+			}
+			else
+			{
+				char TmpBuf[1024];
+				
+				CurObj->ForkLaunch = false;
+				
+				snprintf(TmpBuf, 1024, "Bad value %s for attribute ObjectLaunchMode for object %s at line %lu.\n"
+						"Valid values are NORMAL and NOWAIT.",
 						DelimCurr, CurObj->ObjectID, LineNum);
 				SpitError(TmpBuf);
 				
@@ -756,6 +828,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->ObjectPID = 0;
 	Worker->ObjectRunlevels = malloc(sizeof(struct _RLTree));
 	Worker->ObjectRunlevels->Next = NULL;
+	Worker->ForkLaunch = false;
 	Worker->Enabled = 2; /*We can indeed store this in a bool you know. There's no 1 bit datatype.*/
 	
 	return Worker;

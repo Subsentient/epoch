@@ -57,6 +57,10 @@ void LaunchBootup(void)
 	
 	PrintBootBanner();
 	
+	if (Hostname[0] != '\0')
+	{ /*The system hostname.*/
+		sethostname(Hostname, strlen(Hostname));
+	}
 	if (DisableCAD)
 	{
 		reboot(OSCTL_LINUX_DISABLE_CTRLALTDEL); /*Disable instant reboot on CTRL-ALT-DEL.*/
