@@ -18,7 +18,7 @@
 
 /*Configuration.*/
 #ifndef CONFIGDIR /*This is available for good purpose.*/
-#define CONFIGDIR "/etc"
+#define CONFIGDIR "/etc/epoch/"
 #endif
 
 #define CONF_NAME "epoch.conf"
