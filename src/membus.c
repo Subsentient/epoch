@@ -88,7 +88,7 @@ rStatus MemBus_Write(const char *InStream, Bool ServerSide)
 		}
 	}
 	
-	strncpy(BusData, InStream, (MEMBUS_SIZE/2 - 1));
+	snprintf(BusData, MEMBUS_SIZE/2 - 1, "%s", InStream);
 	
 	*BusStatus = MEMBUS_MSG; /*Now we sent it.*/
 	
@@ -116,7 +116,7 @@ Bool MemBus_Read(char *OutStream, Bool ServerSide)
 		return false;
 	}
 	
-	strncpy(OutStream, BusData, (MEMBUS_SIZE/2 - 1));
+	snprintf(OutStream, MEMBUS_SIZE/2 - 1, "%s", BusData);
 	
 	*BusStatus = MEMBUS_NOMSG; /*Set back to NOMSG once we got the message.*/
 
@@ -362,7 +362,7 @@ void EpochMemBusLoop(void)
 			}
 			++TWorker;
 			
-			strncpy(TRL, TWorker, sizeof TRL);
+			snprintf(TRL, sizeof TRL, "%s", TWorker);
 			
 			if ((CurObj = LookupObjectInTable(TID)))
 			{

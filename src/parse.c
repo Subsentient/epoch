@@ -334,7 +334,7 @@ rStatus SwitchRunlevels(const char *Runlevel)
 	}
 	
 	/*Good to go, so change us to the new runlevel.*/
-	strncpy(CurRunlevel, Runlevel, MAX_DESCRIPT_SIZE);
+	snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", Runlevel);
 	
 	/*Now start the things that ARE meant for our runlevel.*/
 	for (CurPriority = 1, MaxPriority = GetHighestPriority(true);

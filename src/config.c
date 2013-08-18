@@ -210,7 +210,7 @@ rStatus InitConfig(void)
 				return FAILURE;
 			}	
 			
-			strncpy(CurRunlevel, DelimCurr, MAX_DESCRIPT_SIZE);
+			snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", DelimCurr);
 			
 			continue;
 		}
@@ -235,7 +235,7 @@ rStatus InitConfig(void)
 				return FAILURE;
 			}
 			
-			strncpy(Hostname, DelimCurr, MAX_LINE_SIZE);
+			snprintf(Hostname, MAX_LINE_SIZE, "%s", DelimCurr);
 			
 			continue;
 		}		
@@ -402,7 +402,7 @@ rStatus InitConfig(void)
 				return FAILURE;
 			}
 			
-			strncpy(CurObj->ObjectName, DelimCurr, MAX_DESCRIPT_SIZE);
+			snprintf(CurObj->ObjectName, MAX_DESCRIPT_SIZE, "%s", DelimCurr);
 
 			continue;
 		}
@@ -427,7 +427,7 @@ rStatus InitConfig(void)
 				return FAILURE;
 			}
 			
-			strncpy(CurObj->ObjectStartCommand, DelimCurr, MAX_LINE_SIZE);
+			snprintf(CurObj->ObjectStartCommand, MAX_LINE_SIZE, "%s", DelimCurr);
 			continue;
 		}
 		else if (!strncmp(Worker, "ObjectStopCommand", strlen("ObjectStopCommand")))
@@ -466,7 +466,7 @@ rStatus InitConfig(void)
 					++Worker;
 				}
 				
-				strncpy(CurObj->ObjectPIDFile, Worker, MAX_LINE_SIZE);
+				snprintf(CurObj->ObjectPIDFile, MAX_LINE_SIZE, "%s", Worker);
 				
 				CurObj->StopMode = STOP_PIDFILE;
 			}
@@ -477,7 +477,7 @@ rStatus InitConfig(void)
 			else
 			{
 				CurObj->StopMode = STOP_COMMAND;
-				strncpy(CurObj->ObjectStopCommand, DelimCurr, MAX_LINE_SIZE);
+				snprintf(CurObj->ObjectStopCommand, MAX_LINE_SIZE, "%s", DelimCurr);
 			}
 			continue;
 		}
@@ -759,7 +759,7 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 		*Worker3 != '\0'; ++Worker3) ++TempVal; /*We have to get to the spaces anyways. Harvest string length up until a space.*/
 	for (; *Worker3 == ' '; ++Worker3) ++TempVal;
 	
-	strncpy(Worker3, Value, MAX_LINE_SIZE - TempVal);
+	snprintf(Worker3, MAX_LINE_SIZE - TempVal, "%s", Value);
 	
 	/*Now record it back to disk.*/
 	if ((Descriptor = fopen(CONFIGDIR CONF_NAME, "w")))
@@ -813,7 +813,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	}
 
 	/*This is the first thing that must ever be initialized, because it's how we tell objects apart.*/
-	strncpy(Worker->ObjectID, ObjectID, MAX_DESCRIPT_SIZE);
+	snprintf(Worker->ObjectID, MAX_DESCRIPT_SIZE, "%s", ObjectID);
 	
 	/*Initialize these to their default values. Used to test integrity before execution begins.*/
 	Worker->Started = false;
@@ -977,7 +977,7 @@ void ObjRL_AddRunlevel(const char *InRL, ObjTable *InObj)
 	Worker->Next->Next = NULL;
 	Worker->Next->Prev = Worker;
 	
-	strncpy(Worker->RL, InRL, MAX_DESCRIPT_SIZE);
+	snprintf(Worker->RL, MAX_DESCRIPT_SIZE, "%s", InRL);
 }
 
 Bool ObjRL_DelRunlevel(const char *InRL, ObjTable *InObj)
@@ -1080,7 +1080,7 @@ rStatus ReloadConfig(void)
 	
 	for (; Worker->Next != NULL; Worker = Worker->Next)
 	{ /*Store information on what objects are running.*/
-		strncpy(SWorker->ObjectID, Worker->ObjectID, MAX_DESCRIPT_SIZE);
+		snprintf(SWorker->ObjectID, MAX_DESCRIPT_SIZE, "%s", Worker->ObjectID);
 		SWorker->Started = Worker->Started;
 		
 		if (Worker->Next)

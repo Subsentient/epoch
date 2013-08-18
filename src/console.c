@@ -74,35 +74,35 @@ void SetBannerColor(const char *InChoice)
 {
 	if (!strcmp(InChoice, "BLACK"))
 	{
-		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_BLACK, 64);
+		snprintf(BootBanner.BannerColor, 64, "%s", CONSOLE_COLOR_BLACK);
 	}
 	else if (!strcmp(InChoice, "BLUE"))
 	{
-		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_BLUE, 64);
+		snprintf(BootBanner.BannerColor, 64, "%s", CONSOLE_COLOR_BLUE);
 	}
 	else if (!strcmp(InChoice, "RED"))
 	{
-		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_RED, 64);
+		snprintf(BootBanner.BannerColor, 64, "%s", CONSOLE_COLOR_RED);
 	}
 	else if (!strcmp(InChoice, "GREEN"))
 	{
-		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_GREEN, 64);
+		snprintf(BootBanner.BannerColor, 64, "%s", CONSOLE_COLOR_GREEN);
 	}
 	else if (!strcmp(InChoice, "YELLOW"))
 	{
-		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_YELLOW, 64);
+		snprintf(BootBanner.BannerColor, 64, "%s", CONSOLE_COLOR_YELLOW);
 	}
 	else if (!strcmp(InChoice, "MAGENTA"))
 	{
-		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_MAGENTA, 64);
+		snprintf(BootBanner.BannerColor, 64, "%s", CONSOLE_COLOR_MAGENTA);
 	}
 	else if (!strcmp(InChoice, "CYAN"))
 	{
-		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_CYAN, 64);
+		snprintf(BootBanner.BannerColor, 64, "%s", CONSOLE_COLOR_CYAN);
 	}
 	else if (!strcmp(InChoice, "WHITE"))
 	{
-		strncpy(BootBanner.BannerColor, CONSOLE_COLOR_WHITE, 64);
+		snprintf(BootBanner.BannerColor, 64, "%s", CONSOLE_COLOR_WHITE);
 	}
 	else
 	{ /*Bad value? Warn and then set no color.*/
@@ -125,8 +125,8 @@ void PrintStatusReport(const char *InStream, rStatus State)
 	/*Get terminal width so we can adjust the status report.*/
     ioctl(0, TIOCGWINSZ, &WSize);
     StreamLength = WSize.ws_col;
-    
-	strncpy(IP2, InStream, 256);
+
+	snprintf(IP2, 256, "%s", InStream);
 	
 	switch (State)
 	{
@@ -179,7 +179,7 @@ void PrintStatusReport(const char *InStream, rStatus State)
 	
 	if (strlen(IP2) >= StreamLength)
 	{ /*Keep it aligned if we are printing a multi-line report.*/
-		strcat(OutMsg, "\n");
+		strncat(OutMsg, "\n", 2);
 	}
 	else
 	{
@@ -189,10 +189,10 @@ void PrintStatusReport(const char *InStream, rStatus State)
 	/*Appropriate spacing.*/
 	for (; Inc < StreamLength; ++Inc)
 	{
-		strcat(OutMsg, " ");
+		strncat(OutMsg, " ", 2);
 	}
 	
-	strcat(OutMsg, StatusFormat);
+	strncat(OutMsg, StatusFormat, strlen(StatusFormat) + 1);
 	
 	printf("%s", OutMsg);
 	
