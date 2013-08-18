@@ -14,7 +14,6 @@
 /*Limits and stuff.*/
 #define MAX_DESCRIPT_SIZE 512
 #define MAX_LINE_SIZE 8192
-#define MIN_CONFIG_SIZE 16384
 
 /*Configuration.*/
 #ifndef CONFIGDIR /*This is available for good purpose.*/
