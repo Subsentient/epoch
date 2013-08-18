@@ -180,16 +180,18 @@ void EpochMemBusLoop(void)
 				case SUCCESS:
 					MCode = MEMBUS_CODE_ACKNOWLEDGED;
 					break;
+				case NOTIFICATION: /*Ignore this mostly. Guess it's WARNING. Compilers whine if this is not here.*/
 				case WARNING:
 					MCode = MEMBUS_CODE_WARNING;
 					break;
 				case FAILURE:
 					MCode = MEMBUS_CODE_FAILURE;
 					break;
+					
 			}
 			
 			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s",
-			MCode, (BusDataIs(MEMBUS_CODE_OBJSTART) ? MEMBUS_CODE_OBJSTART : MEMBUS_CODE_OBJSTOP), TWorker);
+					MCode, (BusDataIs(MEMBUS_CODE_OBJSTART) ? MEMBUS_CODE_OBJSTART : MEMBUS_CODE_OBJSTOP), TWorker);
 			
 			MemBus_Write(TmpBuf, true);
 		}

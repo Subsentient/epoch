@@ -145,6 +145,11 @@ void PrintStatusReport(const char *InStream, rStatus State)
 			snprintf(StatusFormat, 1024, "[%s]\n", CONSOLE_COLOR_YELLOW "WARNING" CONSOLE_ENDCOLOR);
 			break;
 		}
+		case NOTIFICATION:
+		{ /*Used for objects where ForkLaunch == true.*/
+			snprintf(StatusFormat, 1024, "[%s]\n", CONSOLE_COLOR_CYAN "Launched" CONSOLE_ENDCOLOR);
+			break;
+		}
 		default:
 		{
 			SpitWarning("Bad parameter passed to PrintStatusReport() in console.c.");
@@ -163,6 +168,9 @@ void PrintStatusReport(const char *InStream, rStatus State)
 			break;
 		case WARNING:
 			StreamLength -= strlen("[WARNING]");
+			break;
+		case NOTIFICATION:
+			StreamLength -= strlen("[Launched]");
 			break;
 		default:
 			SpitWarning("Bad parameter passed to PrintStatusReport() in console.c");

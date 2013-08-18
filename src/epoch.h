@@ -110,7 +110,7 @@ typedef signed char Bool;
 typedef enum { STOP_NONE, STOP_COMMAND, STOP_PID, STOP_PIDFILE, STOP_INVALID } StopType;
 
 /*Trinary return values for functions.*/
-typedef enum { FAILURE, SUCCESS, WARNING } rStatus;
+typedef enum { FAILURE, SUCCESS, WARNING, NOTIFICATION } rStatus;
 
 /**Structures go here.**/
 struct _RLTree

@@ -150,15 +150,28 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 	rStatus ExitStatus = SUCCESS;
 	
 	/*Copy in the description to be printed to the console.*/
-	snprintf(PrintOutStream, 1024, "%s %s ", (IsStartingMode ? "Starting" : "Stopping"), CurObj->ObjectName);
+	if (CurObj->ForkLaunch)
+	{
+		snprintf(PrintOutStream, 1024, "%s %s", "Launching process for", CurObj->ObjectName);
+	}
+	else
+	{
+		snprintf(PrintOutStream, 1024, "%s %s", (IsStartingMode ? "Starting" : "Stopping"), CurObj->ObjectName);
+	}
 	
 	if (IsStartingMode)
-	{		
+	{
 		printf("%s", PrintOutStream);
 		fflush(NULL); /*Things tend to get clogged up when we don't flush.*/
 		
 		ExitStatus = ExecuteConfigObject(CurObj, IsStartingMode); /*Don't bother with return value here.*/
 		CurObj->Started = (ExitStatus ? true : false); /*Mark the process dead or alive.*/
+		
+		if (CurObj->ForkLaunch)
+		{ /*Do not just say Done for ForkLaunch objects.*/
+			ExitStatus = NOTIFICATION;
+		}
+		
 		PrintStatusReport(PrintOutStream, ExitStatus);
 	}
 	else
