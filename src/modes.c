@@ -319,7 +319,7 @@ void EmulWall(const char *InStream, Bool ShowUser)
 	char HMS[3][16];
 	char OurUser[256];
 	char OurHostname[256];
-	char FName[128] = "/dev/tty0";
+	char FName[128] = "/dev/tty1";
 	long HMS_I[3];
 	time_t Clock;
 	unsigned long Inc = 0;
@@ -376,7 +376,7 @@ void EmulWall(const char *InStream, Bool ShowUser)
 	snprintf(&OutBuf[strlen(OutBuf)], sizeof OutBuf - strlen(OutBuf), "\n%s\n\n", InStream);
 	
 	/*Now write to the ttys.*/
-	for (Inc = 1; (Descriptor = fopen(FName, "r")); ++Inc) /*See, we use fopen() as a way to check if the file exists.*/
+	for (Inc = 2; (Descriptor = fopen(FName, "r")); ++Inc) /*See, we use fopen() as a way to check if the file exists.*/
 	{ /*Your eyes bleeding yet?*/
 		fclose(Descriptor);
 		
