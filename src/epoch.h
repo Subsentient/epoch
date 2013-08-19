@@ -12,7 +12,7 @@
 /**Defines go here.**/
 
 /*Limits and stuff.*/
-#define MAX_DESCRIPT_SIZE 512
+#define MAX_DESCRIPT_SIZE 384
 #define MAX_LINE_SIZE 8192
 
 /*Configuration.*/
@@ -145,7 +145,7 @@ typedef struct _EpochObjectTable
 struct _BootBanner
 {
 	Bool ShowBanner;
-	char BannerText[512];
+	char BannerText[MAX_DESCRIPT_SIZE];
 	char BannerColor[64];
 };
 

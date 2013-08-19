@@ -164,9 +164,17 @@ rStatus InitConfig(void)
 				BootBanner.ShowBanner = false; /*Should already be false, but to prevent possible bugs...*/
 				continue;
 			}
-			strncat(BootBanner.BannerText, DelimCurr, 512);
+			snprintf(BootBanner.BannerText, MAX_DESCRIPT_SIZE, "%s", DelimCurr);
 			
 			BootBanner.ShowBanner = true;
+			
+			if ((strlen(DelimCurr) + 1) >= MAX_DESCRIPT_SIZE)
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Attribute BootBannerText in epoch.conf line %lu has\n"
+						"abnormally long value and may have been truncated.", LineNum);
+				SpitWarning(TmpBuf);
+			}
 			continue;
 		}
 		else if (!strncmp(Worker, "BootBannerColor", strlen("BootBannerColor")))
@@ -237,6 +245,14 @@ rStatus InitConfig(void)
 			
 			snprintf(Hostname, MAX_LINE_SIZE, "%s", DelimCurr);
 			
+			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Attribute Hostname in epoch.conf line %lu has\n"
+						"abnormally long value and may have been truncated.", LineNum);
+				SpitWarning(TmpBuf);
+			}
+			
 			continue;
 		}		
 		else if (!strncmp(Worker, "ObjectID", strlen("ObjectID")))
@@ -252,6 +268,14 @@ rStatus InitConfig(void)
 			}
 
 			CurObj = AddObjectToTable(DelimCurr); /*Sets this as our current object.*/
+
+			if ((strlen(DelimCurr) + 1) >= MAX_DESCRIPT_SIZE)
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Attribute ObjectID in epoch.conf line %lu has\n"
+						"abnormally long value and may have been truncated.", LineNum);
+				SpitWarning(TmpBuf);
+			}
 
 			continue;
 		}
@@ -403,6 +427,14 @@ rStatus InitConfig(void)
 			}
 			
 			snprintf(CurObj->ObjectDescription, MAX_DESCRIPT_SIZE, "%s", DelimCurr);
+			
+			if ((strlen(DelimCurr) + 1) >= MAX_DESCRIPT_SIZE)
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Attribute ObjectDescription in epoch.conf line %lu has\n"
+						"abnormally long value and may have been truncated.", LineNum);
+				SpitWarning(TmpBuf);
+			}
 
 			continue;
 		}
@@ -428,6 +460,16 @@ rStatus InitConfig(void)
 			}
 			
 			snprintf(CurObj->ObjectStartCommand, MAX_LINE_SIZE, "%s", DelimCurr);
+			
+
+			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Attribute ObjectStartCommand in epoch.conf line %lu has\n"
+						"abnormally long value and may have been truncated.", LineNum);
+				SpitWarning(TmpBuf);
+			}
+			
 			continue;
 		}
 		else if (!strncmp(Worker, "ObjectStopCommand", strlen("ObjectStopCommand")))
@@ -479,6 +521,15 @@ rStatus InitConfig(void)
 				CurObj->StopMode = STOP_COMMAND;
 				snprintf(CurObj->ObjectStopCommand, MAX_LINE_SIZE, "%s", DelimCurr);
 			}
+			
+			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Attribute ObjectStartCommand in epoch.conf line %lu has\n"
+						"abnormally long value and may have been truncated.", LineNum);
+				SpitWarning(TmpBuf);
+			}
+			
 			continue;
 		}
 		else if (!strncmp(Worker, "ObjectStartPriority", strlen("ObjectStartPriority")))
@@ -513,6 +564,15 @@ rStatus InitConfig(void)
 			}
 			
 			CurObj->ObjectStartPriority = atoi(DelimCurr);
+			
+			if (strlen(DelimCurr) >= 8)
+			{ /*An eight digit number is too high.*/
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Attribute ObjectStartCommand in epoch.conf line %lu has\n"
+						"abnormally high numeric value and may cause malfunctions.", LineNum);
+				SpitWarning(TmpBuf);
+			}
+			
 			continue;
 		}
 		else if (!strncmp(Worker, "ObjectStopPriority", strlen("ObjectStopPriority")))
@@ -546,6 +606,15 @@ rStatus InitConfig(void)
 			}
 			
 			CurObj->ObjectStopPriority = atoi(DelimCurr);
+			
+			if (strlen(DelimCurr) >= 8)
+			{ /*An eight digit number is too high.*/
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Attribute ObjectStopCommand in epoch.conf line %lu has\n"
+						"abnormally high numeric value and may cause malfunctions.", LineNum);
+				SpitWarning(TmpBuf);
+			}
+			
 			continue;
 		}
 		else if (!strncmp(Worker, "ObjectRunlevels", strlen("ObjectRunlevels")))
@@ -584,6 +653,14 @@ rStatus InitConfig(void)
 				ObjRL_AddRunlevel(TRL, CurObj);
 				
 			} while ((TWorker = NextSpace(TWorker)));
+			
+			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Attribute ObjectRunlevels in epoch.conf line %lu has\n"
+						"abnormally long value and may have been truncated.", LineNum);
+				SpitWarning(TmpBuf);
+			}
 			
 			continue;
 
