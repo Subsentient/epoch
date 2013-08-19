@@ -13,6 +13,7 @@
 #include <signal.h>
 #include <ctype.h>
 #include <dirent.h>
+#include <time.h>
 #include "epoch.h"
 
 rStatus TellInitToDo(const char *MembusCode)
@@ -310,3 +311,97 @@ rStatus EmulKillall5(unsigned long InSignal)
 	return SUCCESS;
 }
 
+void EmulWall(const char *InStream, Bool ShowUser)
+{ /*We not only use this as a CLI applet, we use it to notify of impending shutdown too.*/
+	FILE *Descriptor = NULL;
+	struct tm *TimeP;
+	char OutBuf[8192];
+	char HMS[3][16];
+	char OurUser[256];
+	char OurHostname[256];
+	char FName[128] = "/dev/tty0";
+	long HMS_I[3];
+	time_t Clock;
+	unsigned long Inc = 0;
+	
+	
+	if (getuid() != 0)
+	{ /*Not root?*/
+		SpitWarning("You are not root. Only sending to ttys you have privileges on.");
+	}
+	
+	time(&Clock);
+	TimeP = localtime(&Clock);
+	
+	HMS_I[0] = TimeP->tm_hour;
+	HMS_I[1] = TimeP->tm_min;
+	HMS_I[2] = TimeP->tm_sec;
+	
+	for (; Inc < 3; ++Inc)
+	{
+		if (HMS_I[Inc] < 10)
+		{
+			snprintf(HMS[Inc], 16, "0%ld", HMS_I[Inc]);
+		}
+		else
+		{
+			snprintf(HMS[Inc], 16, "%ld", HMS_I[Inc]);
+		}
+	}
+		
+	snprintf(OutBuf, 64, "\007\n%s[%s:%s:%s | %d/%d/%d]%s ", CONSOLE_COLOR_RED, HMS[0], HMS[1], HMS[2],
+		TimeP->tm_mon + 1, TimeP->tm_mday, TimeP->tm_year + 1900, CONSOLE_ENDCOLOR);
+	
+	if (ShowUser)
+	{
+		if (getlogin_r(OurUser, sizeof OurUser) != 0)
+		{
+			snprintf(OurUser, sizeof OurUser, "%s", "(unknown)");
+		}
+		
+		if (gethostname(OurHostname, sizeof OurHostname) != 0)
+		{
+			snprintf(OurHostname, sizeof OurHostname, "%s", "(unknown)");
+		}
+		
+		/*I really enjoy pulling stuff off like the line below.*/
+		snprintf(&OutBuf[strlen(OutBuf)], sizeof OutBuf - strlen(OutBuf), "Broadcast message from %s@%s: ", OurUser, OurHostname);
+		
+	}
+	else
+	{
+		snprintf(&OutBuf[strlen(OutBuf)], sizeof OutBuf - strlen(OutBuf), "%s", "Broadcast message: ");
+	}
+	
+	snprintf(&OutBuf[strlen(OutBuf)], sizeof OutBuf - strlen(OutBuf), "\n%s\n\n", InStream);
+	
+	/*Now write to the ttys.*/
+	for (Inc = 1; (Descriptor = fopen(FName, "r")); ++Inc) /*See, we use fopen() as a way to check if the file exists.*/
+	{ /*Your eyes bleeding yet?*/
+		fclose(Descriptor);
+		
+		Descriptor = fopen(FName, "w");
+		fwrite(OutBuf, 1, strlen(OutBuf), Descriptor);
+		fflush(NULL);
+		fclose(Descriptor);
+		Descriptor = NULL;
+		
+		snprintf(FName, sizeof FName, "/dev/tty%lu", Inc);
+	}
+	
+	snprintf(FName, sizeof FName, "%s", "/dev/pts/0");
+	
+	for (Inc = 1; (Descriptor = fopen(FName, "r")); ++Inc)
+	{
+		fclose(Descriptor);
+		
+		Descriptor = fopen(FName, "w");
+		fwrite(OutBuf, 1, strlen(OutBuf), Descriptor);
+		fflush(NULL);
+		fclose(Descriptor);
+		
+		Descriptor = NULL;
+		
+		snprintf(FName, sizeof FName, "/dev/pts/%lu", Inc);
+	}
+}

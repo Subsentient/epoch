@@ -258,6 +258,24 @@ int main(int argc, char **argv)
 		}
 		
 	}
+	else if (CmdIs("wall"))
+	{
+		if (argc == 2)
+		{
+			EmulWall(argv[1], true);
+			return 0;
+		}
+		else if (argc == 3 && !strcmp(argv[1], "-n"))
+		{
+			EmulWall(argv[2], false);
+			return 0;
+		}
+		else
+		{
+			puts("Usage: wall [-n] message");
+			return 1;
+		}
+	}
 	else
 	{
 		SpitError("Unrecognized applet name.");

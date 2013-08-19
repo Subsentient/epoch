@@ -431,16 +431,19 @@ void EpochMemBusLoop(void)
 		else if (BusDataIs(MEMBUS_CODE_HALT))
 		{
 			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_HALT, true);
+			EmulWall("System is going down for halt NOW!", false);
 			LaunchShutdown(OSCTL_LINUX_HALT);
 		}
 		else if (BusDataIs(MEMBUS_CODE_POWEROFF))
 		{
 			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_POWEROFF, true);
+			EmulWall("System is going down for poweroff NOW!", false);
 			LaunchShutdown(OSCTL_LINUX_POWEROFF);
 		}
 		else if (BusDataIs(MEMBUS_CODE_REBOOT))
 		{
 			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_REBOOT, true);
+			EmulWall("System is going down for reboot NOW!", false);
 			LaunchShutdown(OSCTL_LINUX_REBOOT);
 		}
 		/*Power functions that nuke everything and reboot/halt us immediately.*/
