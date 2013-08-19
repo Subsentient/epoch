@@ -152,11 +152,11 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 	/*Copy in the description to be printed to the console.*/
 	if (CurObj->ForkLaunch)
 	{
-		snprintf(PrintOutStream, 1024, "%s %s", "Launching process for", CurObj->ObjectName);
+		snprintf(PrintOutStream, 1024, "%s %s", "Launching process for", CurObj->ObjectDescription);
 	}
 	else
 	{
-		snprintf(PrintOutStream, 1024, "%s %s", (IsStartingMode ? "Starting" : "Stopping"), CurObj->ObjectName);
+		snprintf(PrintOutStream, 1024, "%s %s", (IsStartingMode ? "Starting" : "Stopping"), CurObj->ObjectDescription);
 	}
 	
 	if (IsStartingMode)

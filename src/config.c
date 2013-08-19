@@ -381,13 +381,13 @@ rStatus InitConfig(void)
 			
 			continue;
 		}
-		else if (!strncmp(Worker, "ObjectName", strlen("ObjectName")))
+		else if (!strncmp(Worker, "ObjectDescription", strlen("ObjectDescription")))
 		{ /*It's description.*/
 			
 			if (!CurObj)
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Attribute ObjectName comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
+				snprintf(TmpBuf, 1024, "Attribute ObjectDescription comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
 				
 				SpitError(TmpBuf);
 				return FAILURE;
@@ -396,13 +396,13 @@ rStatus InitConfig(void)
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectName in epoch.conf line %lu.", LineNum);
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectDescription in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
 				
 				return FAILURE;
 			}
 			
-			snprintf(CurObj->ObjectName, MAX_DESCRIPT_SIZE, "%s", DelimCurr);
+			snprintf(CurObj->ObjectDescription, MAX_DESCRIPT_SIZE, "%s", DelimCurr);
 
 			continue;
 		}
@@ -817,7 +817,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	
 	/*Initialize these to their default values. Used to test integrity before execution begins.*/
 	Worker->Started = false;
-	Worker->ObjectName[0] = '\0';
+	Worker->ObjectDescription[0] = '\0';
 	Worker->ObjectStartCommand[0] = '\0';
 	Worker->ObjectStopCommand[0] = '\0';
 	Worker->ObjectPIDFile[0] = '\0';
@@ -841,9 +841,9 @@ static rStatus ScanConfigIntegrity(void)
 	
 	for (; Worker->Next != NULL; Worker = Worker->Next)
 	{
-		if (*Worker->ObjectName == '\0')
+		if (*Worker->ObjectDescription == '\0')
 		{
-			snprintf(TmpBuf, 1024, "Object %s has no attribute ObjectName.", Worker->ObjectID);
+			snprintf(TmpBuf, 1024, "Object %s has no attribute ObjectDescription.", Worker->ObjectID);
 			SpitError(TmpBuf);
 			return FAILURE;
 		}

@@ -123,7 +123,7 @@ struct _RLTree
 typedef struct _EpochObjectTable
 {
 	char ObjectID[MAX_DESCRIPT_SIZE]; /*The ASCII ID given to this item by whoever configured Epoch.*/
-	char ObjectName[MAX_DESCRIPT_SIZE]; /*The description of the object.*/
+	char ObjectDescription[MAX_DESCRIPT_SIZE]; /*The description of the object.*/
 	char ObjectStartCommand[MAX_LINE_SIZE]; /*The command to be executed.*/
 	char ObjectStopCommand[MAX_LINE_SIZE]; /*How to shut it down.*/
 	char ObjectPIDFile[MAX_LINE_SIZE];
