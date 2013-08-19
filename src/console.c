@@ -125,6 +125,11 @@ void PrintStatusReport(const char *InStream, rStatus State)
 	/*Get terminal width so we can adjust the status report.*/
     ioctl(0, TIOCGWINSZ, &WSize);
     StreamLength = WSize.ws_col;
+    
+	if (StreamLength >= sizeof OutMsg/2)
+	{ /*Default to 80 if we get a very big number.*/
+		StreamLength = 80;
+	}
 
 	snprintf(IP2, 256, "%s", InStream);
 	
