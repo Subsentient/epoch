@@ -172,6 +172,54 @@ int main(int argc, char **argv)
 				ShutdownMemBus(false);
 				return (int)RVal;
 			}
+			else if (ArgIs("configreload"))
+			{
+				char TRecv[MEMBUS_SIZE/2 - 1];
+				char TBuf[3][MAX_LINE_SIZE];
+				
+				if (!MemBus_Write(MEMBUS_CODE_RESET, false))
+				{
+					SpitError("Failed to write to membus.");
+					ShutdownMemBus(false);
+					return 1;
+				}
+				
+				while (!MemBus_Read(TRecv, false)) usleep(1000);
+				
+				snprintf(TBuf[0], sizeof TBuf[0], "%s %s", MEMBUS_CODE_ACKNOWLEDGED, MEMBUS_CODE_RESET);
+				snprintf(TBuf[1], sizeof TBuf[1], "%s %s", MEMBUS_CODE_FAILURE, MEMBUS_CODE_RESET);
+				snprintf(TBuf[2], sizeof TBuf[2], "%s %s", MEMBUS_CODE_BADPARAM, MEMBUS_CODE_RESET);
+				
+				if (!strcmp(TBuf[0], TRecv))
+				{
+					puts("Reload successful.");
+					ShutdownMemBus(false);
+					
+					return 0;
+				}
+				else if (!strcmp(TBuf[1], TRecv))
+				{
+					puts("Reload failed!");
+					ShutdownMemBus(false);
+					
+					return 1;
+				}
+				else if (!strcmp(TBuf[2], TRecv))
+				{
+					SpitError("We are being told that MEMBUS_CODE_RESET is not a valid signal! Please report to Epoch.");
+					ShutdownMemBus(false);
+					
+					return 1;
+				}
+				else
+				{
+					SpitError("Unknown response received! Can't handle this! Report to Epoch please!");
+					ShutdownMemBus(false);
+					
+					return 1;
+				}
+			}
+			
 			else
 			{
 				fprintf(stderr, "Bad command %s.\n", CArg);

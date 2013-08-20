@@ -1160,7 +1160,7 @@ rStatus ReloadConfig(void)
 		snprintf(SWorker->ObjectID, MAX_DESCRIPT_SIZE, "%s", Worker->ObjectID);
 		SWorker->Started = Worker->Started;
 		
-		if (Worker->Next)
+		if (Worker->Next->Next)
 		{
 			SWorker->Next = malloc(sizeof(struct _TRunStats));
 			SWorker = SWorker->Next;
