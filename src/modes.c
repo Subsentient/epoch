@@ -75,12 +75,6 @@ rStatus TellInitToDo(const char *MembusCode)
 		return FAILURE;
 	}
 	
-	if (!InitMemBus(false))
-	{
-		SpitError("Failed to connect to membus.");
-		return FAILURE;
-	}
-	
 	if (!MemBus_Write(MembusCode, false))
 	{
 		SpitError("Failed to write to membus.");
@@ -115,8 +109,8 @@ rStatus TellInitToDo(const char *MembusCode)
 	return SUCCESS;
 }
 
-rStatus ObjStartStop(const char *ObjectID, const char *MemBusSignal)
-{ /*Start and stop services.*/
+rStatus ObjControl(const char *ObjectID, const char *MemBusSignal)
+{ /*Start and stop or disable services.*/
 	char RemoteResponse[MEMBUS_SIZE/2 - 1];
 	char OutMsg[MEMBUS_SIZE/2 - 1];
 	char PossibleResponses[4][MEMBUS_SIZE/2 - 1];

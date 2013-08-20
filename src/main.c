@@ -125,6 +125,7 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 
 int main(int argc, char **argv)
 { /*Lotsa sloppy CLI processing here.*/
+	const char *CArg = argv[1];
 	
 	/*Figure out what we are.*/
 	if (argv[0] == NULL)
@@ -132,13 +133,209 @@ int main(int argc, char **argv)
 		SpitError("main(): argv[0] is NULL. Why?");
 		return 1;
 	}
+
 	
 	if (CmdIs("poweroff") || CmdIs("reboot") || CmdIs("halt"))
 	{
-		return !ProcessGenericHalt(argc, argv);
+		Bool RVal;
+		
+		/*Start membus.*/
+		if (!InitMemBus(false))
+		{
+			SpitError("Failed to connect to membus.");
+			return 1;
+		}
+		
+		RVal = !ProcessGenericHalt(argc, argv);
+		
+		ShutdownMemBus(false);
+		
+		return (int)RVal;
 	}
-	
-	if (CmdIs("init"))
+	else if (CmdIs("epoch")) /*Our main management program.*/
+	{
+		if (!InitMemBus(false))
+		{
+			SpitError("Failed to connect to membus.");
+			return 1;
+		}
+		
+		/*One argument?*/
+		if (argc == 2)
+		{
+			CArg = argv[1];
+			
+			if (ArgIs("poweroff") || ArgIs("reboot") || ArgIs("halt"))
+			{
+				const Bool RVal = !ProcessGenericHalt(argc, argv);
+				
+				ShutdownMemBus(false);
+				return (int)RVal;
+			}
+			else
+			{
+				fprintf(stderr, "Bad command %s.\n", CArg);
+				ShutdownMemBus(false);
+				return 1;
+			}
+		}
+		else if (argc == 3)
+		{
+			CArg = argv[1];
+			
+			if (ArgIs("enable") || ArgIs("disable"))
+			{
+				rStatus RV = SUCCESS;
+				Bool Enabling = ArgIs("enable");
+				char TOut[MAX_LINE_SIZE];
+				
+				CArg = argv[2];
+				snprintf(TOut, sizeof TOut, (Enabling ? "Enabling %s" : "Disabling %s"), CArg);
+				printf("%s", TOut);
+				fflush(NULL);
+				
+				RV = ObjControl(CArg, (Enabling ? MEMBUS_CODE_OBJENABLE : MEMBUS_CODE_OBJDISABLE));
+				PrintStatusReport(TOut, RV);
+				
+				ShutdownMemBus(false);
+				return !RV;
+			}
+			else if (ArgIs("start") || ArgIs("stop"))
+			{
+				rStatus RV = SUCCESS;
+				Bool Starting = ArgIs("start");
+				char TOut[MAX_LINE_SIZE];
+				
+				CArg = argv[2];
+				snprintf(TOut, sizeof TOut, (Starting ? "Starting %s" : "Stopping %s"), CArg);
+				printf("%s", TOut);
+				fflush(NULL);
+				
+				RV = ObjControl(CArg, (Starting ? MEMBUS_CODE_OBJSTART : MEMBUS_CODE_OBJSTOP));
+				PrintStatusReport(TOut, RV);
+				
+				ShutdownMemBus(false);
+				return !RV;
+			}
+			else if (ArgIs("status"))
+			{
+				CArg = argv[2];
+				
+				if (AskObjectStarted(CArg))
+				{
+					printf("%s is currently running.\n", CArg);
+				}
+				else
+				{
+					printf("%s is stopped.\n", CArg);
+				}
+				
+				ShutdownMemBus(false);
+				return 0;
+			}
+			else
+			{
+				fprintf(stderr, "Bad command %s.\n", argv[1]);
+				ShutdownMemBus(false);
+				return 1;
+			}
+		}
+		else if (argc == 5)
+		{
+			if (ArgIs("objrl"))
+			{
+				const char *ObjectID = argv[2], *RL = argv[4];
+				char OBuf[MEMBUS_SIZE/2 - 1];
+				char IBuf[MEMBUS_SIZE/2 - 1];
+				CArg = argv[3];
+				
+				if (ArgIs("add"))
+				{
+					snprintf(OBuf, sizeof OBuf, "%s %s %s", MEMBUS_CODE_OBJRLS_ADD, ObjectID, RL);
+				}
+				else if (ArgIs("del"))
+				{
+					snprintf(OBuf, sizeof OBuf, "%s %s %s", MEMBUS_CODE_OBJRLS_DEL, ObjectID, RL);
+				}
+				else if (ArgIs("check"))
+				{
+					snprintf(OBuf, sizeof OBuf, "%s %s %s", MEMBUS_CODE_OBJRLS_CHECK, ObjectID, RL);
+				}
+				else
+				{
+					fprintf(stderr, "Invalid runlevel option %s.\n", CArg);
+					ShutdownMemBus(false);
+					return 1;
+				}
+				
+				if (!MemBus_Write(OBuf, false))
+				{
+					SpitError("Failed to write to membus.");
+					ShutdownMemBus(false);
+					return 1;
+				}
+				
+				while (!MemBus_Read(IBuf, false)) usleep(1000);
+				
+				if (ArgIs("add") || ArgIs("del"))
+				{
+					char PossibleResponses[3][MAX_LINE_SIZE];
+					
+					snprintf(PossibleResponses[0], sizeof PossibleResponses[0], "%s %s %s %s", MEMBUS_CODE_ACKNOWLEDGED,
+							(ArgIs("add") ? MEMBUS_CODE_OBJRLS_ADD : MEMBUS_CODE_OBJRLS_DEL), ObjectID, RL);
+					
+					snprintf(PossibleResponses[1], sizeof PossibleResponses[1], "%s %s %s %s", MEMBUS_CODE_FAILURE,
+							(ArgIs("add") ? MEMBUS_CODE_OBJRLS_ADD : MEMBUS_CODE_OBJRLS_DEL), ObjectID, RL);
+							
+					snprintf(PossibleResponses[2], sizeof PossibleResponses[2], "%s %s", MEMBUS_CODE_ACKNOWLEDGED, OBuf);
+					
+					if (!strcmp(PossibleResponses[0], IBuf))
+					{
+						char *PSFormat[2] = { "Object %s added to runlevel %s\n", "Object %s deleted from runlevel %s\n" };
+						printf(PSFormat[(ArgIs("add") ? 0 : 1)], ObjectID, RL);
+						ShutdownMemBus(false);
+						return 0;
+					}
+					else if (!strcmp(PossibleResponses[1], IBuf))
+					{
+						char *PSFormat[2] = { "Unable to add %s to runlevel %s!\n", "Unable to remove %s from runlevel %s!\n" };
+						
+						fprintf(stderr, PSFormat[(ArgIs("add") ? 0 : 1)], ObjectID, RL);
+						ShutdownMemBus(false);
+						
+						return 1;
+					}
+					else if (!strcmp(PossibleResponses[2], IBuf))
+					{
+						SpitError("Internal membus error, received BADPARAM upon your request. Please report to Epoch.");
+						ShutdownMemBus(false);
+						
+						return 1;
+					}
+					else
+					{
+						SpitError("Received unrecognized or corrupted response via membus! Please report to Epoch.");
+						ShutdownMemBus(false);
+						
+						return 1;
+					}
+				}
+			}
+			else
+			{
+				fprintf(stderr, "Bad command %s.\n", CArg);
+				ShutdownMemBus(false);
+				return 1;
+			}
+		}
+		else
+		{
+			fprintf(stderr, "%s\n", "Invalid usage.");
+			ShutdownMemBus(false);
+			return 1;
+		}
+	}
+	else if (CmdIs("init"))
 	{ /*This is a bit long winded here, however, it's better than devoting a function for it.*/
 		if (argc == 1)
 		{ /*Just us, as init. That means, begin bootup.*/
@@ -149,9 +346,10 @@ int main(int argc, char **argv)
 			else
 			{
 				SpitError("Refusing to launch the whole boot sequence if not PID 1.");
+				return 1;
 			}
 		}
-		else if (argv[1] != NULL && argc == 2)
+		else if (argc == 2)
 		{
 			char TmpBuf[MEMBUS_SIZE/2 - 1];
 			char StatusReport[MAX_DESCRIPT_SIZE + 64];
@@ -284,4 +482,3 @@ int main(int argc, char **argv)
 	
 	return 0;
 }
-	

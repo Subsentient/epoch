@@ -384,20 +384,33 @@ void EpochMemBusLoop(void)
 					}
 					else
 					{
-						if (!ObjRL_DelRunlevel(TRL, CurObj))
+						unsigned long TInc = 0;
+						
+						/*Count number of entries.*/
+						for (; ObjRLS->Next != NULL; ++TInc) ObjRLS = ObjRLS->Next;
+						
+						if (TInc == 1 || !ObjRL_DelRunlevel(TRL, CurObj))
 						{
 							snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
 							MemBus_Write(TmpBuf, true);
 							free(RLStream);
 							continue;
 						}
+						ObjRLS = CurObj->ObjectRunlevels;
+						if (!ObjRLS->Next)
+						{
+							ObjRLS->Next = malloc(sizeof(struct _RLTree));
+							ObjRLS->Next->Prev = ObjRLS;
+							ObjRLS->Next->Next = NULL;
+						}
 					}
 					
 					*RLStream = '\0';
+
 					for (; ObjRLS->Next != NULL; ObjRLS = ObjRLS->Next)
 					{
 						strncat(RLStream, ObjRLS->RL, MAX_DESCRIPT_SIZE);
-						
+							
 						if (ObjRLS->Next->Next != NULL)
 						{
 							strncat(RLStream, " ", 1);
@@ -507,6 +520,10 @@ rStatus ShutdownMemBus(Bool ServerSide)
 		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NEWCONNECTION;
 		return SUCCESS;
 	}
+	else
+	{
+		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NOMSG; /*We do this so client applications don't think they are still up.*/
+	}
 	
 	if (!MemData)
 	{
@@ -514,7 +531,7 @@ rStatus ShutdownMemBus(Bool ServerSide)
 	}
 	
 	*MemData = MEMBUS_NOMSG;
-	*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NOMSG; /*We do this so client applications don't think they are still up.*/
+	
 	if (shmdt(MemData) != 0)
 	{
 		SpitWarning("ShutdownMemBus(): Unable to shut down memory bus.");
