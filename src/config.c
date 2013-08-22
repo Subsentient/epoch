@@ -97,6 +97,7 @@ rStatus InitConfig(void)
 	if ((*Worker == '\n' && *(Worker + 1) == '\0') || *Worker == '\0')
 	{
 		SpitError("Seems that epoch.conf is empty or corrupted.");
+		free(ConfigStream);
 		return FAILURE;
 	}
 
@@ -118,7 +119,8 @@ rStatus InitConfig(void)
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Missing or bad value for attribute DisableCAD in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 
@@ -153,7 +155,8 @@ rStatus InitConfig(void)
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Missing or bad value for attribute BootBannerText in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -184,7 +187,8 @@ rStatus InitConfig(void)
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Missing or bad value for attribute BootBannerColor in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -205,7 +209,8 @@ rStatus InitConfig(void)
 				
 				snprintf(TmpBuf, 1024, "Attribute DefaultRunlevel cannot be set after an ObjectID attribute; epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -214,7 +219,8 @@ rStatus InitConfig(void)
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Missing or bad value for attribute DefaultRunlevel in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}	
 			
@@ -230,7 +236,8 @@ rStatus InitConfig(void)
 				
 				snprintf(TmpBuf, 1024, "Attribute Hostname cannot be set after an ObjectID attribute; epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -239,7 +246,8 @@ rStatus InitConfig(void)
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Missing or bad value for attribute Hostname in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -263,7 +271,8 @@ rStatus InitConfig(void)
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectID in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 
@@ -285,8 +294,9 @@ rStatus InitConfig(void)
 			{
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Attribute ObjectEnabled comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
-				
 				SpitError(TmpBuf);
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -295,7 +305,8 @@ rStatus InitConfig(void)
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectEnabled in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -317,7 +328,8 @@ rStatus InitConfig(void)
 						"Valid values are true and false.",
 						DelimCurr, CurObj->ObjectID, LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -329,8 +341,9 @@ rStatus InitConfig(void)
 			{
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Attribute ObjectLaunchMode comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
-				
 				SpitError(TmpBuf);
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -339,7 +352,8 @@ rStatus InitConfig(void)
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectLaunchMode in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -361,7 +375,8 @@ rStatus InitConfig(void)
 						"Valid values are NORMAL and NOWAIT.",
 						DelimCurr, CurObj->ObjectID, LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -373,8 +388,9 @@ rStatus InitConfig(void)
 			{
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Attribute ObjectPersistent comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
-				
 				SpitError(TmpBuf);
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			if (!GetLineDelim(Worker, DelimCurr))
@@ -382,7 +398,8 @@ rStatus InitConfig(void)
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectPersistent in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -400,6 +417,8 @@ rStatus InitConfig(void)
 				
 				snprintf(TmpBuf, 1024, "Bad value for attribute ObjectPersistent in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -412,8 +431,9 @@ rStatus InitConfig(void)
 			{
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Attribute ObjectDescription comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
-				
 				SpitError(TmpBuf);
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -422,7 +442,8 @@ rStatus InitConfig(void)
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectDescription in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -445,8 +466,9 @@ rStatus InitConfig(void)
 			{
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Attribute ObjectStartCommand comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
-				
 				SpitError(TmpBuf);
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -455,7 +477,8 @@ rStatus InitConfig(void)
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStartCommand in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -479,8 +502,9 @@ rStatus InitConfig(void)
 			{
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Attribute ObjectStopCommand comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
-				
 				SpitError(TmpBuf);
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -489,7 +513,8 @@ rStatus InitConfig(void)
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStopCommand in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 
@@ -540,8 +565,9 @@ rStatus InitConfig(void)
 			{
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Attribute ObjectStartPriority comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
-				
 				SpitError(TmpBuf);
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -550,7 +576,8 @@ rStatus InitConfig(void)
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStartPriority in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -559,7 +586,8 @@ rStatus InitConfig(void)
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Bad non-integer value for attribute ObjectStartPriority in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -582,8 +610,9 @@ rStatus InitConfig(void)
 			{
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Attribute ObjectStopPriority comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
-				
 				SpitError(TmpBuf);
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -592,7 +621,8 @@ rStatus InitConfig(void)
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStopPriority in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -601,7 +631,8 @@ rStatus InitConfig(void)
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Bad non-integer value for attribute ObjectStopPriority in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -626,8 +657,9 @@ rStatus InitConfig(void)
 			{
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Attribute ObjectRunlevels comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
-				
 				SpitError(TmpBuf);
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -636,7 +668,8 @@ rStatus InitConfig(void)
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectRunlevels in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
-				
+				ShutdownConfig();
+				free(ConfigStream);
 				return FAILURE;
 			}
 			
@@ -680,7 +713,8 @@ rStatus InitConfig(void)
 		fprintf(stderr, CONSOLE_COLOR_MAGENTA "Beginning dump of epoch.conf to console.\n" CONSOLE_ENDCOLOR);
 		fprintf(stderr, "%s", ConfigStream);
 		fflush(NULL);
-		
+		ShutdownConfig();
+		free(ConfigStream);
 		return FAILURE;
 	}
 		
@@ -1145,50 +1179,53 @@ void ShutdownConfig(void)
 }
 
 rStatus ReloadConfig(void)
-{
+{ /*This function is somewhat hard to read, but it does the job well.*/
 	ObjTable *Worker = ObjectTable;
-	struct _TRunStats
-	{
-		char ObjectID[MAX_DESCRIPT_SIZE];
-		Bool Started;
-		
-		struct _TRunStats *Next;
-	} *RStatStore = malloc(sizeof(struct _TRunStats)), *SWorker = RStatStore, *TDel;
+	ObjTable *TRoot = malloc(sizeof(ObjTable)), *SWorker = TRoot, *Temp;
+	struct _RLTree *RLTemp1, *RLTemp2;
 	
-	for (; Worker->Next != NULL; Worker = Worker->Next)
-	{ /*Store information on what objects are running.*/
-		snprintf(SWorker->ObjectID, MAX_DESCRIPT_SIZE, "%s", Worker->ObjectID);
-		SWorker->Started = Worker->Started;
+	for (; Worker->Next != NULL; Worker = Worker->Next, SWorker = SWorker->Next)
+	{
+		*SWorker = *Worker; /*Direct as-a-unit copy of the main list node to the backup list node.*/
+		SWorker->Next = malloc(sizeof(ObjTable));
+		SWorker->Next->Next = NULL;
+		SWorker->Next->Prev = SWorker;
+		RLTemp2 = SWorker->ObjectRunlevels = malloc(sizeof(struct _RLTree));
 		
-		if (Worker->Next->Next)
+		for (RLTemp1 = Worker->ObjectRunlevels; RLTemp1->Next; RLTemp1 = RLTemp1->Next)
 		{
-			SWorker->Next = malloc(sizeof(struct _TRunStats));
-			SWorker = SWorker->Next;
+			*RLTemp2 = *RLTemp1;
+			RLTemp2->Next = malloc(sizeof(struct _RLTree));
+			RLTemp2->Next->Next = NULL;
+			RLTemp2->Next->Prev = RLTemp2;
+			RLTemp2 = RLTemp2->Next;
 		}
 	}
 
+	/*Actually do the reload of the config.*/
 	ShutdownConfig();
 	if (!InitConfig())
 	{
-		SpitError("ReloadConfig(): Failed to reload configuration.");
+		SpitError("ReloadConfig(): Failed to reload configuration.\n"
+					"Restoring old configuration to memory.\n"
+					"Please check epoch.conf for syntax errors.");
+		ObjectTable = TRoot; /*Point ObjectTable to our new, identical copy of the old tree.*/
 		return FAILURE;
 	}
 	
-	for (SWorker = RStatStore; SWorker != NULL; SWorker = SWorker->Next)
-	{
-		if (!(Worker = LookupObjectInTable(SWorker->ObjectID)))
-		{ /*No longer exists? Proceed past it.*/
-			continue;
+	for (SWorker = TRoot; SWorker->Next != NULL; SWorker = Temp)
+	{ /*Add back the Started states, so we don't forget to stop services, etc.*/
+		if ((Worker = LookupObjectInTable(SWorker->ObjectID)))
+		{
+			Worker->Started = SWorker->Started;
 		}
 		
-		Worker->Started = SWorker->Started;
-	}
-	
-	for (SWorker = RStatStore; SWorker != NULL; SWorker = TDel)
-	{
-		TDel = SWorker->Next;
+		ObjRL_ShutdownRunlevels(SWorker);
+		Temp = SWorker->Next;
 		free(SWorker);
 	}
+	free(SWorker);
 	
+	puts(CONSOLE_COLOR_GREEN "Epoch: Configuration reloaded." CONSOLE_ENDCOLOR);
 	return SUCCESS;
 }

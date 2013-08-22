@@ -202,8 +202,8 @@ Bool AskObjectStarted(const char *ObjectID)
 		MEMBUS_CODE_STATUS, ObjectID, "0");
 	snprintf(PossibleResponses[1], sizeof PossibleResponses[1], "%s %s %s",
 		MEMBUS_CODE_STATUS, ObjectID, "1");
-	snprintf(PossibleResponses[2], sizeof PossibleResponses[2], "%s %s",
-		MEMBUS_CODE_FAILURE, MEMBUS_CODE_STATUS);
+	snprintf(PossibleResponses[2], sizeof PossibleResponses[2], "%s %s %s",
+		MEMBUS_CODE_FAILURE, MEMBUS_CODE_STATUS, ObjectID);
 		
 	if (!strcmp(RemoteResponse, PossibleResponses[0]))
 	{

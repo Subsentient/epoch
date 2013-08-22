@@ -220,7 +220,9 @@ void EpochMemBusLoop(void)
 			}
 			else
 			{
-				MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_STATUS, true);
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+				
+				MemBus_Write(TmpBuf, true);
 			}
 		}
 		else if (BusDataIs(MEMBUS_CODE_OBJENABLE) || BusDataIs(MEMBUS_CODE_OBJDISABLE))
