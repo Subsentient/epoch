@@ -7,6 +7,7 @@
  * I can't see this file getting too big.**/
 
 #include <stdio.h>
+#include <time.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include "epoch.h"
@@ -202,6 +203,56 @@ void PrintStatusReport(const char *InStream, rStatus State)
 	printf("%s", OutMsg);
 	
 	return;
+}
+
+void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutMonth, char *OutDay, char *OutYear)
+{ /*You can put NULL for items that you don't want the value of.*/
+	struct tm *TimeP;
+	long HMS_I[3];
+	long MDY_I[3];
+	char *HMS[3];
+	char *MDY[3];
+	short Inc = 0;
+	time_t TimeT;
+	
+	/*Compiler whines if I try to initialize these.*/
+	HMS[0] = OutHr;
+	HMS[1] = OutMin;
+	HMS[2] = OutSec;
+	
+	MDY[0] = OutMonth;
+	MDY[1] = OutDay;
+	MDY[2] = OutYear;
+	
+	/*Actually get the time.*/
+	time(&TimeT);
+	TimeP = localtime(&TimeT);
+	
+	HMS_I[0] = TimeP->tm_hour;
+	HMS_I[1] = TimeP->tm_min;
+	HMS_I[2] = TimeP->tm_sec;
+	
+	MDY_I[0] = TimeP->tm_mon + 1;
+	MDY_I[1] = TimeP->tm_mday;
+	MDY_I[2] = TimeP->tm_year + 1900;
+	
+	for (; Inc < 3; ++Inc)
+	{
+		if (HMS[Inc] == NULL)
+		{
+			continue;
+		}
+		
+		snprintf(HMS[Inc], 16, (HMS_I[Inc] > 10 ? "%ld" : "0%ld"), HMS_I[Inc]);
+	}
+	
+	for (Inc = 0; Inc < 3; ++Inc)
+	{
+		if (MDY[Inc] != NULL)
+		{
+			snprintf(MDY[Inc], 16, (MDY_I[Inc] > 10 ? "%ld" : "0%ld"), MDY_I[Inc]);
+		}
+	}
 }
 
 /*Two little error handling functions. Yay!*/

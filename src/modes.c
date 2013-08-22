@@ -13,7 +13,6 @@
 #include <signal.h>
 #include <ctype.h>
 #include <dirent.h>
-#include <time.h>
 #include "epoch.h"
 
 rStatus TellInitToDo(const char *MembusCode)
@@ -308,43 +307,23 @@ rStatus EmulKillall5(unsigned long InSignal)
 void EmulWall(const char *InStream, Bool ShowUser)
 { /*We not only use this as a CLI applet, we use it to notify of impending shutdown too.*/
 	FILE *Descriptor = NULL;
-	struct tm *TimeP;
 	char OutBuf[8192];
 	char HMS[3][16];
+	char MDY[3][16];
 	char OurUser[256];
 	char OurHostname[256];
 	char FName[128] = "/dev/tty1";
-	long HMS_I[3];
-	time_t Clock;
 	unsigned long Inc = 0;
-	
 	
 	if (getuid() != 0)
 	{ /*Not root?*/
 		SpitWarning("You are not root. Only sending to ttys you have privileges on.");
 	}
 	
-	time(&Clock);
-	TimeP = localtime(&Clock);
+	GetCurrentTime(HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2]);
 	
-	HMS_I[0] = TimeP->tm_hour;
-	HMS_I[1] = TimeP->tm_min;
-	HMS_I[2] = TimeP->tm_sec;
-	
-	for (; Inc < 3; ++Inc)
-	{
-		if (HMS_I[Inc] < 10)
-		{
-			snprintf(HMS[Inc], 16, "0%ld", HMS_I[Inc]);
-		}
-		else
-		{
-			snprintf(HMS[Inc], 16, "%ld", HMS_I[Inc]);
-		}
-	}
-		
-	snprintf(OutBuf, 64, "\007\n%s[%s:%s:%s | %d/%d/%d]%s ", CONSOLE_COLOR_RED, HMS[0], HMS[1], HMS[2],
-		TimeP->tm_mon + 1, TimeP->tm_mday, TimeP->tm_year + 1900, CONSOLE_ENDCOLOR);
+	snprintf(OutBuf, 64, "\007\n%s[%s:%s:%s | %s/%s/%s]%s ", CONSOLE_COLOR_RED, HMS[0], HMS[1], HMS[2],
+		MDY[0], MDY[1], MDY[2], CONSOLE_ENDCOLOR);
 	
 	if (ShowUser)
 	{

@@ -202,6 +202,7 @@ extern rStatus ShutdownMemBus(Bool ServerSide);
 extern void PrintBootBanner(void);
 extern void SetBannerColor(const char *InChoice);
 extern void PrintStatusReport(const char *InStream, rStatus State);
+extern void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutMonth, char *OutDay, char *OutYear);
 extern void SpitWarning(char *INWarning);
 extern void SpitError(char *INErr);
 
