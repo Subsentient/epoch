@@ -258,10 +258,20 @@ void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutMonth, cha
 /*Two little error handling functions. Yay!*/
 void SpitError(char *INErr)
 {
-	fprintf(stderr, CONSOLE_COLOR_RED "Epoch: ERROR: %s\n" CONSOLE_ENDCOLOR, INErr);
+	char HMS[3][16], MDY[3][16];
+	
+	GetCurrentTime(HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2]);
+	
+	fprintf(stderr, "[%s:%s:%s | %s/%s/%s] " CONSOLE_COLOR_RED "Epoch: ERROR:\n" CONSOLE_ENDCOLOR "%s\n\n",
+			HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2], INErr);
 }
 
 void SpitWarning(char *INWarning)
 {
-	fprintf(stderr, CONSOLE_COLOR_YELLOW "Epoch: WARNING: %s\n" CONSOLE_ENDCOLOR, INWarning);
+	char HMS[3][16], MDY[3][16];
+	
+	GetCurrentTime(HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2]);
+	
+	fprintf(stderr, "[%s:%s:%s | %s/%s/%s] " CONSOLE_COLOR_YELLOW "Epoch: WARNING:\n" CONSOLE_ENDCOLOR "%s\n\n",
+			HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2], INWarning);
 }
