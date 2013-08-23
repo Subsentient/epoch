@@ -20,6 +20,7 @@
 static rStatus ProcessGenericHalt(int argc, char **argv);
 static Bool __CmdIs(const char *CArg, const char *InCmd);
 static void PrintEpochHelp(const char *RootCommand, const char *InCmd);
+static rStatus HandleEpochCommand(int argc, char **argv);
 
 /*
  * Actual functions.
@@ -213,10 +214,298 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 	return SUCCESS;
 }
 
-int main(int argc, char **argv)
-{ /*Lotsa sloppy CLI processing here.*/
+static rStatus HandleEpochCommand(int argc, char **argv)
+{
 	const char *CArg = argv[1];
 	
+	/*Help parser.*/
+	if (argc >= 2 && ArgIs("help"))
+	{
+		if ((CArg = argv[2]))
+		{
+			PrintEpochHelp(argv[0], CArg);
+		}
+		else
+		{
+			PrintEpochHelp(argv[0], NULL);
+		}
+		
+		return SUCCESS;
+	}
+	
+	
+	if (argc == 1)
+	{
+		PrintEpochHelp(argv[0], NULL);
+		return SUCCESS;
+	}
+	/*One argument?*/
+	else if (argc == 2)
+	{
+		CArg = argv[1];
+		
+		if (ArgIs("poweroff") || ArgIs("reboot") || ArgIs("halt"))
+		{
+			Bool RVal;
+			
+			if (!InitMemBus(false))
+			{
+				SpitError("main(): Failed to connect to membus.");
+				return FAILURE;
+			}
+			
+			RVal = !ProcessGenericHalt(argc, argv);
+			
+			ShutdownMemBus(false);
+			return (int)RVal;
+		}
+		else if (ArgIs("configreload"))
+		{
+			char TRecv[MEMBUS_SIZE/2 - 1];
+			char TBuf[3][MAX_LINE_SIZE];
+
+			if (!InitMemBus(false))
+			{
+				SpitError("main(): Failed to connect to membus.");
+				return FAILURE;
+			}
+
+			if (!MemBus_Write(MEMBUS_CODE_RESET, false))
+			{
+				SpitError("Failed to write to membus.");
+				ShutdownMemBus(false);
+				return FAILURE;
+			}
+			
+			while (!MemBus_Read(TRecv, false)) usleep(1000);
+			
+			snprintf(TBuf[0], sizeof TBuf[0], "%s %s", MEMBUS_CODE_ACKNOWLEDGED, MEMBUS_CODE_RESET);
+			snprintf(TBuf[1], sizeof TBuf[1], "%s %s", MEMBUS_CODE_FAILURE, MEMBUS_CODE_RESET);
+			snprintf(TBuf[2], sizeof TBuf[2], "%s %s", MEMBUS_CODE_BADPARAM, MEMBUS_CODE_RESET);
+			
+			if (!strcmp(TBuf[0], TRecv))
+			{
+				puts("Reload successful.");
+				ShutdownMemBus(false);
+				
+				return SUCCESS;
+			}
+			else if (!strcmp(TBuf[1], TRecv))
+			{
+				puts("Reload failed!");
+				ShutdownMemBus(false);
+				
+				return FAILURE;
+			}
+			else if (!strcmp(TBuf[2], TRecv))
+			{
+				SpitError("We are being told that MEMBUS_CODE_RESET is not a valid signal! Please report to Epoch.");
+				ShutdownMemBus(false);
+				
+				return FAILURE;
+			}
+			else
+			{
+				SpitError("Unknown response received! Can't handle this! Report to Epoch please!");
+				ShutdownMemBus(false);
+				
+				return FAILURE;
+			}
+		}
+		
+		else
+		{
+			fprintf(stderr, "Bad command %s.\n", CArg);
+			PrintEpochHelp(argv[0], NULL);
+			return FAILURE;
+		}
+	}
+	else if (argc == 3)
+	{
+		CArg = argv[1];
+		
+		if (ArgIs("enable") || ArgIs("disable"))
+		{
+			rStatus RV = SUCCESS;
+			Bool Enabling = ArgIs("enable");
+			char TOut[MAX_LINE_SIZE];
+			
+			if (!InitMemBus(false))
+			{
+				SpitError("main(): Failed to connect to membus.");
+				return FAILURE;
+			}
+			
+			CArg = argv[2];
+			snprintf(TOut, sizeof TOut, (Enabling ? "Enabling %s" : "Disabling %s"), CArg);
+			printf("%s", TOut);
+			fflush(NULL);
+			
+			RV = ObjControl(CArg, (Enabling ? MEMBUS_CODE_OBJENABLE : MEMBUS_CODE_OBJDISABLE));
+			PrintStatusReport(TOut, RV);
+			
+			ShutdownMemBus(false);
+			return !RV;
+		}
+		else if (ArgIs("start") || ArgIs("stop"))
+		{
+			rStatus RV = SUCCESS;
+			Bool Starting = ArgIs("start");
+			char TOut[MAX_LINE_SIZE];
+			
+			if (!InitMemBus(false))
+			{
+				SpitError("main(): Failed to connect to membus.");
+				return FAILURE;
+			}
+			
+			CArg = argv[2];
+			snprintf(TOut, sizeof TOut, (Starting ? "Starting %s" : "Stopping %s"), CArg);
+			printf("%s", TOut);
+			fflush(NULL);
+			
+			RV = ObjControl(CArg, (Starting ? MEMBUS_CODE_OBJSTART : MEMBUS_CODE_OBJSTOP));
+			PrintStatusReport(TOut, RV);
+			
+			ShutdownMemBus(false);
+			return !RV;
+		}
+		else if (ArgIs("status"))
+		{
+			if (!InitMemBus(false))
+			{
+				SpitError("main(): Failed to connect to membus.");
+				return FAILURE;
+			}
+			
+			CArg = argv[2];
+			
+			if (AskObjectStarted(CArg))
+			{
+				printf("%s is currently running.\n", CArg);
+			}
+			else
+			{
+				printf("%s is stopped.\n", CArg);
+			}
+			
+			ShutdownMemBus(false);
+			return SUCCESS;
+		}			
+		else
+		{
+			fprintf(stderr, "Bad command %s.\n", argv[1]);
+			PrintEpochHelp(argv[0], NULL);
+			return FAILURE;
+		}
+	}
+	else if (argc == 5)
+	{
+		if (ArgIs("objrl"))
+		{
+			const char *ObjectID = argv[2], *RL = argv[4];
+			char OBuf[MEMBUS_SIZE/2 - 1];
+			char IBuf[MEMBUS_SIZE/2 - 1];
+			
+			if (!InitMemBus(false))
+			{
+				SpitError("main(): Failed to connect to membus.");
+				return FAILURE;
+			}
+			
+			CArg = argv[3];
+			
+			if (ArgIs("add"))
+			{
+				snprintf(OBuf, sizeof OBuf, "%s %s %s", MEMBUS_CODE_OBJRLS_ADD, ObjectID, RL);
+			}
+			else if (ArgIs("del"))
+			{
+				snprintf(OBuf, sizeof OBuf, "%s %s %s", MEMBUS_CODE_OBJRLS_DEL, ObjectID, RL);
+			}
+			else if (ArgIs("check"))
+			{
+				snprintf(OBuf, sizeof OBuf, "%s %s %s", MEMBUS_CODE_OBJRLS_CHECK, ObjectID, RL);
+			}
+			else
+			{
+				fprintf(stderr, "Invalid runlevel option %s.\n", CArg);
+				ShutdownMemBus(false);
+				return FAILURE;
+			}
+			
+			if (!MemBus_Write(OBuf, false))
+			{
+				SpitError("Failed to write to membus.");
+				ShutdownMemBus(false);
+				return FAILURE;
+			}
+			
+			while (!MemBus_Read(IBuf, false)) usleep(1000);
+			
+			if (ArgIs("add") || ArgIs("del"))
+			{
+				char PossibleResponses[3][MAX_LINE_SIZE];
+				
+				snprintf(PossibleResponses[0], sizeof PossibleResponses[0], "%s %s %s %s", MEMBUS_CODE_ACKNOWLEDGED,
+						(ArgIs("add") ? MEMBUS_CODE_OBJRLS_ADD : MEMBUS_CODE_OBJRLS_DEL), ObjectID, RL);
+				
+				snprintf(PossibleResponses[1], sizeof PossibleResponses[1], "%s %s %s %s", MEMBUS_CODE_FAILURE,
+						(ArgIs("add") ? MEMBUS_CODE_OBJRLS_ADD : MEMBUS_CODE_OBJRLS_DEL), ObjectID, RL);
+						
+				snprintf(PossibleResponses[2], sizeof PossibleResponses[2], "%s %s", MEMBUS_CODE_ACKNOWLEDGED, OBuf);
+				
+				if (!strcmp(PossibleResponses[0], IBuf))
+				{
+					char *PSFormat[2] = { "Object %s added to runlevel %s\n", "Object %s deleted from runlevel %s\n" };
+					printf(PSFormat[(ArgIs("add") ? 0 : 1)], ObjectID, RL);
+					ShutdownMemBus(false);
+					return SUCCESS;
+				}
+				else if (!strcmp(PossibleResponses[1], IBuf))
+				{
+					char *PSFormat[2] = { "Unable to add %s to runlevel %s!\n", "Unable to remove %s from runlevel %s!\n" };
+					
+					fprintf(stderr, PSFormat[(ArgIs("add") ? 0 : 1)], ObjectID, RL);
+					ShutdownMemBus(false);
+					
+					return FAILURE;
+				}
+				else if (!strcmp(PossibleResponses[2], IBuf))
+				{
+					SpitError("Internal membus error, received BADPARAM upon your request. Please report to Epoch.");
+					ShutdownMemBus(false);
+					
+					return FAILURE;
+				}
+				else
+				{
+					SpitError("Received unrecognized or corrupted response via membus! Please report to Epoch.");
+					ShutdownMemBus(false);
+					
+					return FAILURE;
+				}
+			}
+		}
+		else
+		{
+			fprintf(stderr, "Bad command %s.\n", CArg);
+			PrintEpochHelp(argv[0], NULL);
+			return FAILURE;
+		}
+	}
+	else
+	{
+		fprintf(stderr, "%s\n", "Invalid usage.");
+		PrintEpochHelp(argv[0], NULL);
+		return FAILURE;
+	}
+	
+	return SUCCESS;
+}
+
+int main(int argc, char **argv)
+{ /*Lotsa sloppy CLI processing here.*/
 	/*Figure out what we are.*/
 	if (argv[0] == NULL)
 	{
@@ -244,288 +533,7 @@ int main(int argc, char **argv)
 	}
 	else if (CmdIs("epoch")) /*Our main management program.*/
 	{	
-		/*Help parser.*/
-		if (argc >= 2 && ArgIs("help"))
-		{
-			if ((CArg = argv[2]))
-			{
-				PrintEpochHelp(argv[0], CArg);
-			}
-			else
-			{
-				PrintEpochHelp(argv[0], NULL);
-			}
-			
-			return 0;
-		}
-		
-		
-		if (argc == 1)
-		{
-			PrintEpochHelp(argv[0], NULL);
-			return 0;
-		}
-		/*One argument?*/
-		else if (argc == 2)
-		{
-			CArg = argv[1];
-			
-			if (ArgIs("poweroff") || ArgIs("reboot") || ArgIs("halt"))
-			{
-				Bool RVal;
-				
-				if (!InitMemBus(false))
-				{
-					SpitError("main(): Failed to connect to membus.");
-					return 1;
-				}
-				
-				RVal = !ProcessGenericHalt(argc, argv);
-				
-				ShutdownMemBus(false);
-				return (int)RVal;
-			}
-			else if (ArgIs("configreload"))
-			{
-				char TRecv[MEMBUS_SIZE/2 - 1];
-				char TBuf[3][MAX_LINE_SIZE];
-
-				if (!InitMemBus(false))
-				{
-					SpitError("main(): Failed to connect to membus.");
-					return 1;
-				}
-
-				if (!MemBus_Write(MEMBUS_CODE_RESET, false))
-				{
-					SpitError("Failed to write to membus.");
-					ShutdownMemBus(false);
-					return 1;
-				}
-				
-				while (!MemBus_Read(TRecv, false)) usleep(1000);
-				
-				snprintf(TBuf[0], sizeof TBuf[0], "%s %s", MEMBUS_CODE_ACKNOWLEDGED, MEMBUS_CODE_RESET);
-				snprintf(TBuf[1], sizeof TBuf[1], "%s %s", MEMBUS_CODE_FAILURE, MEMBUS_CODE_RESET);
-				snprintf(TBuf[2], sizeof TBuf[2], "%s %s", MEMBUS_CODE_BADPARAM, MEMBUS_CODE_RESET);
-				
-				if (!strcmp(TBuf[0], TRecv))
-				{
-					puts("Reload successful.");
-					ShutdownMemBus(false);
-					
-					return 0;
-				}
-				else if (!strcmp(TBuf[1], TRecv))
-				{
-					puts("Reload failed!");
-					ShutdownMemBus(false);
-					
-					return 1;
-				}
-				else if (!strcmp(TBuf[2], TRecv))
-				{
-					SpitError("We are being told that MEMBUS_CODE_RESET is not a valid signal! Please report to Epoch.");
-					ShutdownMemBus(false);
-					
-					return 1;
-				}
-				else
-				{
-					SpitError("Unknown response received! Can't handle this! Report to Epoch please!");
-					ShutdownMemBus(false);
-					
-					return 1;
-				}
-			}
-			
-			else
-			{
-				fprintf(stderr, "Bad command %s.\n", CArg);
-				PrintEpochHelp(argv[0], NULL);
-				return 1;
-			}
-		}
-		else if (argc == 3)
-		{
-			CArg = argv[1];
-			
-			if (ArgIs("enable") || ArgIs("disable"))
-			{
-				rStatus RV = SUCCESS;
-				Bool Enabling = ArgIs("enable");
-				char TOut[MAX_LINE_SIZE];
-				
-				if (!InitMemBus(false))
-				{
-					SpitError("main(): Failed to connect to membus.");
-					return 1;
-				}
-				
-				CArg = argv[2];
-				snprintf(TOut, sizeof TOut, (Enabling ? "Enabling %s" : "Disabling %s"), CArg);
-				printf("%s", TOut);
-				fflush(NULL);
-				
-				RV = ObjControl(CArg, (Enabling ? MEMBUS_CODE_OBJENABLE : MEMBUS_CODE_OBJDISABLE));
-				PrintStatusReport(TOut, RV);
-				
-				ShutdownMemBus(false);
-				return !RV;
-			}
-			else if (ArgIs("start") || ArgIs("stop"))
-			{
-				rStatus RV = SUCCESS;
-				Bool Starting = ArgIs("start");
-				char TOut[MAX_LINE_SIZE];
-				
-				if (!InitMemBus(false))
-				{
-					SpitError("main(): Failed to connect to membus.");
-					return 1;
-				}
-				
-				CArg = argv[2];
-				snprintf(TOut, sizeof TOut, (Starting ? "Starting %s" : "Stopping %s"), CArg);
-				printf("%s", TOut);
-				fflush(NULL);
-				
-				RV = ObjControl(CArg, (Starting ? MEMBUS_CODE_OBJSTART : MEMBUS_CODE_OBJSTOP));
-				PrintStatusReport(TOut, RV);
-				
-				ShutdownMemBus(false);
-				return !RV;
-			}
-			else if (ArgIs("status"))
-			{
-				if (!InitMemBus(false))
-				{
-					SpitError("main(): Failed to connect to membus.");
-					return 1;
-				}
-				
-				CArg = argv[2];
-				
-				if (AskObjectStarted(CArg))
-				{
-					printf("%s is currently running.\n", CArg);
-				}
-				else
-				{
-					printf("%s is stopped.\n", CArg);
-				}
-				
-				ShutdownMemBus(false);
-				return 0;
-			}			
-			else
-			{
-				fprintf(stderr, "Bad command %s.\n", argv[1]);
-				PrintEpochHelp(argv[0], NULL);
-				return 1;
-			}
-		}
-		else if (argc == 5)
-		{
-			if (ArgIs("objrl"))
-			{
-				const char *ObjectID = argv[2], *RL = argv[4];
-				char OBuf[MEMBUS_SIZE/2 - 1];
-				char IBuf[MEMBUS_SIZE/2 - 1];
-				
-				if (!InitMemBus(false))
-				{
-					SpitError("main(): Failed to connect to membus.");
-					return 1;
-				}
-				
-				CArg = argv[3];
-				
-				if (ArgIs("add"))
-				{
-					snprintf(OBuf, sizeof OBuf, "%s %s %s", MEMBUS_CODE_OBJRLS_ADD, ObjectID, RL);
-				}
-				else if (ArgIs("del"))
-				{
-					snprintf(OBuf, sizeof OBuf, "%s %s %s", MEMBUS_CODE_OBJRLS_DEL, ObjectID, RL);
-				}
-				else if (ArgIs("check"))
-				{
-					snprintf(OBuf, sizeof OBuf, "%s %s %s", MEMBUS_CODE_OBJRLS_CHECK, ObjectID, RL);
-				}
-				else
-				{
-					fprintf(stderr, "Invalid runlevel option %s.\n", CArg);
-					ShutdownMemBus(false);
-					return 1;
-				}
-				
-				if (!MemBus_Write(OBuf, false))
-				{
-					SpitError("Failed to write to membus.");
-					ShutdownMemBus(false);
-					return 1;
-				}
-				
-				while (!MemBus_Read(IBuf, false)) usleep(1000);
-				
-				if (ArgIs("add") || ArgIs("del"))
-				{
-					char PossibleResponses[3][MAX_LINE_SIZE];
-					
-					snprintf(PossibleResponses[0], sizeof PossibleResponses[0], "%s %s %s %s", MEMBUS_CODE_ACKNOWLEDGED,
-							(ArgIs("add") ? MEMBUS_CODE_OBJRLS_ADD : MEMBUS_CODE_OBJRLS_DEL), ObjectID, RL);
-					
-					snprintf(PossibleResponses[1], sizeof PossibleResponses[1], "%s %s %s %s", MEMBUS_CODE_FAILURE,
-							(ArgIs("add") ? MEMBUS_CODE_OBJRLS_ADD : MEMBUS_CODE_OBJRLS_DEL), ObjectID, RL);
-							
-					snprintf(PossibleResponses[2], sizeof PossibleResponses[2], "%s %s", MEMBUS_CODE_ACKNOWLEDGED, OBuf);
-					
-					if (!strcmp(PossibleResponses[0], IBuf))
-					{
-						char *PSFormat[2] = { "Object %s added to runlevel %s\n", "Object %s deleted from runlevel %s\n" };
-						printf(PSFormat[(ArgIs("add") ? 0 : 1)], ObjectID, RL);
-						ShutdownMemBus(false);
-						return 0;
-					}
-					else if (!strcmp(PossibleResponses[1], IBuf))
-					{
-						char *PSFormat[2] = { "Unable to add %s to runlevel %s!\n", "Unable to remove %s from runlevel %s!\n" };
-						
-						fprintf(stderr, PSFormat[(ArgIs("add") ? 0 : 1)], ObjectID, RL);
-						ShutdownMemBus(false);
-						
-						return 1;
-					}
-					else if (!strcmp(PossibleResponses[2], IBuf))
-					{
-						SpitError("Internal membus error, received BADPARAM upon your request. Please report to Epoch.");
-						ShutdownMemBus(false);
-						
-						return 1;
-					}
-					else
-					{
-						SpitError("Received unrecognized or corrupted response via membus! Please report to Epoch.");
-						ShutdownMemBus(false);
-						
-						return 1;
-					}
-				}
-			}
-			else
-			{
-				fprintf(stderr, "Bad command %s.\n", CArg);
-				PrintEpochHelp(argv[0], NULL);
-				return 1;
-			}
-		}
-		else
-		{
-			fprintf(stderr, "%s\n", "Invalid usage.");
-			PrintEpochHelp(argv[0], NULL);
-			return 1;
-		}
+		HandleEpochCommand(argc, argv);
 	}
 	else if (CmdIs("init"))
 	{ /*This is a bit long winded here, however, it's better than devoting a function for it.*/
