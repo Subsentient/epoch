@@ -136,6 +136,7 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 static rStatus ProcessGenericHalt(int argc, char **argv)
 {
 	const char *CArg = argv[1];
+	signed long OSCode = -1;
 	
 	/*Figure out what we are.*/
 	if (argv[0] == NULL)
@@ -152,6 +153,7 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 		{
 			NCode = MEMBUS_CODE_POWEROFFNOW;
 			GCode = MEMBUS_CODE_POWEROFF;
+			OSCode = OSCTL_LINUX_POWEROFF;
 			SuccessMsg = "Power off in progress.";
 			FailMsg[0] = "Failed to request immediate poweroff.";
 			FailMsg[1] = "Failed to request poweroff.";
@@ -160,6 +162,7 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 		{
 			NCode = MEMBUS_CODE_REBOOTNOW;
 			GCode = MEMBUS_CODE_REBOOT;
+			OSCode = OSCTL_LINUX_REBOOT;
 			SuccessMsg = "Reboot in progress.";
 			FailMsg[0] = "Failed to request immediate reboot.";
 			FailMsg[1] = "Failed to request reboot.";
@@ -168,6 +171,7 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 		{
 			NCode = MEMBUS_CODE_HALTNOW;
 			GCode = MEMBUS_CODE_HALT;
+			OSCode = OSCode = OSCTL_LINUX_HALT;
 			SuccessMsg = "System halt in progress.";
 			FailMsg[0] = "Failed to request immediate halt.";
 			FailMsg[1] = "Failed to request halt.";
@@ -184,11 +188,8 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 		{
 			if (argc == 2 && ArgIs("-f"))
 			{
-				if (!TellInitToDo(NCode))
-				{
-					SpitError(FailMsg[0]);
-					return FAILURE;
-				}
+				sync();
+				reboot(OSCode);
 			}
 			else
 			{
@@ -673,6 +674,11 @@ int main(int argc, char **argv)
 			puts("Usage: wall [-n] message");
 			return 1;
 		}
+	}
+	else if (CmdIs("shutdown"))
+	{
+		return !EmulShutdown(argc, (const char**)argv);
+
 	}
 	else
 	{

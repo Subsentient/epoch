@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <signal.h>
 #include <ctype.h>
@@ -376,5 +377,201 @@ void EmulWall(const char *InStream, Bool ShowUser)
 		Descriptor = NULL;
 		
 		snprintf(FName, sizeof FName, "/dev/pts/%lu", Inc);
+	}
+}
+
+rStatus EmulShutdown(long ArgumentCount, const char **ArgStream)
+{ /*Eyesore, but it works.*/
+	const char **TPtr = ArgStream + 1; /*Skip past the equivalent of argv[0].*/
+	unsigned long TargetHr = 0, TargetMin = 0;
+	const char *THalt = NULL;
+	char PossibleResponses[3][MEMBUS_SIZE/2 - 1];
+	char TmpBuf[MEMBUS_SIZE/2 - 1], InRecv[MEMBUS_SIZE/2 - 1], TimeFormat[32];
+	short Inc = 0;
+	short TimeIsSet = 0, HaltModeSet = 0;
+	Bool AbortingShutdown = false, ImmediateHalt = false;
+	
+	if (getuid() != 0)
+	{
+		fprintf(stderr, "%s", "Unable to comply with shutdown request. You are not root.\n");
+		return FAILURE;
+	}
+	
+	for (; Inc != (ArgumentCount - 1); ++TPtr, ++Inc)
+	{
+		if (!strcmp(*TPtr, "-h") || !strcmp(*TPtr, "--halt") || !strcmp(*TPtr, "-H"))
+		{
+			THalt = MEMBUS_CODE_HALT;
+			++HaltModeSet;
+			continue;
+		}
+		else if (!strcmp(*TPtr, "-R") || !strcmp(*TPtr, "-r") || !strcmp(*TPtr, "--reboot"))
+		{
+			THalt = MEMBUS_CODE_REBOOT;
+			++HaltModeSet;
+			continue;
+		}
+		else if (!strcmp(*TPtr, "-p") || !strcmp(*TPtr, "-P") || !strcmp(*TPtr, "--poweroff"))
+		{
+			THalt = MEMBUS_CODE_POWEROFF;
+			++HaltModeSet;
+			continue;
+		}
+		else if (!strcmp(*TPtr, "-c") || !strcmp(*TPtr, "--cancel"))
+		{
+			AbortingShutdown = true;
+			snprintf(TmpBuf, sizeof TmpBuf, "%s", MEMBUS_CODE_ABORTHALT);
+			break;
+		}
+		else if (strstr(*TPtr, ":") && **TPtr != '-')
+		{
+			struct _HaltParams TempParams;
+			
+			if (sscanf(*TPtr, "%lu:%lu", &TargetHr, &TargetMin) != 2)
+			{
+				puts("Bad time format. Please enter in the format of \"hh:mm\"");
+				return FAILURE;
+			}
+			
+			DateDiff(TargetHr, TargetMin, &TempParams.TargetMonth, &TempParams.TargetDay, &TempParams.TargetYear);
+			
+			snprintf(TimeFormat, sizeof TimeFormat, "%lu:%lu:%d %lu/%lu/%lu",
+					TargetHr, TargetMin, 0, TempParams.TargetMonth, TempParams.TargetDay, TempParams.TargetYear);
+					
+			++TimeIsSet;
+		}
+		else if (**TPtr == '+' && isdigit(*(*TPtr + 1)))
+		{
+			struct _HaltParams TempParams;
+			const char *TArg = *TPtr + 1; /*Targ manure!*/
+			time_t TTime;
+			struct tm *TimeP;
+			
+			MinsToDate(atoi(TArg), &TempParams.TargetHour, &TempParams.TargetMin, &TempParams.TargetMonth,
+						&TempParams.TargetDay, &TempParams.TargetYear);
+						
+			time(&TTime); /*Get this for the second.*/
+			TimeP = localtime(&TTime);
+			
+			snprintf(TimeFormat, sizeof TimeFormat, "%lu:%lu:%d %lu/%lu/%lu",
+					TempParams.TargetHour, TempParams.TargetMin, TimeP->tm_sec, TempParams.TargetMonth,
+					TempParams.TargetDay, TempParams.TargetYear);
+					
+			++TimeIsSet;
+		}
+		else if (!strcmp(*TPtr, "now"))
+		{
+			ImmediateHalt = true;
+			++TimeIsSet;
+		}
+		else if (!strcmp(*TPtr, "--help"))
+		{
+			const char *HelpMsg =
+			"Usage: shutdown -hrpc [12:00/+10/now] -c\n\n"
+			"-h -H --halt: Halt the system, don't power down.\n"
+			"-p -P --poweroff: Power down the system.\n"
+			"-r -R --reboot: Reboot the system.\n"
+			"-c --cancel: Cancel a pending shutdown.\n\n"
+			"Specify time in hh:mm, +m, or \"now\".\n";
+			
+			puts(HelpMsg);
+			return SUCCESS;
+		}
+			
+		else
+		{
+			fprintf(stderr, "Invalid argument %s. See --help for usage.\n", *TPtr);
+			return FAILURE;
+		}
+
+	}
+	
+	if (!AbortingShutdown)
+	{
+		if (HaltModeSet == 0)
+		{
+			fprintf(stderr, "%s\n", "You must specify one of -hrp.");
+			return FAILURE;
+		}
+		
+		if (HaltModeSet > 1)
+		{
+			fprintf(stderr, "%s\n", "Please specify only ONE of -hrp.");
+			return FAILURE;
+		}
+		
+		if (!TimeIsSet)
+		{
+			fprintf(stderr, "%s\n", "You must specify a time in the format of hh:mm: or +m.");
+			return FAILURE;
+		}
+		
+		if (TimeIsSet > 1)
+		{
+			fprintf(stderr, "%s\n", "Multiple time arguments specified. Please specify only one.");
+			return FAILURE;
+		}
+		
+		if (!ImmediateHalt)
+		{
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", THalt, TimeFormat);
+		}
+	}
+	
+	if (ImmediateHalt)
+	{
+		snprintf(TmpBuf, sizeof TmpBuf, "%s", THalt);
+	}
+	
+	snprintf(PossibleResponses[0], MEMBUS_SIZE/2 - 1, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, TmpBuf);
+	snprintf(PossibleResponses[1], MEMBUS_SIZE/2 - 1, "%s %s", MEMBUS_CODE_FAILURE, TmpBuf);
+	snprintf(PossibleResponses[2], MEMBUS_SIZE/2 - 1, "%s %s", MEMBUS_CODE_BADPARAM, TmpBuf);
+	
+	if (!InitMemBus(false))
+	{
+		SpitError("Failed to connect to membus.");
+		return FAILURE;
+	}
+	
+	if (!MemBus_Write(TmpBuf, false))
+	{
+		SpitError("Failed to write to membus.");
+		ShutdownMemBus(false);
+		return FAILURE;
+	}
+	
+	while (!MemBus_Read(InRecv, false)) usleep(1000); /*Wait for a response.*/
+	
+	if (!ShutdownMemBus(false))
+	{
+		SpitError("Failed to shut down membus! This could spell serious issues.");
+	}
+	
+	if (!strcmp(InRecv, PossibleResponses[0]))
+	{
+		return SUCCESS;
+	}
+	else if (!strcmp(InRecv, PossibleResponses[1]))
+	{
+		if (!strcmp(TmpBuf, MEMBUS_CODE_ABORTHALT))
+		{
+			fprintf(stderr, "%s\n", "Failed to abort shutdown. Is a shutdown scheduled?");
+		}
+		else
+		{
+			fprintf(stderr, "%s\n", "Failed to schedule shutdown.\nIs another already scheduled? Use shutdown -c to cancel it.");
+		}
+		return FAILURE;
+	}
+	else if (!strcmp(InRecv, PossibleResponses[2]))
+	{
+		SpitError("We are being told that we sent a bad parameter over the membus!"
+					"Please report this to Epoch, as it's likely a bug.");
+		return FAILURE;
+	}
+	else
+	{
+		SpitError("Invalid response received from membus! Please report this to Epoch, as it's likely a bug.");
+		return FAILURE;
 	}
 }

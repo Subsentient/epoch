@@ -74,6 +74,7 @@
 #define MEMBUS_CODE_FAILURE "FAIL"
 #define MEMBUS_CODE_BADPARAM "BADPARAM"
 /*These are what we actually send.*/
+#define MEMBUS_CODE_ABORTHALT "INIT_ABORTHALT"
 #define MEMBUS_CODE_HALT "INIT_HALT"
 #define MEMBUS_CODE_POWEROFF "INIT_POWEROFF"
 #define MEMBUS_CODE_REBOOT "INIT_REBOOT"
@@ -110,6 +111,7 @@ typedef enum { STOP_NONE, STOP_COMMAND, STOP_PID, STOP_PIDFILE, STOP_INVALID } S
 
 /*Trinary return values for functions.*/
 typedef enum { FAILURE, SUCCESS, WARNING, NOTIFICATION } rStatus;
+
 
 /**Structures go here.**/
 struct _RLTree
@@ -149,6 +151,17 @@ struct _BootBanner
 	char BannerColor[64];
 };
 
+struct _HaltParams
+{
+	signed long HaltMode;
+	unsigned long TargetHour;
+	unsigned long TargetMin;
+	unsigned long TargetSec;
+	unsigned long TargetMonth;
+	unsigned long TargetDay;
+	unsigned long TargetYear;
+};
+
 /**Globals go here.**/
 
 extern ObjTable *ObjectTable;
@@ -158,6 +171,7 @@ extern int MemDescriptor;
 extern char *MemData;
 extern Bool DisableCAD;
 extern char Hostname[MAX_LINE_SIZE];
+extern struct _HaltParams HaltParams;
 
 /**Function forward declarations.*/
 
@@ -188,6 +202,7 @@ extern void EmergencyShell(void);
 extern rStatus TellInitToDo(const char *MembusCode);
 extern rStatus EmulKillall5(unsigned long InSignal);
 extern void EmulWall(const char *InStream, Bool ShowUser);
+extern rStatus EmulShutdown(long ArgumentCount, const char **ArgStream);
 extern Bool AskObjectStarted(const char *ObjectID);
 extern rStatus ObjControl(const char *ObjectID, const char *MemBusSignal);
 
@@ -195,7 +210,7 @@ extern rStatus ObjControl(const char *ObjectID, const char *MemBusSignal);
 extern rStatus InitMemBus(Bool ServerSide);
 extern rStatus MemBus_Write(const char *InStream, Bool ServerSide);
 extern Bool MemBus_Read(char *OutStream, Bool ServerSide);
-extern void EpochMemBusLoop(void);
+extern void ParseMemBus(void);
 extern rStatus ShutdownMemBus(Bool ServerSide);
 
 /*console.c*/
@@ -203,6 +218,10 @@ extern void PrintBootBanner(void);
 extern void SetBannerColor(const char *InChoice);
 extern void PrintStatusReport(const char *InStream, rStatus State);
 extern void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutMonth, char *OutDay, char *OutYear);
+extern unsigned long DateDiff(unsigned long InHr, unsigned long InMin, unsigned long *OutMonth,
+						unsigned long *OutDay, unsigned long *OutYear);
+extern void MinsToDate(unsigned long MinInc, unsigned long *OutHr, unsigned long *OutMin,
+				unsigned long *OutMonth, unsigned long *OutDay, unsigned long *OutYear);
 extern void SpitWarning(char *INWarning);
 extern void SpitError(char *INErr);
 

@@ -123,395 +123,492 @@ Bool MemBus_Read(char *OutStream, Bool ServerSide)
 	return true;
 }
 
-void EpochMemBusLoop(void)
-{
+void ParseMemBus(void)
+{ /*This function handles EVERYTHING passed to us via membus. It's truly vast.*/
 #define BusDataIs(x) !strncmp(x, BusData, strlen(x))
-	Bool Idle = true;
 	char BusData[MEMBUS_SIZE/2];
-	
-	while (Idle)
+		
+	if (!MemBus_Read(BusData, true))
 	{
-		usleep(1000);
-		
-		if (!MemBus_Read(BusData, true))
+		return;
+	}
+	
+	/*If we got a signal over the membus.*/
+	if (BusDataIs(MEMBUS_CODE_RESET))
+	{
+		if (ReloadConfig())
 		{
-			continue;
+			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_RESET, true);
 		}
-		
-		/*If we got a signal over the membus.*/
-		if (BusDataIs(MEMBUS_CODE_RESET))
+		else
 		{
-			if (ReloadConfig())
-			{
-				MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_RESET, true);
-			}
-			else
-			{
-				MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_RESET, true);
-			}
+			MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_RESET, true);
 		}
-		else if (BusDataIs(MEMBUS_CODE_OBJSTART) || BusDataIs(MEMBUS_CODE_OBJSTOP))
-		{
-			unsigned long LOffset = strlen((BusDataIs(MEMBUS_CODE_OBJSTART) ? MEMBUS_CODE_OBJSTART " " : MEMBUS_CODE_OBJSTOP " "));
-			char *TWorker = BusData + LOffset;
-			ObjTable *CurObj = LookupObjectInTable(TWorker);
-			char TmpBuf[MEMBUS_SIZE/2 - 1], *MCode;
-			rStatus DidWork;
+	}
+	else if (BusDataIs(MEMBUS_CODE_OBJSTART) || BusDataIs(MEMBUS_CODE_OBJSTOP))
+	{
+		unsigned long LOffset = strlen((BusDataIs(MEMBUS_CODE_OBJSTART) ? MEMBUS_CODE_OBJSTART " " : MEMBUS_CODE_OBJSTOP " "));
+		char *TWorker = BusData + LOffset;
+		ObjTable *CurObj = LookupObjectInTable(TWorker);
+		char TmpBuf[MEMBUS_SIZE/2 - 1], *MCode;
+		rStatus DidWork;
+		
+		if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
+		{ /*No argument?*/
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+			MemBus_Write(TmpBuf, true);
 			
-			if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
-			{ /*No argument?*/
-				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
-				MemBus_Write(TmpBuf, true);
+			return;
+		}
+		
+		if (CurObj)
+		{
+			DidWork = ProcessConfigObject(CurObj, (BusDataIs(MEMBUS_CODE_OBJSTART) ? true : false));
+		}
+		else
+		{
+			DidWork = FAILURE;
+		}
+		
+		switch (DidWork)
+		{
+			case SUCCESS:
+				MCode = MEMBUS_CODE_ACKNOWLEDGED;
+				break;
+			case NOTIFICATION: /*Ignore this mostly. Guess it's WARNING. Compilers whine if this is not here.*/
+			case WARNING:
+				MCode = MEMBUS_CODE_WARNING;
+				break;
+			case FAILURE:
+				MCode = MEMBUS_CODE_FAILURE;
+				break;
 				
-				continue;
-			}
+		}
+		
+		snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s",
+				MCode, (BusDataIs(MEMBUS_CODE_OBJSTART) ? MEMBUS_CODE_OBJSTART : MEMBUS_CODE_OBJSTOP), TWorker);
+		
+		MemBus_Write(TmpBuf, true);
+	}
+	else if (BusDataIs(MEMBUS_CODE_STATUS))
+	{
+		unsigned long LOffset = strlen(MEMBUS_CODE_STATUS " ");
+		char *TWorker = BusData + LOffset;
+		ObjTable *CurObj = LookupObjectInTable(TWorker);
+		char TmpBuf[MEMBUS_SIZE/2 - 1];
+		
+		if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
+		{ /*No argument?*/
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+			MemBus_Write(TmpBuf, true);
 			
-			if (CurObj)
-			{
-				DidWork = ProcessConfigObject(CurObj, (BusDataIs(MEMBUS_CODE_OBJSTART) ? true : false));
-			}
-			else
-			{
-				DidWork = FAILURE;
-			}
+			return;
+		}
+		
+		if (CurObj)
+		{
+			char TmpBuf[MEMBUS_SIZE/2 - 1];
 			
-			switch (DidWork)
-			{
-				case SUCCESS:
-					MCode = MEMBUS_CODE_ACKNOWLEDGED;
-					break;
-				case NOTIFICATION: /*Ignore this mostly. Guess it's WARNING. Compilers whine if this is not here.*/
-				case WARNING:
-					MCode = MEMBUS_CODE_WARNING;
-					break;
-				case FAILURE:
-					MCode = MEMBUS_CODE_FAILURE;
-					break;
-					
-			}
-			
-			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s",
-					MCode, (BusDataIs(MEMBUS_CODE_OBJSTART) ? MEMBUS_CODE_OBJSTART : MEMBUS_CODE_OBJSTOP), TWorker);
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %d", MEMBUS_CODE_STATUS, TWorker, CurObj->Started);
 			
 			MemBus_Write(TmpBuf, true);
 		}
-		else if (BusDataIs(MEMBUS_CODE_STATUS))
+		else
 		{
-			unsigned long LOffset = strlen(MEMBUS_CODE_STATUS " ");
-			char *TWorker = BusData + LOffset;
-			ObjTable *CurObj = LookupObjectInTable(TWorker);
-			char TmpBuf[MEMBUS_SIZE/2 - 1];
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
 			
-			if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
-			{ /*No argument?*/
-				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
-				MemBus_Write(TmpBuf, true);
-				
-				continue;
-			}
+			MemBus_Write(TmpBuf, true);
+		}
+	}
+	else if (BusDataIs(MEMBUS_CODE_OBJENABLE) || BusDataIs(MEMBUS_CODE_OBJDISABLE))
+	{
+		Bool EnablingThis = (BusDataIs(MEMBUS_CODE_OBJENABLE) ? true : false);
+		unsigned long LOffset = strlen(EnablingThis ? MEMBUS_CODE_OBJENABLE " " : MEMBUS_CODE_OBJDISABLE " ");
+		char *OurSignal = EnablingThis ? MEMBUS_CODE_OBJENABLE : MEMBUS_CODE_OBJDISABLE;
+		char *TWorker = BusData + LOffset;
+		ObjTable *CurObj = LookupObjectInTable(TWorker);
+		char TmpBuf[MEMBUS_SIZE/2 - 1];
+		rStatus DidWork = FAILURE;
+		
+		if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
+		{ /*No argument?*/
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+			MemBus_Write(TmpBuf, true);
 			
-			if (CurObj)
-			{
-				char TmpBuf[MEMBUS_SIZE/2 - 1];
-				
-				snprintf(TmpBuf, sizeof TmpBuf, "%s %s %d", MEMBUS_CODE_STATUS, TWorker, CurObj->Started);
-				
-				MemBus_Write(TmpBuf, true);
-			}
-			else
-			{
+			return;
+		}
+		
+		if (!CurObj)
+		{
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s", MEMBUS_CODE_FAILURE, OurSignal, TWorker);
+			MemBus_Write(TmpBuf, true);
+			
+			return;
+		}
+		
+		CurObj->Enabled = (EnablingThis ? true : false);
+		DidWork = EditConfigValue(TWorker, "ObjectEnabled", EnablingThis ? "true" : "false");
+		
+		switch (DidWork)
+		{
+			case SUCCESS:
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, BusData);
+				break;
+			case WARNING:
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_WARNING, BusData);
+				break;
+			case FAILURE:
 				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
-				
-				MemBus_Write(TmpBuf, true);
+				break;
+			default:
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+				break;
+		}
+			
+			
+		MemBus_Write(TmpBuf, true);
+	}
+	else if (BusDataIs(MEMBUS_CODE_RUNLEVEL))
+	{
+		unsigned long LOffset = strlen(MEMBUS_CODE_RUNLEVEL " ");
+		char *TWorker = BusData + LOffset;
+		char TmpBuf[MEMBUS_SIZE/2 - 1];
+		ObjTable *TmpTable = ObjectTable;
+		Bool ValidRL = false;
+		
+		if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
+		{ /*No argument?*/
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+			MemBus_Write(TmpBuf, true);
+			
+			return;
+		}
+		
+		for (; TmpTable->Next; TmpTable = TmpTable->Next)
+		{ /*Check if anything uses this runlevel at all.*/
+			if (ObjRL_CheckRunlevel(TWorker, TmpTable))
+			{
+				ValidRL = true;
+				break;
 			}
 		}
-		else if (BusDataIs(MEMBUS_CODE_OBJENABLE) || BusDataIs(MEMBUS_CODE_OBJDISABLE))
+		
+		if (ValidRL)
 		{
-			Bool EnablingThis = (BusDataIs(MEMBUS_CODE_OBJENABLE) ? true : false);
-			unsigned long LOffset = strlen(EnablingThis ? MEMBUS_CODE_OBJENABLE " " : MEMBUS_CODE_OBJDISABLE " ");
-			char *OurSignal = EnablingThis ? MEMBUS_CODE_OBJENABLE : MEMBUS_CODE_OBJDISABLE;
-			char *TWorker = BusData + LOffset;
-			ObjTable *CurObj = LookupObjectInTable(TWorker);
-			char TmpBuf[MEMBUS_SIZE/2 - 1];
-			rStatus DidWork = FAILURE;
-			
-			if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
-			{ /*No argument?*/
-				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
-				MemBus_Write(TmpBuf, true);
-				
-				continue;
-			}
-			
-			if (!CurObj)
-			{
-				snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s", MEMBUS_CODE_FAILURE, OurSignal, TWorker);
-				MemBus_Write(TmpBuf, true);
-				
-				continue;
-			}
-			
-			CurObj->Enabled = (EnablingThis ? true : false);
-			DidWork = EditConfigValue(TWorker, "ObjectEnabled", EnablingThis ? "true" : "false");
-			
-			switch (DidWork)
-			{
-				case SUCCESS:
-					snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, BusData);
-					break;
-				case WARNING:
-					snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_WARNING, BusData);
-					break;
-				case FAILURE:
-					snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
-					break;
-				default:
-					snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
-					break;
-			}
-				
-				
+			/*Tell them everything is OK, because we don't want to wait the whole time for the runlevel to start up.*/
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s", MEMBUS_CODE_ACKNOWLEDGED, MEMBUS_CODE_RUNLEVEL, TWorker);
 			MemBus_Write(TmpBuf, true);
 		}
-		else if (BusDataIs(MEMBUS_CODE_RUNLEVEL))
+		else
 		{
-			unsigned long LOffset = strlen(MEMBUS_CODE_RUNLEVEL " ");
-			char *TWorker = BusData + LOffset;
-			char TmpBuf[MEMBUS_SIZE/2 - 1];
-			ObjTable *TmpTable = ObjectTable;
-			Bool ValidRL = false;
-			
-			if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
-			{ /*No argument?*/
-				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
-				MemBus_Write(TmpBuf, true);
-				
-				continue;
-			}
-			
-			for (; TmpTable->Next; TmpTable = TmpTable->Next)
-			{ /*Check if anything uses this runlevel at all.*/
-				if (ObjRL_CheckRunlevel(TWorker, TmpTable))
-				{
-					ValidRL = true;
-					break;
-				}
-			}
-			
-			if (ValidRL)
-			{
-				/*Tell them everything is OK, because we don't want to wait the whole time for the runlevel to start up.*/
-				snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s", MEMBUS_CODE_ACKNOWLEDGED, MEMBUS_CODE_RUNLEVEL, TWorker);
-				MemBus_Write(TmpBuf, true);
-			}
-			else
-			{
-				snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s", MEMBUS_CODE_FAILURE, MEMBUS_CODE_RUNLEVEL, TWorker);
-				MemBus_Write(TmpBuf, true);
-				continue;
-			}
-			
-			if (!SwitchRunlevels(TWorker)) /*Switch to it.*/
-			{
-				char TmpBuf[1024];
-				
-				snprintf(TmpBuf, sizeof TmpBuf, "Failed to switch to runlevel \"%s\".", TWorker);
-				SpitError(TmpBuf);
-			}
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s", MEMBUS_CODE_FAILURE, MEMBUS_CODE_RUNLEVEL, TWorker);
+			MemBus_Write(TmpBuf, true);
+			return;
 		}
-		else if (BusDataIs(MEMBUS_CODE_OBJRLS))
+		
+		if (!SwitchRunlevels(TWorker)) /*Switch to it.*/
 		{
-			unsigned long LOffset;
-			char *TWorker = NULL;
-			ObjTable *CurObj = NULL;
-			char TmpBuf[MEMBUS_SIZE/2 - 1];
-			char TRL[MAX_DESCRIPT_SIZE];
-			char TID[MAX_DESCRIPT_SIZE];
-			unsigned long Inc = 0;
+			char TmpBuf[1024];
 			
-			if (BusDataIs(MEMBUS_CODE_OBJRLS_CHECK)) LOffset = strlen(MEMBUS_CODE_OBJRLS_CHECK " ");
-			else if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD)) LOffset = strlen(MEMBUS_CODE_OBJRLS_ADD " ");
-			else if (BusDataIs(MEMBUS_CODE_OBJRLS_DEL)) LOffset = strlen(MEMBUS_CODE_OBJRLS_DEL " ");
-			else
-			{
-				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
-				MemBus_Write(TmpBuf, true);
-				continue;
-			}
-			
-			TWorker = BusData + LOffset;
-			
-			if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
-			{ /*No argument?*/
-				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
-				MemBus_Write(TmpBuf, true);
+			snprintf(TmpBuf, sizeof TmpBuf, "Failed to switch to runlevel \"%s\".", TWorker);
+			SpitError(TmpBuf);
+		}
+	}
+	else if (BusDataIs(MEMBUS_CODE_OBJRLS))
+	{
+		unsigned long LOffset;
+		char *TWorker = NULL;
+		ObjTable *CurObj = NULL;
+		char TmpBuf[MEMBUS_SIZE/2 - 1];
+		char TRL[MAX_DESCRIPT_SIZE];
+		char TID[MAX_DESCRIPT_SIZE];
+		unsigned long Inc = 0;
+		
+		if (BusDataIs(MEMBUS_CODE_OBJRLS_CHECK)) LOffset = strlen(MEMBUS_CODE_OBJRLS_CHECK " ");
+		else if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD)) LOffset = strlen(MEMBUS_CODE_OBJRLS_ADD " ");
+		else if (BusDataIs(MEMBUS_CODE_OBJRLS_DEL)) LOffset = strlen(MEMBUS_CODE_OBJRLS_DEL " ");
+		else
+		{
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+			MemBus_Write(TmpBuf, true);
+			return;
+		}
+		
+		TWorker = BusData + LOffset;
+		
+		if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
+		{ /*No argument?*/
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+			MemBus_Write(TmpBuf, true);
 
-				continue;
-			}
-			
-			for (; TWorker[Inc] != ' ' && TWorker[Inc] != '\0'; ++Inc)
-			{
-				TID[Inc] = TWorker[Inc];
-			}
-			TID[Inc] = '\0';
-			
-			if ((TWorker = strstr(TWorker, " ")) == NULL)
-			{
-				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
-				MemBus_Write(TmpBuf, true);
+			return;
+		}
+		
+		for (; TWorker[Inc] != ' ' && TWorker[Inc] != '\0'; ++Inc)
+		{
+			TID[Inc] = TWorker[Inc];
+		}
+		TID[Inc] = '\0';
+		
+		if ((TWorker = strstr(TWorker, " ")) == NULL)
+		{
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+			MemBus_Write(TmpBuf, true);
 
-				continue;
-			}
-			++TWorker;
-			
-			snprintf(TRL, sizeof TRL, "%s", TWorker);
-			
-			if ((CurObj = LookupObjectInTable(TID)))
+			return;
+		}
+		++TWorker;
+		
+		snprintf(TRL, sizeof TRL, "%s", TWorker);
+		
+		if ((CurObj = LookupObjectInTable(TID)))
+		{
+			if (BusDataIs(MEMBUS_CODE_OBJRLS_CHECK))
 			{
-				if (BusDataIs(MEMBUS_CODE_OBJRLS_CHECK))
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s %d", MEMBUS_CODE_OBJRLS_CHECK, TWorker, ObjRL_CheckRunlevel(TRL, CurObj));
+			}
+			else if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD) || BusDataIs(MEMBUS_CODE_OBJRLS_DEL))
+			{
+				char *RLStream = malloc(MAX_DESCRIPT_SIZE + 1);
+				struct _RLTree *ObjRLS = CurObj->ObjectRunlevels;
+				
+				if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD))
 				{
-					snprintf(TmpBuf, sizeof TmpBuf, "%s %s %d", MEMBUS_CODE_OBJRLS_CHECK, TWorker, ObjRL_CheckRunlevel(TRL, CurObj));
+					if (!ObjRL_CheckRunlevel(TRL, CurObj))
+					{
+						ObjRL_AddRunlevel(TRL, CurObj);
+					}
 				}
-				else if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD) || BusDataIs(MEMBUS_CODE_OBJRLS_DEL))
+				else
 				{
-					char *RLStream = malloc(MAX_DESCRIPT_SIZE + 1);
-					struct _RLTree *ObjRLS = CurObj->ObjectRunlevels;
+					unsigned long TInc = 0;
 					
-					if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD))
-					{
-						if (!ObjRL_CheckRunlevel(TRL, CurObj))
-						{
-							ObjRL_AddRunlevel(TRL, CurObj);
-						}
-					}
-					else
-					{
-						unsigned long TInc = 0;
-						
-						/*Count number of entries.*/
-						for (; ObjRLS->Next != NULL; ++TInc) ObjRLS = ObjRLS->Next;
-						
-						if (TInc == 1 || !ObjRL_DelRunlevel(TRL, CurObj))
-						{
-							snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
-							MemBus_Write(TmpBuf, true);
-							free(RLStream);
-							continue;
-						}
-						ObjRLS = CurObj->ObjectRunlevels;
-						if (!ObjRLS->Next)
-						{
-							ObjRLS->Next = malloc(sizeof(struct _RLTree));
-							ObjRLS->Next->Prev = ObjRLS;
-							ObjRLS->Next->Next = NULL;
-						}
-					}
+					/*Count number of entries.*/
+					for (; ObjRLS->Next != NULL; ++TInc) ObjRLS = ObjRLS->Next;
 					
-					*RLStream = '\0';
-
-					for (; ObjRLS->Next != NULL; ObjRLS = ObjRLS->Next)
-					{
-						strncat(RLStream, ObjRLS->RL, MAX_DESCRIPT_SIZE);
-							
-						if (ObjRLS->Next->Next != NULL)
-						{
-							strncat(RLStream, " ", 1);
-							RLStream = realloc(RLStream, strlen(RLStream) + MAX_DESCRIPT_SIZE);
-						}
-					}
-					
-					if (!EditConfigValue(CurObj->ObjectID, "ObjectRunlevels", RLStream))
+					if (TInc == 1 || !ObjRL_DelRunlevel(TRL, CurObj))
 					{
 						snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
 						MemBus_Write(TmpBuf, true);
 						free(RLStream);
-						continue;
+						return;
 					}
-					
-					free(RLStream);
-					
-					snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, BusData);
-					
+					ObjRLS = CurObj->ObjectRunlevels;
+					if (!ObjRLS->Next)
+					{
+						ObjRLS->Next = malloc(sizeof(struct _RLTree));
+						ObjRLS->Next->Prev = ObjRLS;
+						ObjRLS->Next->Next = NULL;
+					}
 				}
 				
-				MemBus_Write(TmpBuf, true);
+				*RLStream = '\0';
+
+				for (; ObjRLS->Next != NULL; ObjRLS = ObjRLS->Next)
+				{
+					strncat(RLStream, ObjRLS->RL, MAX_DESCRIPT_SIZE);
+						
+					if (ObjRLS->Next->Next != NULL)
+					{
+						strncat(RLStream, " ", 1);
+						RLStream = realloc(RLStream, strlen(RLStream) + MAX_DESCRIPT_SIZE);
+					}
+				}
+				
+				if (!EditConfigValue(CurObj->ObjectID, "ObjectRunlevels", RLStream))
+				{
+					snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+					MemBus_Write(TmpBuf, true);
+					free(RLStream);
+					return;
+				}
+				
+				free(RLStream);
+				
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, BusData);
+				
 			}
-			else
-			{
-				snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s", MEMBUS_CODE_FAILURE, MEMBUS_CODE_OBJRLS_CHECK, TWorker);
-				MemBus_Write(TmpBuf, true);
-			}
-		}
-		/*Power functions that close everything first.*/
-		else if (BusDataIs(MEMBUS_CODE_HALT))
-		{
-			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_HALT, true);
-			EmulWall("System is going down for halt NOW!", false);
-			LaunchShutdown(OSCTL_LINUX_HALT);
-		}
-		else if (BusDataIs(MEMBUS_CODE_POWEROFF))
-		{
-			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_POWEROFF, true);
-			EmulWall("System is going down for poweroff NOW!", false);
-			LaunchShutdown(OSCTL_LINUX_POWEROFF);
-		}
-		else if (BusDataIs(MEMBUS_CODE_REBOOT))
-		{
-			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_REBOOT, true);
-			EmulWall("System is going down for reboot NOW!", false);
-			LaunchShutdown(OSCTL_LINUX_REBOOT);
-		}
-		/*Power functions that nuke everything and reboot/halt us immediately.*/
-		else if (BusDataIs(MEMBUS_CODE_HALTNOW))
-		{
-			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_HALTNOW, true);
-			sync();
-			reboot(OSCTL_LINUX_HALT);
-		}
-		else if (BusDataIs(MEMBUS_CODE_POWEROFFNOW))
-		{
-			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_POWEROFFNOW, true);
-			sync();
-			reboot(OSCTL_LINUX_POWEROFF);
-		}
-		else if (BusDataIs(MEMBUS_CODE_REBOOTNOW))
-		{
-			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_REBOOTNOW, true);
-			sync();
-			reboot(OSCTL_LINUX_REBOOT);
-		}
-		/*Ctrl-Alt-Del control.*/
-		else if (BusDataIs(MEMBUS_CODE_CADOFF))
-		{
-			if (!reboot(OSCTL_LINUX_DISABLE_CTRLALTDEL))
-			{
-				MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_CADOFF, true);
-			}
-			else
-			{
-				MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_CADOFF, true);
-			}
-		}
-		else if (BusDataIs(MEMBUS_CODE_CADON))
-		{
-			if (!reboot(OSCTL_LINUX_ENABLE_CTRLALTDEL))
-			{
-				MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_CADON, true);
-			}
-			else
-			{
-				MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_CADON, true);
-			}
-		}
-		/*Something we don't understand. Send BADPARAM.*/
-		else
-		{
-			char TmpBuf[MEMBUS_SIZE/2 - 1];
-			
-			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
 			
 			MemBus_Write(TmpBuf, true);
 		}
+		else
+		{
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s", MEMBUS_CODE_FAILURE, MEMBUS_CODE_OBJRLS_CHECK, TWorker);
+			MemBus_Write(TmpBuf, true);
+		}
+	}
+	/*Power functions that close everything first.*/
+	else if (BusDataIs(MEMBUS_CODE_HALT) || BusDataIs(MEMBUS_CODE_POWEROFF) || BusDataIs(MEMBUS_CODE_REBOOT))
+	{
+		unsigned long LOffset = 0, Signal;
+		char *TWorker = NULL, *MSig = NULL;
+		char TmpBuf[MEMBUS_SIZE/2 - 1];
+		
+		if (BusDataIs(MEMBUS_CODE_HALT))
+		{
+			LOffset = strlen(MEMBUS_CODE_HALT " ");
+			Signal = OSCTL_LINUX_HALT;
+			MSig = MEMBUS_CODE_HALT;
+			
+		}
+		else if (BusDataIs(MEMBUS_CODE_POWEROFF))
+		{
+			LOffset = strlen(MEMBUS_CODE_POWEROFF " ");
+			Signal = OSCTL_LINUX_POWEROFF;
+			MSig = MEMBUS_CODE_POWEROFF;
+		}
+		else if (BusDataIs(MEMBUS_CODE_REBOOT))
+		{
+			LOffset = strlen(MEMBUS_CODE_REBOOT " ");
+			Signal = OSCTL_LINUX_REBOOT;
+			MSig = MEMBUS_CODE_REBOOT;
+		}
+		
+		
+		TWorker = BusData + LOffset;
+		
+		if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
+		{ /*No argument? Just do the action.*/
+			
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, MSig);
+			MemBus_Write(TmpBuf, true);
+			
+			LaunchShutdown(Signal);
+
+			return;
+		}
+		
+		if (strstr(TWorker, ":") && strstr(TWorker, "/"))
+		{
+			char MsgBuf[MAX_LINE_SIZE];
+			const char *HType = NULL;
+			char Hr[16], Min[16];
+			
+			if (HaltParams.HaltMode != -1)
+			{/*Don't let us schedule two shutdowns.*/
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+				
+				MemBus_Write(TmpBuf, true);
+				return;
+			}
+				
+			if (sscanf(TWorker, "%lu:%lu:%lu %lu/%lu/%lu", &HaltParams.TargetHour, &HaltParams.TargetMin,
+				&HaltParams.TargetSec, &HaltParams.TargetMonth, &HaltParams.TargetDay, &HaltParams.TargetYear) != 6)
+			{
+				SpitError("Invalid time signature for HALT/REBOOT/POWEROFF over membus.\n"
+							"Please report to Epoch. This is probably a bug.");
+
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+				MemBus_Write(TmpBuf, true);
+				
+				return;
+			}
+			
+			HaltParams.HaltMode = Signal;
+
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, BusData);
+			MemBus_Write(TmpBuf, true);
+
+			if (Signal == OSCTL_LINUX_HALT) HType = "halt";
+			else if (Signal == OSCTL_LINUX_POWEROFF) HType = "poweroff";
+			else if (Signal == OSCTL_LINUX_REBOOT) HType = "reboot";
+
+			snprintf(Hr, 16, (HaltParams.TargetHour >= 10) ? "%ld" : "0%ld", HaltParams.TargetHour);
+			snprintf(Min, 16, (HaltParams.TargetMin >= 10) ? "%ld" : "0%ld", HaltParams.TargetMin);
+			
+			snprintf(MsgBuf, sizeof MsgBuf, "System is going down for %s at %s:%s %ld/%ld/%ld!",
+				HType, Hr, Min, HaltParams.TargetMonth, HaltParams.TargetDay, HaltParams.TargetYear);
+					
+			EmulWall(MsgBuf, false);
+			return;
+		}
+		else
+		{
+				SpitError("Time signature doesn't even contain a semicolon and a slash!\n"
+						"This is probably a bug, please report to Epoch.");
+
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+				MemBus_Write(TmpBuf, true);
+				return;
+		}
+	}
+	else if (BusDataIs(MEMBUS_CODE_ABORTHALT))
+	{
+		char MsgBuf[MAX_LINE_SIZE];
+		char Hr[16], Min[16];
+			
+		snprintf(Hr, 16, (HaltParams.TargetHour >= 10) ? "%ld" : "0%ld", HaltParams.TargetHour);
+		snprintf(Min, 16, (HaltParams.TargetMin >= 10) ? "%ld" : "0%ld", HaltParams.TargetMin);
+		
+		if (HaltParams.HaltMode != -1)
+		{
+			HaltParams.HaltMode = -1; /*-1 does the real cancellation.*/
+		}
+		else
+		{ /*Nothing scheduled?*/
+			MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_ABORTHALT, true);
+			return;
+		}
+		
+		snprintf(MsgBuf, sizeof MsgBuf, "%s %s:%s %ld/%ld/%ld %s", "The shutdown scheduled for",
+				Hr, Min, HaltParams.TargetMonth, HaltParams.TargetDay, HaltParams.TargetYear,
+				"has been aborted.");
+
+		EmulWall(MsgBuf, false);
+
+		MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_ABORTHALT, true);
+		return;
+	}
+	/*Power functions that nuke everything and reboot/halt us immediately.*/
+	else if (BusDataIs(MEMBUS_CODE_HALTNOW))
+	{
+		MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_HALTNOW, true);
+		sync();
+		reboot(OSCTL_LINUX_HALT);
+	}
+	else if (BusDataIs(MEMBUS_CODE_POWEROFFNOW))
+	{
+		MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_POWEROFFNOW, true);
+		sync();
+		reboot(OSCTL_LINUX_POWEROFF);
+	}
+	else if (BusDataIs(MEMBUS_CODE_REBOOTNOW))
+	{
+		MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_REBOOTNOW, true);
+		sync();
+		reboot(OSCTL_LINUX_REBOOT);
+	}
+	/*Ctrl-Alt-Del control.*/
+	else if (BusDataIs(MEMBUS_CODE_CADOFF))
+	{
+		if (!reboot(OSCTL_LINUX_DISABLE_CTRLALTDEL))
+		{
+			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_CADOFF, true);
+		}
+		else
+		{
+			MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_CADOFF, true);
+		}
+	}
+	else if (BusDataIs(MEMBUS_CODE_CADON))
+	{
+		if (!reboot(OSCTL_LINUX_ENABLE_CTRLALTDEL))
+		{
+			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_CADON, true);
+		}
+		else
+		{
+			MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_CADON, true);
+		}
+	}
+	/*Something we don't understand. Send BADPARAM.*/
+	else
+	{
+		char TmpBuf[MEMBUS_SIZE/2 - 1];
+		
+		snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+		
+		MemBus_Write(TmpBuf, true);
 	}
 }
 
