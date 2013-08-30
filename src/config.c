@@ -557,8 +557,8 @@ rStatus InitConfig(void)
 				
 				Worker += strlen("PIDFILE");
 				
-				while (*Worker == ' ')
-				{ /*Skip past all spaces.*/
+				while (*Worker == ' ' || *Worker == '\t')
+				{ /*Skip past all spaces and tabs.*/
 					++Worker;
 				}
 				
