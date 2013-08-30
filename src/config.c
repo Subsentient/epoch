@@ -251,7 +251,36 @@ rStatus InitConfig(void)
 				return FAILURE;
 			}
 			
-			snprintf(Hostname, MAX_LINE_SIZE, "%s", DelimCurr);
+			if (!strncmp(Worker, "FILE", strlen("FILE")))
+			{
+				FILE *TDesc;
+				unsigned long Inc = 0;
+				char TChar;
+				
+				Worker += strlen("FILE");
+				
+				for (; *Worker == ' ' || *Worker == '\t'; ++Worker);
+				
+				if (!(TDesc = fopen(Worker, "r")))
+				{
+					char TmpBuf[1024];
+					snprintf(TmpBuf, sizeof TmpBuf, "Failed to set hostname from file \"%s\".\n", Worker);
+					SpitWarning(TmpBuf);
+					continue;
+				}
+				
+				for (Inc = 0; (TChar = getc(TDesc)) != EOF && Inc < MAX_LINE_SIZE; ++Inc)
+				{
+					Hostname[Inc] = TChar;
+				}
+				Hostname[Inc] = '\0';
+				
+				fclose(TDesc);
+			}
+			else
+			{	
+				snprintf(Hostname, MAX_LINE_SIZE, "%s", DelimCurr);
+			}
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
