@@ -249,11 +249,10 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 	
 	if (CmdIs("poweroff") || CmdIs("halt") || CmdIs("reboot"))
 	{
-		char *NCode = NULL, *GCode = NULL, *SuccessMsg = NULL, *FailMsg[2] = { NULL, NULL };
+		char *GCode = NULL, *SuccessMsg = NULL, *FailMsg[2] = { NULL, NULL };
 		
 		if (CmdIs("poweroff"))
 		{
-			NCode = MEMBUS_CODE_POWEROFFNOW;
 			GCode = MEMBUS_CODE_POWEROFF;
 			OSCode = OSCTL_LINUX_POWEROFF;
 			SuccessMsg = "Power off in progress.";
@@ -262,7 +261,6 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 		}
 		else if (CmdIs("reboot"))
 		{
-			NCode = MEMBUS_CODE_REBOOTNOW;
 			GCode = MEMBUS_CODE_REBOOT;
 			OSCode = OSCTL_LINUX_REBOOT;
 			SuccessMsg = "Reboot in progress.";
@@ -271,9 +269,8 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 		}
 		else if (CmdIs("halt"))
 		{
-			NCode = MEMBUS_CODE_HALTNOW;
 			GCode = MEMBUS_CODE_HALT;
-			OSCode = OSCode = OSCTL_LINUX_HALT;
+			OSCode = OSCTL_LINUX_HALT;
 			SuccessMsg = "System halt in progress.";
 			FailMsg[0] = "Failed to request immediate halt.";
 			FailMsg[1] = "Failed to request halt.";
