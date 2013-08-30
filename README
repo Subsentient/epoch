@@ -1,6 +1,15 @@
-Epoch is a boot system for Linux by Subsentient.
-It is intended as a lightweight solution for lightweight distributions
-that don't want a huge mess just to boot up. It has one unified configuration file,
-is very small in size, and it has no external dependencies besides glibc.
+Epoch is a boot system (analogous to systemd or upstart)
+for Linux by Subsentient. It is intended as a lightweight
+solution for lightweight distributions
+that don't want a huge mess just to boot up.
+It has one unified configuration file, is very small in size,
+and it has no external dependencies besides glibc.
 
-Please direct all further questions to Subsentient at "http://universe2.us/contactinfo.html".
+To build the Epoch Boot System, just execute ./buildepoch.sh.
+If you export CC, CFLAGS and/or LDFLAGS,
+those new settings WILL be honored.
+You can add flags like -D'CONFIGDIR="/wherever/you/want/"', 
+-D'MEMBUS_SIZE=1024', and -DWEIRDSHELLPERMITTED.
+
+Please direct all further questions to
+Subsentient at "http://universe2.us/contactinfo.html".
