@@ -298,7 +298,7 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 		}
 		else
 		{
-			if (!TellInitToDo(GCode))
+			if (!SendPowerControl(GCode))
 			{
 				SpitError(FailMsg[1]);
 				return FAILURE;
@@ -424,6 +424,49 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 	{
 		CArg = argv[1];
 		
+		if (ArgIs("setcad"))
+		{
+			const char *MCode = NULL, *ReportLump = NULL;
+			rStatus RetVal = SUCCESS;
+			
+			if (!InitMemBus(false))
+			{
+				SpitError("HandleEpochCommand(): Failed to connect to membus.");
+				return FAILURE;
+			}
+			
+			CArg = argv[2];
+			
+			if (ArgIs("on"))
+			{
+				MCode = MEMBUS_CODE_CADON;
+				ReportLump = "enable";
+			}
+			else if (ArgIs("off"))
+			{
+				MCode = MEMBUS_CODE_CADOFF;
+				ReportLump = "disable";
+			}
+			else
+			{
+				fprintf(stderr, "%s\n", "Bad parameter. Valid values are on and off.");
+				return FAILURE;
+			}
+			
+			if (SendPowerControl(MCode))
+			{
+				printf("Ctrl-Alt-Del instant reboot has been %sd\n.", ReportLump);
+				RetVal = SUCCESS;
+			}
+			else
+			{
+				fprintf(stderr, CONSOLE_COLOR_RED "Failed to %s Ctrl-Alt-Del instant reboot!\n" CONSOLE_ENDCOLOR, ReportLump);
+				RetVal = FAILURE;
+			}
+			
+			ShutdownMemBus(false);
+			return RetVal;
+		}
 		if (ArgIs("enable") || ArgIs("disable"))
 		{
 			rStatus RV = SUCCESS;

@@ -559,25 +559,6 @@ void ParseMemBus(void)
 		MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_ABORTHALT, true);
 		return;
 	}
-	/*Power functions that nuke everything and reboot/halt us immediately.*/
-	else if (BusDataIs(MEMBUS_CODE_HALTNOW))
-	{
-		MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_HALTNOW, true);
-		sync();
-		reboot(OSCTL_LINUX_HALT);
-	}
-	else if (BusDataIs(MEMBUS_CODE_POWEROFFNOW))
-	{
-		MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_POWEROFFNOW, true);
-		sync();
-		reboot(OSCTL_LINUX_POWEROFF);
-	}
-	else if (BusDataIs(MEMBUS_CODE_REBOOTNOW))
-	{
-		MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_REBOOTNOW, true);
-		sync();
-		reboot(OSCTL_LINUX_REBOOT);
-	}
 	/*Ctrl-Alt-Del control.*/
 	else if (BusDataIs(MEMBUS_CODE_CADOFF))
 	{

@@ -16,7 +16,7 @@
 #include <dirent.h>
 #include "epoch.h"
 
-rStatus TellInitToDo(const char *MembusCode)
+rStatus SendPowerControl(const char *MembusCode)
 { /*Client side to send a request to halt/reboot/power off/disable or enable CAD/etc.*/
 	char InitsResponse[MEMBUS_SIZE/2 - 1], *PCode[2], *PErrMsg;
 	unsigned long cCounter = 0;
@@ -39,24 +39,6 @@ rStatus TellInitToDo(const char *MembusCode)
 		PCode[1] = MEMBUS_CODE_FAILURE " " MEMBUS_CODE_REBOOT;
 		PErrMsg = "Unable to reboot.";
 	}
-	else if (!strcmp(MembusCode, MEMBUS_CODE_POWEROFFNOW))
-	{
-		PCode[0] = MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_POWEROFFNOW;
-		PCode[1] = MEMBUS_CODE_FAILURE " " MEMBUS_CODE_POWEROFFNOW;
-		PErrMsg = "Unable to power off.";
-	}
-	else if (!strcmp(MembusCode, MEMBUS_CODE_REBOOTNOW))
-	{
-		PCode[0] = MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_REBOOTNOW;
-		PCode[1] = MEMBUS_CODE_FAILURE " " MEMBUS_CODE_REBOOTNOW;
-		PErrMsg = "Unable to reboot.";
-	}
-	else if (!strcmp(MembusCode, MEMBUS_CODE_HALTNOW))
-	{
-		PCode[0] = MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_HALTNOW;
-		PCode[1] = MEMBUS_CODE_FAILURE " " MEMBUS_CODE_HALTNOW;
-		PErrMsg = "Unable to halt.";
-	}
 	else if (!strcmp(MembusCode, MEMBUS_CODE_CADON))
 	{
 		PCode[0] = MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_CADON;
@@ -71,7 +53,7 @@ rStatus TellInitToDo(const char *MembusCode)
 	}
 	else
 	{
-		SpitError("Invalid MEMBUS_CODE passed to TellInitToDo().");
+		SpitError("Invalid MEMBUS_CODE passed to SendPowerControl().");
 		return FAILURE;
 	}
 	

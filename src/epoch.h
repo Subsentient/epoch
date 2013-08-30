@@ -82,9 +82,6 @@
 #define MEMBUS_CODE_HALT "INIT_HALT"
 #define MEMBUS_CODE_POWEROFF "INIT_POWEROFF"
 #define MEMBUS_CODE_REBOOT "INIT_REBOOT"
-#define MEMBUS_CODE_POWEROFFNOW "INIT_NPOWEROFF"
-#define MEMBUS_CODE_HALTNOW "INIT_NHALT"
-#define MEMBUS_CODE_REBOOTNOW "INIT_NREBOOT"
 
 #define MEMBUS_CODE_RESET "EPOCH_REINIT" /*Forces a reset of the object table.*/
 #define MEMBUS_CODE_CADON "CADON"
@@ -203,7 +200,7 @@ extern void LaunchShutdown(signed long Signal);
 extern void EmergencyShell(void);
 
 /*modes.c*/
-extern rStatus TellInitToDo(const char *MembusCode);
+extern rStatus SendPowerControl(const char *MembusCode);
 extern rStatus EmulKillall5(unsigned long InSignal);
 extern void EmulWall(const char *InStream, Bool ShowUser);
 extern rStatus EmulShutdown(long ArgumentCount, const char **ArgStream);

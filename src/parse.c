@@ -30,7 +30,6 @@ static Bool FileUsable(const char *FileName)
 	}
 	else
 	{
-		fclose(TS);
 		return false;
 	}
 }
