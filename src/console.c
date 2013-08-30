@@ -52,7 +52,7 @@ void PrintBootBanner(void)
 			return;
 		}
 		
-		for (; (TChar = getc(TempDescriptor)) != EOF && Inc < 512; ++Inc)
+		for (; (TChar = getc(TempDescriptor)) != EOF && Inc < MAX_LINE_SIZE - 1; ++Inc)
 		{ /*It's a loop copy. Get over it.*/
 			BootBanner.BannerText[Inc] = TChar;
 		}

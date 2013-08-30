@@ -167,7 +167,7 @@ rStatus InitConfig(void)
 				BootBanner.ShowBanner = false; /*Should already be false, but to prevent possible bugs...*/
 				continue;
 			}
-			snprintf(BootBanner.BannerText, MAX_DESCRIPT_SIZE, "%s", DelimCurr);
+			snprintf(BootBanner.BannerText, MAX_LINE_SIZE, "%s", DelimCurr);
 			
 			BootBanner.ShowBanner = true;
 			
@@ -269,7 +269,7 @@ rStatus InitConfig(void)
 					continue;
 				}
 				
-				for (Inc = 0; (TChar = getc(TDesc)) != EOF && Inc < MAX_LINE_SIZE; ++Inc)
+				for (Inc = 0; (TChar = getc(TDesc)) != EOF && Inc < MAX_LINE_SIZE - 1; ++Inc)
 				{
 					Hostname[Inc] = TChar;
 				}

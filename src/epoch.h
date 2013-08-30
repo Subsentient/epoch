@@ -148,7 +148,7 @@ typedef struct _EpochObjectTable
 struct _BootBanner
 {
 	Bool ShowBanner;
-	char BannerText[MAX_DESCRIPT_SIZE];
+	char BannerText[MAX_LINE_SIZE];
 	char BannerColor[64];
 };
 
