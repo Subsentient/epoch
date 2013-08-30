@@ -10,6 +10,8 @@
 #include <ctype.h>
 #include <string.h>
 #include <unistd.h>
+#include <execinfo.h>
+#include <signal.h>
 #include <sys/reboot.h>
 #include "epoch.h"
 
@@ -21,6 +23,8 @@ static rStatus ProcessGenericHalt(int argc, char **argv);
 static Bool __CmdIs(const char *CArg, const char *InCmd);
 static void PrintEpochHelp(const char *RootCommand, const char *InCmd);
 static rStatus HandleEpochCommand(int argc, char **argv);
+static void SigHandlerForInit(int Signal);
+static void SigHandler(int Signal);
 
 /*
  * Actual functions.
@@ -44,6 +48,104 @@ static Bool __CmdIs(const char *CArg, const char *InCmd)
 	return false;
 }
 
+static void SigHandlerForInit(int Signal)
+{
+	const char *WallError = NULL;
+	void *BTList[25];
+	char **BTStrings;
+	size_t BTSize;
+	char OutMsg[MAX_LINE_SIZE * 2] = { '\0' }, *TWorker = OutMsg;
+	
+	switch (Signal)
+	{
+		case OSCTL_SIGNAL_SEGV:
+		{
+			WallError = "A segmentation fault has occurred in Epoch! Dropping to emergency shell!";
+			break;
+		}
+		case OSCTL_SIGNAL_ILL:
+		{
+			WallError = "Epoch has encountered an illegal instruction! Dropping to emergency shell!";
+			break;
+		}
+		case OSCTL_SIGNAL_FPE:
+		{
+			WallError = "Epoch has encountered an arithmetic error! Dropping to emergency shell!";
+			break;
+		}
+		case OSCTL_SIGNAL_ABRT:
+		{
+			WallError = "Epoch has received an abort signal! Dropping to emergency shell!";
+			break;
+		}
+		
+	}
+	
+	BTSize = backtrace(BTList, 25);
+	BTStrings = backtrace_symbols(BTList, BTSize);
+
+	snprintf(OutMsg, sizeof OutMsg, "%s\n\nBacktrace:\n", WallError);
+	
+	TWorker += strlen(TWorker);
+	for (; BTSize > 0 && *BTStrings != NULL; --BTSize, ++BTStrings, TWorker += strlen(TWorker))
+	{
+		snprintf(TWorker, sizeof OutMsg - strlen(OutMsg) - 1, "\n%s", *BTStrings);
+	}
+	
+	EmulWall(OutMsg, false);
+	
+	EmergencyShell();
+}
+
+static void SigHandler(int Signal)
+{
+	const char *ErrorM = NULL;
+	void *BTList[25];
+	char **BTStrings;
+	size_t BTSize;
+	char OutMsg[MAX_LINE_SIZE * 2] = { '\0' }, *TWorker = OutMsg;
+	
+	switch (Signal)
+	{
+		case OSCTL_SIGNAL_SEGV:
+		{
+			ErrorM = "A segmentation fault has occurred in Epoch!";
+			break;
+		}
+		case OSCTL_SIGNAL_ILL:
+		{
+			ErrorM = "Epoch has encountered an illegal instruction!";
+			break;
+		}
+		case OSCTL_SIGNAL_FPE:
+		{
+			ErrorM = "Epoch has encountered an arithmetic error!";
+			break;
+		}
+		case OSCTL_SIGNAL_ABRT:
+		{
+			ErrorM = "Epoch has received an abort signal!";
+			break;
+		}
+		
+	}
+	
+	BTSize = backtrace(BTList, 25);
+	BTStrings = backtrace_symbols(BTList, BTSize);
+
+	snprintf(OutMsg, sizeof OutMsg, "%s\n\nBacktrace:\n", ErrorM);
+	TWorker += strlen(TWorker);
+	
+	for (; BTSize > 0 && *BTStrings != NULL; --BTSize, ++BTStrings, TWorker += strlen(TWorker))
+	{
+		snprintf(TWorker, sizeof OutMsg - strlen(OutMsg) - 1, "\n%s", *BTStrings);
+	}
+	
+	SpitError(OutMsg);
+	
+	exit(1);
+}
+	
 static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 { /*Used for help for the epoch command.*/
 	const char *HelpMsgs[] =
@@ -508,12 +610,28 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 int main(int argc, char **argv)
 { /*Lotsa sloppy CLI processing here.*/
 	/*Figure out what we are.*/
+	void (*SigHPtr)(int Signal);
+
+	if (getpid() == 1)
+	{
+		SigHPtr = &SigHandlerForInit;
+	}
+	else
+	{
+		SigHPtr = &SigHandler;
+	}
+	
 	if (argv[0] == NULL)
 	{
 		SpitError("main(): argv[0] is NULL. Why?");
 		return 1;
 	}
 
+	/*Set up signal handling.*/
+	signal(OSCTL_SIGNAL_SEGV, SigHPtr);
+	signal(OSCTL_SIGNAL_ILL, SigHPtr);
+	signal(OSCTL_SIGNAL_FPE, SigHPtr);
+	signal(OSCTL_SIGNAL_ABRT, SigHPtr);
 	
 	if (CmdIs("poweroff") || CmdIs("reboot") || CmdIs("halt"))
 	{
