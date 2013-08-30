@@ -1,5 +1,5 @@
 #!/bin/sh
-# Script to build the Epoch Boot System.
+# Script to built the Epoch Init System.
 
 CMD()
 {
