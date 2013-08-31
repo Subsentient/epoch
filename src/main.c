@@ -58,6 +58,12 @@ static void SigHandlerForInit(int Signal)
 	
 	switch (Signal)
 	{
+		case OSCTL_SIGNAL_INT:
+		{ /*Is this a reboot signal?*/
+			EmulWall("System is going down for reboot NOW!", false);
+			LaunchShutdown(OSCTL_LINUX_REBOOT);
+			return;
+		}
 		case OSCTL_SIGNAL_SEGV:
 		{
 			WallError = "A segmentation fault has occurred in Epoch! Dropping to emergency shell!";
@@ -107,6 +113,12 @@ static void SigHandler(int Signal)
 	
 	switch (Signal)
 	{
+		case OSCTL_SIGNAL_INT:
+		{
+			puts("SIGINT received. Exiting.");
+			ShutdownMemBus(false);
+			exit(0);
+		}
 		case OSCTL_SIGNAL_SEGV:
 		{
 			ErrorM = "A segmentation fault has occurred in Epoch!";
@@ -673,6 +685,7 @@ int main(int argc, char **argv)
 	signal(OSCTL_SIGNAL_FPE, SigHPtr);
 	signal(OSCTL_SIGNAL_ABRT, SigHPtr);
 	
+	signal(OSCTL_SIGNAL_INT, SigHPtr); /*For reboots and closing client membus correctly.*/
 	if (CmdIs("poweroff") || CmdIs("reboot") || CmdIs("halt"))
 	{
 		Bool RVal;
