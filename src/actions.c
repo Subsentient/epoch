@@ -134,6 +134,11 @@ void LaunchBootup(void)
 void LaunchShutdown(signed long Signal)
 { /*Responsible for reboot, halt, power down, etc.*/
 	
+	if (!ShutdownMemBus(true))
+	{ /*Shutdown membus first, so no other signals will reach us.*/
+		SpitWarning("Failed to shut down membus interface.");
+	}
+	
 	printf("%s", CONSOLE_COLOR_RED);
 	
 	if (Signal == OSCTL_LINUX_HALT || Signal == OSCTL_LINUX_POWEROFF)
@@ -154,11 +159,6 @@ void LaunchShutdown(signed long Signal)
 	}
 	
 	ShutdownConfig();
-	
-	if (!ShutdownMemBus(true))
-	{
-		SpitWarning("Failed to shut down membus interface.");
-	}
 	
 	printf("\n%s", CONSOLE_COLOR_CYAN);
 	
