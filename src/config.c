@@ -251,20 +251,21 @@ rStatus InitConfig(void)
 				return FAILURE;
 			}
 			
-			if (!strncmp(Worker, "FILE", strlen("FILE")))
+			if (!strncmp(DelimCurr, "FILE", strlen("FILE")))
 			{
 				FILE *TDesc;
 				unsigned long Inc = 0;
 				char TChar;
+				const char *TW = DelimCurr;
 				
-				Worker += strlen("FILE");
+				TW += strlen("FILE");
 				
-				for (; *Worker == ' ' || *Worker == '\t'; ++Worker);
+				for (; *TW == ' ' || *TW == '\t'; ++TW);
 				
-				if (!(TDesc = fopen(Worker, "r")))
+				if (!(TDesc = fopen(TW, "r")))
 				{
 					char TmpBuf[1024];
-					snprintf(TmpBuf, sizeof TmpBuf, "Failed to set hostname from file \"%s\".\n", Worker);
+					snprintf(TmpBuf, sizeof TmpBuf, "Failed to set hostname from file \"%s\".\n", TW);
 					SpitWarning(TmpBuf);
 					continue;
 				}
