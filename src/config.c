@@ -152,7 +152,7 @@ rStatus InitConfig(void)
 		{
 			const char *TWorker = DelimCurr;
 			unsigned long Inc = 0;
-			char CurArg[1024];
+			char CurArg[MAX_DESCRIPT_SIZE];
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
@@ -165,7 +165,8 @@ rStatus InitConfig(void)
 			
 			do
 			{
-				for (Inc = 0; TWorker[Inc] != ' ' && TWorker[Inc] != '\t' && TWorker[Inc] != '\n' && TWorker[Inc] != '\0'; ++Inc)
+				for (Inc = 0; TWorker[Inc] != ' ' && TWorker[Inc] != '\t' && TWorker[Inc] != '\n' &&
+					TWorker[Inc] != '\0' && Inc < (MAX_DESCRIPT_SIZE - 1); ++Inc)
 				{
 					CurArg[Inc] = TWorker[Inc];
 				}
@@ -195,7 +196,7 @@ rStatus InitConfig(void)
 				{
 					char TmpBuf[1024];
 					
-					snprintf(TmpBuf, 1024, "Bad value %s for attribute MountVirtual. Ignoring.", CurArg);
+					snprintf(TmpBuf, 1024, "Bad value %s for attribute MountVirtual on line %lu. Ignoring.", CurArg, LineNum);
 					
 					SpitWarning(TmpBuf);
 					
@@ -204,7 +205,7 @@ rStatus InitConfig(void)
 					
 			} while ((TWorker = NextSpace(TWorker)));
 			
-			if ((strlen(DelimCurr) + 1) >= MAX_DESCRIPT_SIZE)
+			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Attribute MountVirtual in epoch.conf line %lu has\n"
@@ -430,12 +431,16 @@ rStatus InitConfig(void)
 			
 			continue;
 		}
-		else if (!strncmp(Worker, "ObjectOption", strlen("ObjectOption")))
+		else if (!strncmp(Worker, "ObjectOptions", strlen("ObjectOptions")))
 		{
+			const char *TWorker = DelimCurr;
+			unsigned long Inc;
+			char CurArg[MAX_DESCRIPT_SIZE];
+			
 			if (!CurObj)
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Attribute ObjectOption comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
+				snprintf(TmpBuf, 1024, "Attribute ObjectOptions comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
 				ShutdownConfig();
 				free(ConfigStream);
@@ -445,52 +450,71 @@ rStatus InitConfig(void)
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectOption in epoch.conf line %lu.", LineNum);
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectOptions in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
 				ShutdownConfig();
 				free(ConfigStream);
 				return FAILURE;
 			}
 			
-			if (!strcmp(DelimCurr, "NOWAIT"))
+			do
 			{
-				if (CurObj->Opts.HaltCmdOnly)
+				
+				for (Inc = 0; TWorker[Inc] != ' ' && TWorker[Inc] != '\t' && TWorker[Inc] != '\n'
+					&& TWorker[Inc] != '\0' && Inc < (MAX_DESCRIPT_SIZE - 1); ++Inc)
 				{
-					SpitWarning("ObjectOption value NOWAIT contradicts another's HALTONLY.\nSticking with HALTONLY.");
-					CurObj->Opts.NoWait = false;
-					continue;
+					CurArg[Inc] = TWorker[Inc];
 				}
-				CurObj->Opts.NoWait = true;
-			}
-			else if (!strcmp(DelimCurr, "HALTONLY"))
-			{ /*Allow entries that execute on shutdown only.*/
-				CurObj->Started = true;
-				CurObj->Opts.CanStop = false;
-				CurObj->Opts.HaltCmdOnly = true;
-			}
-			else if (!strcmp(DelimCurr, "PERSISTENT"))
-			{
-				CurObj->Opts.CanStop = false;
-			}
-			else if (!strcmp(DelimCurr, "RAWDESCRIPTION"))
-			{
-				CurObj->Opts.RawDescription = true;
-			}
-			else if (!strcmp(DelimCurr, "SERVICE"))
-			{
-				CurObj->Opts.IsService = true;
-			}
-			else
+				CurArg[Inc] = '\0';
+				
+				if (!strcmp(CurArg, "NOWAIT"))
+				{
+					if (CurObj->Opts.HaltCmdOnly)
+					{
+						SpitWarning("ObjectOptions value NOWAIT contradicts another's HALTONLY.\nSticking with HALTONLY.");
+						CurObj->Opts.NoWait = false;
+						continue;
+					}
+					CurObj->Opts.NoWait = true;
+				}
+				else if (!strcmp(CurArg, "HALTONLY"))
+				{ /*Allow entries that execute on shutdown only.*/
+					CurObj->Started = true;
+					CurObj->Opts.CanStop = false;
+					CurObj->Opts.HaltCmdOnly = true;
+				}
+				else if (!strcmp(CurArg, "PERSISTENT"))
+				{
+					CurObj->Opts.CanStop = false;
+				}
+				else if (!strcmp(CurArg, "RAWDESCRIPTION"))
+				{
+					CurObj->Opts.RawDescription = true;
+				}
+				else if (!strcmp(CurArg, "SERVICE"))
+				{
+					CurObj->Opts.IsService = true;
+				}
+				else
+				{
+					char TmpBuf[1024];
+					
+					snprintf(TmpBuf, 1024, "Bad value %s for attribute ObjectOptions for object %s at line %lu.\n"
+							"Valid values are NOWAIT, PERSISTENT, RAWDESCRIPTION, SERVICE, and HALTONLY.",
+							DelimCurr, CurObj->ObjectID, LineNum);
+					SpitError(TmpBuf);
+					ShutdownConfig();
+					free(ConfigStream);
+					return FAILURE;
+				}
+			} while ((TWorker = NextSpace(TWorker)));
+			
+			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
 				char TmpBuf[1024];
-				
-				snprintf(TmpBuf, 1024, "Bad value %s for attribute ObjectOption for object %s at line %lu.\n"
-						"Valid values are NOWAIT, PERSISTENT, RAWDESCRIPTION, SERVICE, and HALTONLY.",
-						DelimCurr, CurObj->ObjectID, LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Attribute ObjectOptions in epoch.conf line %lu has\n"
+						"abnormally long value and may have been truncated.", LineNum);
+				SpitWarning(TmpBuf);
 			}
 			
 			continue;
