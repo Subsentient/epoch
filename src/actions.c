@@ -11,14 +11,40 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/reboot.h>
+#include <sys/mount.h>
 #include <sys/types.h>
 #include "epoch.h"
 
+/*Prototypes.*/
+static void MountVirtuals(void);
+
 /*Globals.*/
 struct _HaltParams HaltParams = { -1, 0, 0, 0, 0, 0 };
+Bool AutoMountOpts[5] = { false, false, false, false, false };
 
 /*Functions.*/
 
+static void MountVirtuals(void)
+{
+	const char *FSTypes[5] = { "proc", "sysfs", "devtmpfs", "devpts", "tmpfs" };
+	const char *MountLocations[5] = { "/proc", "/sys", "/dev", "/dev/pts", "/dev/shm" };
+	short Inc = 0;
+	
+	for (; Inc < 5; ++Inc)
+	{
+		if (AutoMountOpts[Inc])
+		{
+			if (mount(FSTypes[Inc], MountLocations[Inc], FSTypes[Inc], 0, NULL) != 0)
+			{
+				char TmpBuf[1024];
+				
+				snprintf(TmpBuf, sizeof TmpBuf, "Failed to mount %s!", MountLocations[Inc]);
+				SpitWarning(TmpBuf);
+				continue;
+			}
+		}
+	}
+}
 
 /*This does what it sounds like. It exits us to go to a shell in event of catastrophe.*/
 void EmergencyShell(void)
@@ -67,6 +93,8 @@ void LaunchBootup(void)
 	}
 	
 	PrintBootBanner();
+	
+	MountVirtuals(); /*Mounts any virtual filesystems, upon request.*/
 	
 	if (Hostname[0] != '\0')
 	{ /*The system hostname.*/
