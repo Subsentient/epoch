@@ -147,6 +147,73 @@ rStatus InitConfig(void)
 
 			continue;
 		}
+		/*This will mount /dev, /proc, /sys, /dev/pts, and /dev/shm on boot time, upon request.*/
+		else if (!strncmp(Worker, "MountVirtual", strlen("MountVirtual")))
+		{
+			const char *TWorker = DelimCurr;
+			unsigned long Inc = 0;
+			char CurArg[1024];
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute MountVirtual in epoch.conf line %lu.", LineNum);
+				SpitWarning(TmpBuf);
+
+				continue;
+			}
+			
+			do
+			{
+				for (Inc = 0; TWorker[Inc] != ' ' && TWorker[Inc] != '\t' && TWorker[Inc] != '\n' && TWorker[Inc] != '\0'; ++Inc)
+				{
+					CurArg[Inc] = TWorker[Inc];
+				}
+				CurArg[Inc] = '\0';
+				
+				if (!strcmp("procfs", CurArg))
+				{
+					AutoMountOpts[0] = true;
+				}
+				else if (!strcmp("sysfs", CurArg))
+				{
+					AutoMountOpts[1] = true;
+				}
+				else if (!strcmp("devfs", CurArg))
+				{
+					AutoMountOpts[2] = true;
+				}
+				else if (!strcmp("devpts", CurArg))
+				{
+					AutoMountOpts[3] = true;
+				}
+				else if (!strcmp("devshm", CurArg))
+				{
+					AutoMountOpts[4] = true;
+				}
+				else
+				{
+					char TmpBuf[1024];
+					
+					snprintf(TmpBuf, 1024, "Bad value %s for attribute MountVirtual. Ignoring.", CurArg);
+					
+					SpitWarning(TmpBuf);
+					
+					continue;
+				}
+					
+			} while ((TWorker = NextSpace(TWorker)));
+			
+			if ((strlen(DelimCurr) + 1) >= MAX_DESCRIPT_SIZE)
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Attribute MountVirtual in epoch.conf line %lu has\n"
+						"abnormally long value and may have been truncated.", LineNum);
+				SpitWarning(TmpBuf);
+			}
+			
+			continue;
+		}
 		/*Now we get into the actual attribute tags.*/
 		else if (!strncmp(Worker, "BootBannerText", strlen("BootBannerText")))
 		{ /*The text shown at boot up as a kind of greeter, before we start executing objects. Can be disabled, off by default.*/

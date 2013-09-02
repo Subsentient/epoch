@@ -11,14 +11,40 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/reboot.h>
+#include <sys/mount.h>
 #include <sys/types.h>
 #include "epoch.h"
 
+/*Prototypes.*/
+static void MountVirtuals(void);
+
 /*Globals.*/
 struct _HaltParams HaltParams = { -1, 0, 0, 0, 0, 0 };
+Bool AutoMountOpts[5] = { false, false, false, false, false };
 
 /*Functions.*/
 
+static void MountVirtuals(void)
+{
+	const char *FSTypes[5] = { "proc", "sysfs", "devtmpfs", "devpts", "tmpfs" };
+	const char *MountLocations[5] = { "/proc", "/sys", "/dev", "/dev/pts", "/dev/shm" };
+	short Inc = 0;
+	
+	for (; Inc < 5; ++Inc)
+	{
+		if (AutoMountOpts[Inc])
+		{
+			if (mount(FSTypes[Inc], MountLocations[Inc], FSTypes[Inc], 0, NULL) != 0)
+			{
+				char TmpBuf[1024];
+				
+				snprintf(TmpBuf, sizeof TmpBuf, "Failed to mount %s!", MountLocations[Inc]);
+				SpitWarning(TmpBuf);
+				continue;
+			}
+		}
+	}
+}
 
 /*This does what it sounds like. It exits us to go to a shell in event of catastrophe.*/
 void EmergencyShell(void)
@@ -68,6 +94,8 @@ void LaunchBootup(void)
 	
 	PrintBootBanner();
 	
+	MountVirtuals(); /*Mounts any virtual filesystems, upon request.*/
+	
 	if (Hostname[0] != '\0')
 	{ /*The system hostname.*/
 		sethostname(Hostname, strlen(Hostname));
@@ -98,26 +126,52 @@ void LaunchBootup(void)
 		CurDay = TimePtr->tm_mday;
 		CurYear = TimePtr->tm_year + 1900;
 		
-		if (CurHr == HaltParams.TargetHour && CurMin == HaltParams.TargetMin &&
-			CurSec == HaltParams.TargetSec && CurMon == HaltParams.TargetMonth &&
-			CurDay == HaltParams.TargetDay && CurYear == HaltParams.TargetYear &&
-			HaltParams.HaltMode != -1)
+		if (HaltParams.HaltMode != -1)
 		{
-			if (HaltParams.HaltMode == OSCTL_LINUX_HALT)
+			if (CurHr == HaltParams.TargetHour && CurMin == HaltParams.TargetMin &&
+				CurSec == HaltParams.TargetSec && CurMon == HaltParams.TargetMonth &&
+				CurDay == HaltParams.TargetDay && CurYear == HaltParams.TargetYear)
 			{
-				EmulWall("System is going down for halt NOW!", false);
+				if (HaltParams.HaltMode == OSCTL_LINUX_HALT)
+				{
+					EmulWall("System is going down for halt NOW!", false);
+				}
+				else if (HaltParams.HaltMode == OSCTL_LINUX_POWEROFF)
+				{
+					EmulWall("System is going down for poweroff NOW!", false);
+				}
+				else
+				{
+					HaltParams.HaltMode = OSCTL_LINUX_REBOOT;
+					EmulWall("System is going down for reboot NOW!", false);
+				}
+				
+				LaunchShutdown(HaltParams.HaltMode);
 			}
-			else if (HaltParams.HaltMode == OSCTL_LINUX_POWEROFF)
-			{
-				EmulWall("System is going down for poweroff NOW!", false);
+			else if (CurSec == HaltParams.TargetSec && CurMin != HaltParams.TargetMin &&
+					DateDiff(HaltParams.TargetHour, HaltParams.TargetMin, NULL, NULL, NULL) <= 20 )
+			{ /*If 20 minutes or less until shutdown, warn us every minute.*/
+				char TBuf[MAX_LINE_SIZE];
+				const char *HaltMode = NULL;
+
+				if (HaltParams.HaltMode == OSCTL_LINUX_HALT)
+				{
+					HaltMode = "halt";
+				}
+				else if (HaltParams.HaltMode == OSCTL_LINUX_POWEROFF)
+				{
+					HaltMode = "poweroff";
+				}
+				else
+				{
+					HaltParams.HaltMode = OSCTL_LINUX_REBOOT;
+					HaltMode = "reboot";
+				}
+				
+				snprintf(TBuf, sizeof TBuf, "System is going down for %s in %lu minutes!",
+						HaltMode, DateDiff(HaltParams.TargetHour, HaltParams.TargetMin, NULL, NULL, NULL));
+				EmulWall(TBuf, false);
 			}
-			else
-			{
-				HaltParams.HaltMode = OSCTL_LINUX_REBOOT;
-				EmulWall("System is going down for reboot NOW!", false);
-			}
-			
-			LaunchShutdown(HaltParams.HaltMode);
 		}
 		
 		/*Lots of brilliant code here, but I typed it in invisible pixels.*/
