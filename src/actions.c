@@ -98,26 +98,52 @@ void LaunchBootup(void)
 		CurDay = TimePtr->tm_mday;
 		CurYear = TimePtr->tm_year + 1900;
 		
-		if (CurHr == HaltParams.TargetHour && CurMin == HaltParams.TargetMin &&
-			CurSec == HaltParams.TargetSec && CurMon == HaltParams.TargetMonth &&
-			CurDay == HaltParams.TargetDay && CurYear == HaltParams.TargetYear &&
-			HaltParams.HaltMode != -1)
+		if (HaltParams.HaltMode != -1)
 		{
-			if (HaltParams.HaltMode == OSCTL_LINUX_HALT)
+			if (CurHr == HaltParams.TargetHour && CurMin == HaltParams.TargetMin &&
+				CurSec == HaltParams.TargetSec && CurMon == HaltParams.TargetMonth &&
+				CurDay == HaltParams.TargetDay && CurYear == HaltParams.TargetYear)
 			{
-				EmulWall("System is going down for halt NOW!", false);
+				if (HaltParams.HaltMode == OSCTL_LINUX_HALT)
+				{
+					EmulWall("System is going down for halt NOW!", false);
+				}
+				else if (HaltParams.HaltMode == OSCTL_LINUX_POWEROFF)
+				{
+					EmulWall("System is going down for poweroff NOW!", false);
+				}
+				else
+				{
+					HaltParams.HaltMode = OSCTL_LINUX_REBOOT;
+					EmulWall("System is going down for reboot NOW!", false);
+				}
+				
+				LaunchShutdown(HaltParams.HaltMode);
 			}
-			else if (HaltParams.HaltMode == OSCTL_LINUX_POWEROFF)
-			{
-				EmulWall("System is going down for poweroff NOW!", false);
+			else if (CurSec == HaltParams.TargetSec && CurMin != HaltParams.TargetMin &&
+					DateDiff(HaltParams.TargetHour, HaltParams.TargetMin, NULL, NULL, NULL) <= 20 )
+			{ /*If 20 minutes or less until shutdown, warn us every minute.*/
+				char TBuf[MAX_LINE_SIZE];
+				const char *HaltMode = NULL;
+
+				if (HaltParams.HaltMode == OSCTL_LINUX_HALT)
+				{
+					HaltMode = "halt";
+				}
+				else if (HaltParams.HaltMode == OSCTL_LINUX_POWEROFF)
+				{
+					HaltMode = "poweroff";
+				}
+				else
+				{
+					HaltParams.HaltMode = OSCTL_LINUX_REBOOT;
+					HaltMode = "reboot";
+				}
+				
+				snprintf(TBuf, sizeof TBuf, "System is going down for %s in %lu minutes!",
+						HaltMode, DateDiff(HaltParams.TargetHour, HaltParams.TargetMin, NULL, NULL, NULL));
+				EmulWall(TBuf, false);
 			}
-			else
-			{
-				HaltParams.HaltMode = OSCTL_LINUX_REBOOT;
-				EmulWall("System is going down for reboot NOW!", false);
-			}
-			
-			LaunchShutdown(HaltParams.HaltMode);
 		}
 		
 		/*Lots of brilliant code here, but I typed it in invisible pixels.*/
