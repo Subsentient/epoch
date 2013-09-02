@@ -186,6 +186,15 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		  "Enter status followed by an object ID to see if that object\nis currently started."
 		),
 		
+		( "setcad [on/off]:\n\n"
+		
+		  "Sets Ctrl-Alt-Del instant reboot modes. If set to on, striking Ctrl-Alt-Del\n"
+		  "at a console will instantly reboot the system without intervention by Epoch.\n"
+		  "Otherwise, if set to off, Epoch will perform a normal reboot when Ctrl-Alt-Del\n"
+		  "is pressed."
+		),
+			
+		
 		( "configreload:\n\n"
 		
 		  "Enter configreload to reload the configuration file epoch.conf.\nThis is useful for "
@@ -194,7 +203,7 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		)
 	};
 	
-	enum { HCMD, ENDIS, STAP, OBJRL, STATUS, CONFRL };
+	enum { HCMD, ENDIS, STAP, OBJRL, STATUS, SETCAD, CONFRL };
 	
 	
 	printf("%s\n\n", VERSIONSTRING);
@@ -233,6 +242,11 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 	else if (!strcmp(InCmd, "status"))
 	{
 		printf("%s %s\n\n", RootCommand, HelpMsgs[STATUS]);
+		return;
+	}
+	else if (!strcmp(InCmd, "setcad"))
+	{
+		printf("%s %s\n\n", RootCommand, HelpMsgs[SETCAD]);
 		return;
 	}
 	else if (!strcmp(InCmd, "configreload"))

@@ -55,15 +55,15 @@ void LaunchBootup(void)
 	
 	printf("\n%s\n", VERSIONSTRING);
 	
-	if (!InitConfig())
-	{ /*That is very very bad.*/
-		EmergencyShell();
-	}
-	
 	if (!InitMemBus(true))
 	{
 		SpitError("FAILURE IN MEMBUS! You won't be able to shut down the system with Epoch!");
 		putc('\007', stderr); /*Beep.*/
+	}
+	
+	if (!InitConfig())
+	{ /*That is very very bad.*/
+		EmergencyShell();
 	}
 	
 	PrintBootBanner();
@@ -133,24 +133,22 @@ void LaunchBootup(void)
 
 void LaunchShutdown(signed long Signal)
 { /*Responsible for reboot, halt, power down, etc.*/
+	const char *AttemptMsg = NULL;
 	
 	if (!ShutdownMemBus(true))
 	{ /*Shutdown membus first, so no other signals will reach us.*/
 		SpitWarning("Failed to shut down membus interface.");
 	}
 	
-	printf("%s", CONSOLE_COLOR_RED);
 	
 	if (Signal == OSCTL_LINUX_HALT || Signal == OSCTL_LINUX_POWEROFF)
 	{
-		printf("%s", "Shutting down.\n");
+		printf("%s", CONSOLE_COLOR_RED "Shutting down." CONSOLE_ENDCOLOR "\n");
 	}
 	else
 	{
-		printf("%s", "Rebooting.\n");
+		printf("%s", CONSOLE_COLOR_RED "Rebooting.\n" CONSOLE_ENDCOLOR "\n");
 	}
-	
-	printf("%s", CONSOLE_ENDCOLOR);
 	
 	if (!RunAllObjects(false)) /*Run all the service stopping things.*/
 	{
@@ -160,22 +158,21 @@ void LaunchShutdown(signed long Signal)
 	
 	ShutdownConfig();
 	
-	printf("\n%s", CONSOLE_COLOR_CYAN);
 	
 	if (Signal == OSCTL_LINUX_HALT)
 	{
-		printf("%s\n", "Attempting to halt the system...");
+		AttemptMsg = "Attempting to halt the system...";
 	}
 	else if (Signal == OSCTL_LINUX_POWEROFF)
 	{
-		printf("%s\n", "Attempting to power down the system...");
+		AttemptMsg = "Attempting to power down the system...";
 	}
 	else
 	{
-		printf("%s\n", "Attempting to reboot the system...");
+		AttemptMsg = "Attempting to reboot the system...";
 	}
 	
-	printf("%s", CONSOLE_ENDCOLOR);
+	printf("%s%s%s\n", CONSOLE_COLOR_CYAN, AttemptMsg, CONSOLE_ENDCOLOR);
 	
 	sync(); /*Force sync of disks in case somebody forgot.*/
 	reboot(Signal); /*Send the signal.*/

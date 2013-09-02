@@ -21,10 +21,13 @@
 
 /*Memory bus uhh, static globals.*/
 char *MemData = NULL;
+static Bool BusRunning = false;
 
 rStatus InitMemBus(Bool ServerSide)
 { /*Fire up the memory bus.*/
 	int MemDescriptor;
+	
+	if (BusRunning) return SUCCESS;
 	
 	if ((MemDescriptor = shmget((key_t)MEMKEY, MEMBUS_SIZE, (ServerSide ? (IPC_CREAT | 0660) : 0660))) < 0)
 	{
@@ -56,7 +59,9 @@ rStatus InitMemBus(Bool ServerSide)
 	{
 		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NOMSG;
 	}
-		
+	
+	BusRunning = true;
+	
 	return SUCCESS;
 }
 
@@ -162,8 +167,8 @@ void ParseMemBus(void)
 		}
 		
 		if (CurObj)
-		{
-			DidWork = ProcessConfigObject(CurObj, (BusDataIs(MEMBUS_CODE_OBJSTART) ? true : false));
+		{ /*If we ask to start a HaltCmdOnly command, run the stop command instead, because that's all that we use.*/
+			DidWork = ProcessConfigObject(CurObj, ((BusDataIs(MEMBUS_CODE_OBJSTART) && !CurObj->Opts.HaltCmdOnly) ? true : false));
 		}
 		else
 		{
@@ -208,8 +213,8 @@ void ParseMemBus(void)
 		if (CurObj)
 		{
 			char TmpBuf[MEMBUS_SIZE/2 - 1];
-			
-			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %d", MEMBUS_CODE_STATUS, TWorker, CurObj->Started);
+			/*Don't let HaltCmdOnly objects be reported as running, because they always look like that anyways.*/
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %d", MEMBUS_CODE_STATUS, TWorker, CurObj->Started && !CurObj->Opts.HaltCmdOnly);
 			
 			MemBus_Write(TmpBuf, true);
 		}
@@ -595,6 +600,8 @@ void ParseMemBus(void)
 
 rStatus ShutdownMemBus(Bool ServerSide)
 {
+	if (!BusRunning) return SUCCESS;
+	
 	if (!ServerSide)
 	{ /*We write to our own code.*/
 		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NEWCONNECTION;
@@ -617,8 +624,7 @@ rStatus ShutdownMemBus(Bool ServerSide)
 		SpitWarning("ShutdownMemBus(): Unable to shut down memory bus.");
 		return FAILURE;
 	}
-	else
-	{
-		return SUCCESS;
-	}
+	
+	BusRunning = false;
+	return SUCCESS;
 }

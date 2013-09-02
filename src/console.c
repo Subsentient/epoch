@@ -152,7 +152,7 @@ void PrintStatusReport(const char *InStream, rStatus State)
 			break;
 		}
 		case NOTIFICATION:
-		{ /*Used for objects where ForkLaunch == true.*/
+		{ /*Used for objects where Opts.NoWait == true.*/
 			snprintf(StatusFormat, 1024, "[%s]\n", CONSOLE_COLOR_CYAN "Launched" CONSOLE_ENDCOLOR);
 			break;
 		}

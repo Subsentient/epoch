@@ -132,12 +132,19 @@ typedef struct _EpochObjectTable
 	char ObjectPIDFile[MAX_LINE_SIZE];
 	unsigned long ObjectStartPriority;
 	unsigned long ObjectStopPriority;
-	Bool Started;
-	Bool CanStop;
-	StopType StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
 	unsigned long ObjectPID; /*The process ID, used for shutting down.*/
 	Bool Enabled;
-	Bool ForkLaunch;
+	Bool Started;
+	
+	struct 
+	{
+		Bool CanStop; /*Allowed to stop this without starting a shutdown?*/
+		StopType StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
+		Bool NoWait; /*Should we just start this thing and cut it loose, and not wait for it?*/
+		Bool HaltCmdOnly; /*Run just the stop command when we halt, not the start command?*/
+		Bool IsService; /*If true, we assume it's going to fork itself and one-up it's PID.*/
+		Bool RawDescription; /*This inhibits insertion of "Starting", "Stopping", etc in front of descriptions.*/
+	} Opts;
 	
 	struct _RLTree *ObjectRunlevels; /*Dynamically allocated, needless to say.*/
 	

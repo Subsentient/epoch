@@ -352,8 +352,6 @@ rStatus InitConfig(void)
 			{
 				char TmpBuf[1024];
 				
-				CurObj->Enabled = true;
-				
 				snprintf(TmpBuf, 1024, "Bad value %s for attribute ObjectEnabled for object %s at line %lu.\n"
 						"Valid values are true and false.",
 						DelimCurr, CurObj->ObjectID, LineNum);
@@ -365,12 +363,12 @@ rStatus InitConfig(void)
 			
 			continue;
 		}
-		else if (!strncmp(Worker, "ObjectLaunchMode", strlen("ObjectLaunchMode")))
+		else if (!strncmp(Worker, "ObjectOption", strlen("ObjectOption")))
 		{
 			if (!CurObj)
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Attribute ObjectLaunchMode comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
+				snprintf(TmpBuf, 1024, "Attribute ObjectOption comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
 				ShutdownConfig();
 				free(ConfigStream);
@@ -380,72 +378,48 @@ rStatus InitConfig(void)
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectLaunchMode in epoch.conf line %lu.", LineNum);
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectOption in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
 				ShutdownConfig();
 				free(ConfigStream);
 				return FAILURE;
 			}
 			
-			if (!strcmp(DelimCurr, "NORMAL"))
+			if (!strcmp(DelimCurr, "NOWAIT"))
 			{
-				CurObj->ForkLaunch = false;
+				if (CurObj->Opts.HaltCmdOnly)
+				{
+					SpitWarning("ObjectOption value NOWAIT contradicts another's HALTONLY.\nSticking with HALTONLY.");
+					CurObj->Opts.NoWait = false;
+					continue;
+				}
+				CurObj->Opts.NoWait = true;
 			}
-			else if (!strcmp(DelimCurr, "NOWAIT"))
+			else if (!strcmp(DelimCurr, "HALTONLY"))
+			{ /*Allow entries that execute on shutdown only.*/
+				CurObj->Started = true;
+				CurObj->Opts.CanStop = false;
+				CurObj->Opts.HaltCmdOnly = true;
+			}
+			else if (!strcmp(DelimCurr, "PERSISTENT"))
 			{
-				CurObj->ForkLaunch = true;
+				CurObj->Opts.CanStop = false;
+			}
+			else if (!strcmp(DelimCurr, "RAWDESCRIPTION"))
+			{
+				CurObj->Opts.RawDescription = true;
+			}
+			else if (!strcmp(DelimCurr, "SERVICE"))
+			{
+				CurObj->Opts.IsService = true;
 			}
 			else
 			{
 				char TmpBuf[1024];
 				
-				CurObj->ForkLaunch = false;
-				
-				snprintf(TmpBuf, 1024, "Bad value %s for attribute ObjectLaunchMode for object %s at line %lu.\n"
-						"Valid values are NORMAL and NOWAIT.",
+				snprintf(TmpBuf, 1024, "Bad value %s for attribute ObjectOption for object %s at line %lu.\n"
+						"Valid values are NOWAIT, PERSISTENT, RAWDESCRIPTION, SERVICE, and HALTONLY.",
 						DelimCurr, CurObj->ObjectID, LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
-			}
-			
-			continue;
-		}
-		else if (!strncmp(Worker, "ObjectPersistent", strlen("ObjectPersistent")))
-		{
-			if (!CurObj)
-			{
-				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Attribute ObjectPersistent comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
-			}
-			if (!GetLineDelim(Worker, DelimCurr))
-			{ /*It's not just a word.*/
-				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectPersistent in epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
-			}
-			
-			if (!strcmp("true", DelimCurr))
-			{
-				CurObj->CanStop = false;
-			}
-			else if (!strcmp("false", DelimCurr))
-			{
-				CurObj->CanStop = true;
-			}
-			else
-			{
-				char TmpBuf[1024];
-				
-				snprintf(TmpBuf, 1024, "Bad value for attribute ObjectPersistent in epoch.conf line %lu.", LineNum);
 				SpitError(TmpBuf);
 				ShutdownConfig();
 				free(ConfigStream);
@@ -550,11 +524,11 @@ rStatus InitConfig(void)
 
 			if (!strncmp(DelimCurr, "PID", strlen("PID")))
 			{
-				CurObj->StopMode = STOP_PID;
+				CurObj->Opts.StopMode = STOP_PID;
 			}
 			else if (!strncmp(DelimCurr, "PIDFILE", strlen("PIDFILE")))
 			{ /*They want us to kill a PID file on exit.*/
-				char *Worker = DelimCurr;
+				const char *Worker = DelimCurr;
 				
 				Worker += strlen("PIDFILE");
 				
@@ -565,15 +539,15 @@ rStatus InitConfig(void)
 				
 				snprintf(CurObj->ObjectPIDFile, MAX_LINE_SIZE, "%s", Worker);
 				
-				CurObj->StopMode = STOP_PIDFILE;
+				CurObj->Opts.StopMode = STOP_PIDFILE;
 			}
 			else if (!strncmp(DelimCurr, "NONE", strlen("NONE")))
 			{
-				CurObj->StopMode = STOP_NONE;
+				CurObj->Opts.StopMode = STOP_NONE;
 			}
 			else
 			{
-				CurObj->StopMode = STOP_COMMAND;
+				CurObj->Opts.StopMode = STOP_COMMAND;
 				snprintf(CurObj->ObjectStopCommand, MAX_LINE_SIZE, "%s", DelimCurr);
 			}
 			
@@ -738,14 +712,37 @@ rStatus InitConfig(void)
 		}
 	} while (++LineNum, (Worker = NextLine(Worker)));
 	
-	if (!ScanConfigIntegrity())
-	{ /*We failed integrity checking.*/
-		fprintf(stderr, CONSOLE_COLOR_MAGENTA "Beginning dump of epoch.conf to console.\n" CONSOLE_ENDCOLOR);
-		fprintf(stderr, "%s", ConfigStream);
-		fflush(NULL);
-		ShutdownConfig();
-		free(ConfigStream);
-		return FAILURE;
+	switch (ScanConfigIntegrity())
+	{
+		case NOTIFICATION:
+		case SUCCESS:
+			break;
+		case FAILURE:
+		{ /*We failed integrity checking.*/
+			fprintf(stderr, "%s\n", "Enter \"d\" to dump epoch.conf to console or strike enter to continue.\n->");
+			fflush(NULL); /*Have an eerie feeling this will be necessary on some systems.*/
+			
+			if (getchar() == 'd')
+			{
+				fprintf(stderr, CONSOLE_COLOR_MAGENTA "Beginning dump of epoch.conf to console.\n" CONSOLE_ENDCOLOR);
+				fprintf(stderr, "%s", ConfigStream);
+				fflush(NULL);
+			}
+			else
+			{
+				puts("Not dumping epoch.conf.");
+			}
+			
+			ShutdownConfig();
+			free(ConfigStream);
+			
+			return FAILURE;
+		}
+		case WARNING:
+		{
+			SpitWarning("Noncritical configuration problems exist.\nPlease edit epoch.conf to resolve these.");
+			return WARNING;
+		}
 	}
 		
 	free(ConfigStream); /*Release ConfigStream, since we only use the object table now.*/
@@ -964,13 +961,16 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->ObjectPIDFile[0] = '\0';
 	Worker->ObjectStartPriority = 0;
 	Worker->ObjectStopPriority = 0;
-	Worker->StopMode = STOP_INVALID;
-	Worker->CanStop = true;
+	Worker->Opts.StopMode = STOP_NONE;
+	Worker->Opts.CanStop = true;
 	Worker->ObjectPID = 0;
 	Worker->ObjectRunlevels = malloc(sizeof(struct _RLTree));
 	Worker->ObjectRunlevels->Next = NULL;
-	Worker->ForkLaunch = false;
+	Worker->Opts.NoWait = false;
 	Worker->Enabled = 2; /*We can indeed store this in a bool you know. There's no 1 bit datatype.*/
+	Worker->Opts.HaltCmdOnly = false;
+	Worker->Opts.RawDescription = false;
+	Worker->Opts.IsService = false;
 	
 	return Worker;
 }
@@ -979,38 +979,56 @@ static rStatus ScanConfigIntegrity(void)
 { /*Here we check common mistakes and problems.*/
 	ObjTable *Worker = ObjectTable, *TOffender;
 	char TmpBuf[1024];
+	rStatus RetState = SUCCESS;
+	
+	if (ObjectTable == NULL)
+	{ /*This can happen if configuration is filled with trash and nothing valid.*/
+		SpitError("No objects found in configuration or invalid configuration.");
+		return FAILURE;
+	}
 	
 	for (; Worker->Next != NULL; Worker = Worker->Next)
 	{
 		if (*Worker->ObjectDescription == '\0')
 		{
-			snprintf(TmpBuf, 1024, "Object %s has no attribute ObjectDescription.", Worker->ObjectID);
-			SpitError(TmpBuf);
-			return FAILURE;
+			snprintf(TmpBuf, 1024, "Object %s has no attribute ObjectDescription.\n"
+						"Changing description to \"missing description\".", Worker->ObjectID);
+			SpitWarning(TmpBuf);
+			
+			snprintf(Worker->ObjectDescription, MAX_DESCRIPT_SIZE, "%s", 
+					CONSOLE_COLOR_YELLOW "[missing description]" CONSOLE_ENDCOLOR);
+
+			RetState = WARNING;
 		}
-		else if (*Worker->ObjectStartCommand == '\0' && *Worker->ObjectStopCommand == '\0')
+		
+		if (*Worker->ObjectStartCommand == '\0' && *Worker->ObjectStopCommand == '\0')
 		{
 			snprintf(TmpBuf, 1024, "Object %s has neither ObjectStopCommand nor ObjectStartCommand attributes.", Worker->ObjectID);
-			SpitError(TmpBuf);
-			return FAILURE;
+			SpitWarning(TmpBuf);
+			RetState = FAILURE;
 		}
-		else if (Worker->StopMode == STOP_INVALID)
+		
+		if (!Worker->Opts.HaltCmdOnly && *Worker->ObjectStartCommand == '\0')
 		{
-			snprintf(TmpBuf, 1024, "Internal error when loading StopMode for Object \"%s\".", Worker->ObjectID);
-			SpitError(TmpBuf);
-			return FAILURE;
+			snprintf(TmpBuf, 1024, "Object %s has no attribute ObjectStartCommand\nand is not set to HALTONLY.\n"
+					"Disabling.", Worker->ObjectID);
+			SpitWarning(TmpBuf);
+			Worker->Enabled = false;
+			RetState = WARNING;
 		}
-		else if (Worker->ObjectRunlevels == NULL)
+		
+		if (Worker->ObjectRunlevels == NULL)
 		{
 			snprintf(TmpBuf, 1024, "Object \"%s\" has no attribute ObjectRunlevels.", Worker->ObjectID);
-			SpitError(TmpBuf);
-			return FAILURE;
+			SpitWarning(TmpBuf);
+			RetState = FAILURE;
 		}
-		else if (Worker->Enabled == 2)
+		
+		if (Worker->Enabled == 2)
 		{
 			snprintf(TmpBuf, 1024, "Object \"%s\" has no attribute ObjectEnabled.", Worker->ObjectID);
 			SpitError(TmpBuf);
-			return FAILURE;
+			RetState = FAILURE;
 		}
 		
 		/*Check for duplicate ObjectIDs.*/
@@ -1020,24 +1038,40 @@ static rStatus ScanConfigIntegrity(void)
 			{
 				snprintf(TmpBuf, 1024, "Two objects in configuration with ObjectID \"%s\".", Worker->ObjectID);
 				SpitError(TmpBuf);
-				return FAILURE;
+				RetState = FAILURE;
 			}			
 		}
 	}
 	
 	for (Worker = ObjectTable; Worker->Next != NULL; Worker = Worker->Next)
-	{
-		if (((TOffender = GetObjectByPriority(NULL, true, Worker->ObjectStartPriority)) != NULL ||
-			(TOffender = GetObjectByPriority(NULL, false, Worker->ObjectStopPriority)) != NULL) &&
-			strcmp(TOffender->ObjectID, Worker->ObjectID) != 0 && TOffender->Enabled && Worker->Enabled)
-		{ /*We got a priority collision.*/
-			snprintf(TmpBuf, 1024, "Two objects in configuration with the same priority.\n"
-			"They are \"%s\" and \"%s\". This could lead to strange behaviour.", Worker->ObjectID, TOffender->ObjectID);
+	{ /*Check for duplicate start/stop priorities.*/
+		Bool IsStartPriority;
+		
+		for (TOffender = ObjectTable; TOffender->Next != NULL; TOffender = TOffender->Next)
+		{			
+			if (Worker->ObjectStartPriority != 0 && TOffender->ObjectStartPriority == Worker->ObjectStartPriority && 
+				Worker != TOffender)
+			{
+				IsStartPriority = true;
+			}
+			else if ( Worker->ObjectStopPriority != 0 && TOffender->ObjectStopPriority == Worker->ObjectStopPriority &&
+					Worker != TOffender)
+			{
+				IsStartPriority = false;
+			}
+			else
+			{
+				continue;
+			}
+			
+			snprintf(TmpBuf, 1024, "Two objects in configuration with the same %s priority.\n"
+									"They are \"%s\" and \"%s\". This could lead to strange behaviour.", 
+									(IsStartPriority ? "start" : "stop"), Worker->ObjectID, TOffender->ObjectID);
 			SpitWarning(TmpBuf);
-			return WARNING;
+			RetState = WARNING;
 		}
 	}
-	return SUCCESS;
+	return RetState;
 }
 	
 /*Find an object in the table and return a pointer to it. This function is public

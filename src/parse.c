@@ -111,18 +111,27 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 		EmergencyShell();
 	}
 
-	if (InObj->ForkLaunch)
-	{ /*So, are we going to wait for the process to complete, or are we going to assume all went well?*/
-		return SUCCESS;
-	}
+	InObj->ObjectPID = LaunchPID; /*Save our PID.*/
 	
-	/*Get PID*/ /**Parent code resumes.**/
-	InObj->ObjectPID = waitpid(LaunchPID, &RawExitStatus, 0); /*Wait for the process to exit.*/
+	/*This code is really awful and somewhat unreliable, but hey, it's the price you pay for this support right now
+	 * I'll implement a more reliable way eventually.*/
 	
 	if (!ShellDissolves)
 	{
 		++InObj->ObjectPID; /*This probably won't always work, but 99.9999999% of the time, yes, it will.*/
 	}
+	if (InObj->Opts.IsService)
+	{ /*If we specify that this is a service, one up the PID again.*/
+		++InObj->ObjectPID;
+	}
+	
+	if (IsStartingMode && InObj->Opts.NoWait)
+	{ /*So, are we going to wait for the process to complete, or are we going to assume all went well?*/		
+		return SUCCESS;
+	}
+	
+	/**Parent code resumes.**/
+	waitpid(LaunchPID, &RawExitStatus, 0); /*Wait for the process to exit.*/
 	
 	/**And back to normalcy after this.------------------**/
 	
@@ -148,14 +157,34 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 	char PrintOutStream[1024];
 	rStatus ExitStatus = SUCCESS;
 	
+	if (IsStartingMode && *CurObj->ObjectStartCommand == '\0')
+	{ /*Don't bother with it, if it has no command.
+		For starting objects, this should not happen unless we set the option HALTONLY.*/
+		return SUCCESS;
+	}
+	
 	/*Copy in the description to be printed to the console.*/
-	if (CurObj->ForkLaunch)
+	if (CurObj->Opts.RawDescription)
+	{
+		snprintf(PrintOutStream, 1024, "%s", CurObj->ObjectDescription);
+	}
+	else if (IsStartingMode && CurObj->Opts.NoWait)
 	{
 		snprintf(PrintOutStream, 1024, "%s %s", "Launching process for", CurObj->ObjectDescription);
+	}
+	else if (!IsStartingMode && CurObj->Opts.HaltCmdOnly)
+	{
+		snprintf(PrintOutStream, 1024, "%s %s", "Starting", CurObj->ObjectDescription);
 	}
 	else
 	{
 		snprintf(PrintOutStream, 1024, "%s %s", (IsStartingMode ? "Starting" : "Stopping"), CurObj->ObjectDescription);
+	}
+	
+	if (IsStartingMode && CurObj->Opts.HaltCmdOnly)
+	{
+		PrintStatusReport(PrintOutStream, FAILURE);
+		return FAILURE;
 	}
 	
 	if (IsStartingMode)
@@ -166,8 +195,8 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 		ExitStatus = ExecuteConfigObject(CurObj, IsStartingMode); /*Don't bother with return value here.*/
 		CurObj->Started = (ExitStatus ? true : false); /*Mark the process dead or alive.*/
 		
-		if (CurObj->ForkLaunch)
-		{ /*Do not just say Done for ForkLaunch objects.*/
+		if (CurObj->Opts.NoWait)
+		{ /*Do not just say Done for NoWait objects.*/
 			ExitStatus = NOTIFICATION;
 		}
 		
@@ -175,7 +204,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 	}
 	else
 	{		
-		switch (CurObj->StopMode)
+		switch (CurObj->Opts.StopMode)
 		{
 			case STOP_COMMAND:
 				printf("%s", PrintOutStream);
@@ -287,7 +316,7 @@ rStatus RunAllObjects(Bool IsStartingMode)
 			continue;
 		}
 		
-		if (!CurObj->Enabled)
+		if (!CurObj->Enabled || (IsStartingMode && CurObj->Opts.HaltCmdOnly))
 		{
 			continue;
 		}
@@ -326,7 +355,7 @@ rStatus SwitchRunlevels(const char *Runlevel)
 	{
 		TObj = GetObjectByPriority(CurRunlevel, false, CurPriority);
 		
-		if (TObj && TObj->Started && TObj->CanStop)
+		if (TObj && TObj->Started && TObj->Opts.CanStop)
 		{
 			ProcessConfigObject(TObj, false);
 		}
