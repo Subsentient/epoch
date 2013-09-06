@@ -820,7 +820,7 @@ int main(int argc, char **argv)
 				++CArg;
 			}
 			
-			if (isdigit(*CArg))
+			if (AllNumeric(CArg))
 			{
 				return !EmulKillall5(atoi(CArg));
 			}

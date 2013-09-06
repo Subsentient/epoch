@@ -226,13 +226,17 @@ extern rStatus ShutdownMemBus(Bool ServerSide);
 extern void PrintBootBanner(void);
 extern void SetBannerColor(const char *InChoice);
 extern void PrintStatusReport(const char *InStream, rStatus State);
+extern void SpitWarning(char *INWarning);
+extern void SpitError(char *INErr);
+
+/*utilfuncs.c*/
 extern void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutMonth, char *OutDay, char *OutYear);
 extern unsigned long DateDiff(unsigned long InHr, unsigned long InMin, unsigned long *OutMonth,
 						unsigned long *OutDay, unsigned long *OutYear);
 extern void MinsToDate(unsigned long MinInc, unsigned long *OutHr, unsigned long *OutMin,
 				unsigned long *OutMonth, unsigned long *OutDay, unsigned long *OutYear);
-extern void SpitWarning(char *INWarning);
-extern void SpitError(char *INErr);
+extern Bool AllNumeric(const char *InStream);
+extern Bool ProcessRunning(unsigned long InPID);
 
 
 #endif /* __EPOCH_H__ */

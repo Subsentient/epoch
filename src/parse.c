@@ -260,7 +260,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 					*TWorker = '\0';
 				}
 				
-				if (isdigit(Buf[0]))
+				if (AllNumeric(Buf))
 				{
 					TruePID = atoi(Buf);
 				}

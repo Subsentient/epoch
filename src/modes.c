@@ -244,7 +244,7 @@ rStatus EmulKillall5(unsigned long InSignal)
 	
 	while ((CurDir = readdir(ProcDir)))
 	{
-		if (isdigit(CurDir->d_name[0]) && CurDir->d_type == 4)
+		if (AllNumeric(CurDir->d_name) && CurDir->d_type == 4)
 		{			
 			CurPID = atoi(CurDir->d_name); /*Convert the new PID to a true number.*/
 			
@@ -422,7 +422,7 @@ rStatus EmulShutdown(long ArgumentCount, const char **ArgStream)
 					
 			++TimeIsSet;
 		}
-		else if (**TPtr == '+' && isdigit(*(*TPtr + 1)))
+		else if (**TPtr == '+' && AllNumeric(*TPtr + 1))
 		{
 			struct _HaltParams TempParams;
 			const char *TArg = *TPtr + 1; /*Targ manure!*/

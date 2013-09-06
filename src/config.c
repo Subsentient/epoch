@@ -676,7 +676,7 @@ rStatus InitConfig(void)
 				return FAILURE;
 			}
 			
-			if (!isdigit(DelimCurr[0])) /*Make sure we are getting a number, not Shakespeare.*/
+			if (!AllNumeric(DelimCurr)) /*Make sure we are getting a number, not Shakespeare.*/
 			{
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Bad non-integer value for attribute ObjectStartPriority in epoch.conf line %lu.", LineNum);
@@ -721,7 +721,7 @@ rStatus InitConfig(void)
 				return FAILURE;
 			}
 			
-			if (!isdigit(DelimCurr[0]))
+			if (!AllNumeric(DelimCurr))
 			{
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Bad non-integer value for attribute ObjectStopPriority in epoch.conf line %lu.", LineNum);
