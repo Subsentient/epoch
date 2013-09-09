@@ -18,6 +18,7 @@
 
 /*Prototypes.*/
 static void MountVirtuals(void);
+static void *PrimaryLoop(void *ContinuePrimaryLoop);
 
 /*Globals.*/
 struct _HaltParams HaltParams = { -1, 0, 0, 0, 0, 0 };
@@ -48,7 +49,7 @@ static void MountVirtuals(void)
 	}
 }
 
-void *PrimaryLoop(void *ContinuePrimaryLoop)
+static void *PrimaryLoop(void *ContinuePrimaryLoop)
 { /*Loop that provides essentially everything we cycle through.*/
 	unsigned long CurHr, CurMin, CurSec, CurMon, CurDay, CurYear;
 	struct tm *TimePtr;
