@@ -34,12 +34,14 @@ CMD "$CC $CFLAGS -c ../src/main.c"
 CMD "$CC $CFLAGS -c ../src/membus.c"
 CMD "$CC $CFLAGS -c ../src/modes.c"
 CMD "$CC $CFLAGS -c ../src/parse.c"
+CMD "$CC $CFLAGS -c ../src/utilfuncs.c"
 
 echo -e "\nBuilding main executable.\n"
 
 mkdir -p ../built/sbin/
 
-CMD "$CC $LDFLAGS $CFLAGS -o ../built/sbin/epoch actions.o config.o console.o main.o membus.o modes.o parse.o"
+CMD "$CC $LDFLAGS $CFLAGS -pthread -o ../built/sbin/epoch\
+ actions.o config.o console.o main.o membus.o modes.o parse.o utilfuncs.o"
 
 echo -e "\nCreating symlinks.\n"
 cd ../built/sbin/

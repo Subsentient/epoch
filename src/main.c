@@ -673,6 +673,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 	return SUCCESS;
 }
 
+#ifndef NOMAINFUNC
 int main(int argc, char **argv)
 { /*Lotsa sloppy CLI processing here.*/
 	/*Figure out what we are.*/
@@ -873,3 +874,4 @@ int main(int argc, char **argv)
 	
 	return 0;
 }
+#endif

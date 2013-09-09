@@ -13,6 +13,7 @@
 #include <sys/reboot.h>
 #include <sys/mount.h>
 #include <sys/types.h>
+#include <pthread.h>
 #include "epoch.h"
 
 /*Prototypes.*/
@@ -21,6 +22,7 @@ static void MountVirtuals(void);
 /*Globals.*/
 struct _HaltParams HaltParams = { -1, 0, 0, 0, 0, 0 };
 Bool AutoMountOpts[5] = { false, false, false, false, false };
+static Bool ContinuePrimaryLoop = true;
 
 /*Functions.*/
 
@@ -46,71 +48,13 @@ static void MountVirtuals(void)
 	}
 }
 
-/*This does what it sounds like. It exits us to go to a shell in event of catastrophe.*/
-void EmergencyShell(void)
-{
-	fprintf(stderr, CONSOLE_COLOR_MAGENTA "\nPreparing to start emergency shell." CONSOLE_ENDCOLOR "\n---\n");
-	
-	fprintf(stderr, "\nSyncing disks...\n");
-	fflush(NULL);
-	sync(); /*First things first, sync disks.*/
-	
-	fprintf(stderr, "Shutting down Epoch...\n");
-	fflush(NULL);
-	ShutdownConfig(); /*Release all memory.*/
-	ShutdownMemBus(true); /*Stop the membus.*/
-	
-	fprintf(stderr, "Launching the shell...\n");
-	fflush(NULL);
-	
-	execlp("sh", "sh", NULL); /*Nuke our process image and replace with a shell. No point forking.*/
-	
-	/*We're supposed to be gone! Something went wrong!*/
-	SpitError("Failed to start emergency shell! Sleeping forever.");
-	fflush(NULL);
-	
-	while (1) sleep(1); /*Hang forever to prevent a kernel panic.*/
-}
-
-void LaunchBootup(void)
-{ /*Handles what would happen if we were PID 1.*/
-	Bool DoPrimaryScan = true;
+void *PrimaryLoop(void *ContinuePrimaryLoop)
+{ /*Loop that provides essentially everything we cycle through.*/
 	unsigned long CurHr, CurMin, CurSec, CurMon, CurDay, CurYear;
 	struct tm *TimePtr;
 	time_t TimeCore;
 	
-	printf("\n%s\n", VERSIONSTRING);
-	
-	if (!InitMemBus(true))
-	{
-		SpitError("FAILURE IN MEMBUS! You won't be able to shut down the system with Epoch!");
-		putc('\007', stderr); /*Beep.*/
-	}
-	
-	if (!InitConfig())
-	{ /*That is very very bad.*/
-		EmergencyShell();
-	}
-	
-	PrintBootBanner();
-	
-	MountVirtuals(); /*Mounts any virtual filesystems, upon request.*/
-	
-	if (Hostname[0] != '\0')
-	{ /*The system hostname.*/
-		sethostname(Hostname, strlen(Hostname));
-	}
-	if (DisableCAD)
-	{
-		reboot(OSCTL_LINUX_DISABLE_CTRLALTDEL); /*Disable instant reboot on CTRL-ALT-DEL.*/
-	}
-	
-	if (!RunAllObjects(true))
-	{
-		EmergencyShell();
-	}
-	
-	while (DoPrimaryScan)
+	while (*(Bool*)ContinuePrimaryLoop)
 	{
 		usleep(250000); /*Quarter of a second.*/
 		
@@ -175,25 +119,91 @@ void LaunchBootup(void)
 		}
 		
 		/*Lots of brilliant code here, but I typed it in invisible pixels.*/
-		
 	}
 	
-	/*We were never supposed to get this far.*/
-	SpitError("Primary loop exited! That should never happen!");
-	
-	EmergencyShell();
+	return NULL;
 }
 
+/*This does what it sounds like. It exits us to go to a shell in event of catastrophe.*/
+void EmergencyShell(void)
+{
+	fprintf(stderr, CONSOLE_COLOR_MAGENTA "\nPreparing to start emergency shell." CONSOLE_ENDCOLOR "\n---\n");
+	
+	fprintf(stderr, "\nSyncing disks...\n");
+	fflush(NULL);
+	sync(); /*First things first, sync disks.*/
+	
+	fprintf(stderr, "Shutting down Epoch...\n");
+	fflush(NULL);
+	ShutdownConfig(); /*Release all memory.*/
+	ShutdownMemBus(true); /*Stop the membus.*/
+	
+	fprintf(stderr, "Launching the shell...\n");
+	fflush(NULL);
+	
+	execlp("sh", "sh", NULL); /*Nuke our process image and replace with a shell. No point forking.*/
+	
+	/*We're supposed to be gone! Something went wrong!*/
+	SpitError("Failed to start emergency shell! Sleeping forever.");
+	fflush(NULL);
+	
+	while (1) sleep(1); /*Hang forever to prevent a kernel panic.*/
+}
+
+void LaunchBootup(void)
+{ /*Handles what would happen if we were PID 1.*/
+	pthread_t LoopThread;
+	Bool Insane = false;
+	
+	printf("\n%s\n", VERSIONSTRING);
+	
+	if (!InitMemBus(true))
+	{
+		SpitError("FAILURE IN MEMBUS! You won't be able to shut down the system with Epoch!");
+		putc('\007', stderr); /*Beep.*/
+	}
+	
+	if (!InitConfig())
+	{ /*That is very very bad.*/
+		EmergencyShell();
+	}
+	
+	PrintBootBanner();
+	
+	MountVirtuals(); /*Mounts any virtual filesystems, upon request.*/
+	
+	if (Hostname[0] != '\0')
+	{ /*The system hostname.*/
+		sethostname(Hostname, strlen(Hostname));
+	}
+	if (DisableCAD)
+	{
+		reboot(OSCTL_LINUX_DISABLE_CTRLALTDEL); /*Disable instant reboot on CTRL-ALT-DEL.*/
+	}
+
+	pthread_create(&LoopThread, NULL, &PrimaryLoop, &ContinuePrimaryLoop);
+	
+	if (!RunAllObjects(true))
+	{
+		EmergencyShell();
+	}
+	
+	while (!Insane) /*We're still pretty insane.*/
+	{ /*Now wait forever.*/
+		usleep(1000);
+	}
+}
 
 void LaunchShutdown(signed long Signal)
 { /*Responsible for reboot, halt, power down, etc.*/
 	const char *AttemptMsg = NULL;
 	
+	ContinuePrimaryLoop = false; /*Bring down the primary loop.*/
+	
 	if (!ShutdownMemBus(true))
 	{ /*Shutdown membus first, so no other signals will reach us.*/
 		SpitWarning("Failed to shut down membus interface.");
 	}
-	
 	
 	if (Signal == OSCTL_LINUX_HALT || Signal == OSCTL_LINUX_POWEROFF)
 	{

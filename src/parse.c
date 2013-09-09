@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <ctype.h>
+#include <pthread.h>
 #include "epoch.h"
 
 /*We store the current runlevel here.*/
@@ -18,6 +19,7 @@ char CurRunlevel[MAX_DESCRIPT_SIZE] = "default";
 
 /*Function forward declarations.*/
 static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode);
+static void *IndependentExecuteObject(void *InObj);
 
 static Bool FileUsable(const char *FileName)
 {
@@ -32,6 +34,12 @@ static Bool FileUsable(const char *FileName)
 	{
 		return false;
 	}
+}
+
+static void *IndependentExecuteObject(void *InObj)
+{ /*Stub function for threading support.*/
+	ExecuteConfigObject((ObjTable*)InObj, true);
+	return NULL;
 }
 
 static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
@@ -92,11 +100,11 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 #endif
 	
 	/**Here be where we execute commands.---------------**/
-	LaunchPID = fork();
+	LaunchPID = vfork();
 	
 	if (LaunchPID < 0)
 	{
-		SpitError("Failed to call fork(). This is a critical error.");
+		SpitError("Failed to call vfork(). This is a critical error.");
 		EmergencyShell();
 	}
 	
@@ -123,11 +131,6 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 	if (InObj->Opts.IsService)
 	{ /*If we specify that this is a service, one up the PID again.*/
 		++InObj->ObjectPID;
-	}
-	
-	if (IsStartingMode && InObj->Opts.NoWait)
-	{ /*So, are we going to wait for the process to complete, or are we going to assume all went well?*/		
-		return SUCCESS;
 	}
 	
 	/**Parent code resumes.**/
@@ -192,13 +195,21 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 		printf("%s", PrintOutStream);
 		fflush(NULL); /*Things tend to get clogged up when we don't flush.*/
 		
-		ExitStatus = ExecuteConfigObject(CurObj, IsStartingMode); /*Don't bother with return value here.*/
-		CurObj->Started = (ExitStatus ? true : false); /*Mark the process dead or alive.*/
-		
 		if (CurObj->Opts.NoWait)
-		{ /*Do not just say Done for NoWait objects.*/
+		{
+			pthread_t MiniThread;
+			
+			pthread_create(&MiniThread, NULL, &IndependentExecuteObject, CurObj);
+			pthread_detach(MiniThread);
 			ExitStatus = NOTIFICATION;
 		}
+		else
+		{
+			
+			ExitStatus = ExecuteConfigObject(CurObj, IsStartingMode); /*Don't bother with return value here.*/
+		}
+		
+		CurObj->Started = (ExitStatus ? true : false); /*Mark the process dead or alive.*/
 		
 		PrintStatusReport(PrintOutStream, ExitStatus);
 	}
