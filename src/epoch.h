@@ -144,6 +144,7 @@ typedef struct _EpochObjectTable
 		Bool HaltCmdOnly; /*Run just the stop command when we halt, not the start command?*/
 		Bool IsService; /*If true, we assume it's going to fork itself and one-up it's PID.*/
 		Bool RawDescription; /*This inhibits insertion of "Starting", "Stopping", etc in front of descriptions.*/
+		Bool AutoRestart;
 	} Opts;
 	
 	struct _RLTree *ObjectRunlevels; /*Dynamically allocated, needless to say.*/
@@ -236,7 +237,7 @@ extern unsigned long DateDiff(unsigned long InHr, unsigned long InMin, unsigned 
 extern void MinsToDate(unsigned long MinInc, unsigned long *OutHr, unsigned long *OutMin,
 				unsigned long *OutMonth, unsigned long *OutDay, unsigned long *OutYear);
 extern Bool AllNumeric(const char *InStream);
-extern Bool ProcessRunning(unsigned long InPID);
+extern Bool ObjectProcessRunning(const ObjTable *InObj);
 
 
 #endif /* __EPOCH_H__ */

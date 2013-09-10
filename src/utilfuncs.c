@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <ctype.h>
 #include <time.h>
 #include <unistd.h>
@@ -35,10 +36,46 @@ Bool AllNumeric(const char *InStream)
 	return true;
 }
 
-Bool ProcessRunning(unsigned long InPID)
+Bool ObjectProcessRunning(const ObjTable *InObj)
 { /*Checks /proc for a directory with the name of the requested process.*/
 	DIR *DCore;
 	struct dirent *DStruct;
+	FILE *PIDFileDescriptor;
+	pid_t InPID;
+	
+
+	if (InObj->Opts.StopMode == STOP_PIDFILE && (PIDFileDescriptor = fopen(InObj->ObjectPIDFile, "r")) != NULL)
+	{ /*We got a PID file requested and present? Get PID from that.*/
+		char TChar, PIDBuf[MAX_LINE_SIZE];
+		unsigned long Inc = 0;
+		
+		for (; (TChar = getc(PIDFileDescriptor)) != EOF && Inc < (MAX_LINE_SIZE - 1); ++Inc)
+		{
+			PIDBuf[Inc] = TChar;
+		}
+		PIDBuf[Inc] = '\0';
+		
+		if (strstr(PIDBuf, "\n"))
+		{
+			*strstr(PIDBuf, "\n") = '\0';
+		}
+		
+		if (AllNumeric(PIDBuf))
+		{
+			InPID = atoi(PIDBuf);
+		}
+		else
+		{
+			InPID = InObj->ObjectPID;
+		}
+		
+		fclose(PIDFileDescriptor);
+	}
+	else
+	{
+		InPID = InObj->ObjectPID;
+	}
+			
 	
 	DCore = opendir("/proc/");
 	
@@ -48,10 +85,12 @@ Bool ProcessRunning(unsigned long InPID)
 		{
 			if (atoi(DStruct->d_name) == InPID)
 			{
+				closedir(DCore);
 				return true;
 			}
 		}
 	}
+	closedir(DCore);
 	
 	return false;
 }

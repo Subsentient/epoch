@@ -560,7 +560,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			ShutdownMemBus(false);
 			return SUCCESS;
-		}			
+		}
 		else
 		{
 			fprintf(stderr, "Bad command %s.\n", argv[1]);

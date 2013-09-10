@@ -13,6 +13,7 @@
 #include <sys/reboot.h>
 #include <sys/mount.h>
 #include <sys/types.h>
+#include <signal.h>
 #include <pthread.h>
 #include "epoch.h"
 
@@ -52,6 +53,7 @@ static void MountVirtuals(void)
 static void *PrimaryLoop(void *ContinuePrimaryLoop)
 { /*Loop that provides essentially everything we cycle through.*/
 	unsigned long CurHr, CurMin, CurSec, CurMon, CurDay, CurYear;
+	ObjTable *Worker = NULL;
 	struct tm *TimePtr;
 	time_t TimeCore;
 	
@@ -119,6 +121,17 @@ static void *PrimaryLoop(void *ContinuePrimaryLoop)
 			}
 		}
 		
+		if (ObjectTable)
+		{
+			for (Worker = ObjectTable; Worker->Next != NULL; Worker = Worker->Next)
+			{ /*Handle objects intended for automatic restart.*/
+				if (Worker->Opts.AutoRestart && Worker->Started && !ObjectProcessRunning(Worker))
+				{
+					ProcessConfigObject(Worker, true);
+				}
+			}
+		}
+		
 		/*Lots of brilliant code here, but I typed it in invisible pixels.*/
 	}
 	
@@ -183,6 +196,7 @@ void LaunchBootup(void)
 	}
 
 	pthread_create(&LoopThread, NULL, &PrimaryLoop, &ContinuePrimaryLoop);
+	pthread_detach(LoopThread); /*A lazier way than using attrs.*/
 	
 	if (!RunAllObjects(true))
 	{

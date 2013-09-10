@@ -159,6 +159,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 {
 	char PrintOutStream[1024];
 	rStatus ExitStatus = SUCCESS;
+	Bool ObjectWasRunning = ObjectProcessRunning(CurObj);
 	
 	if (IsStartingMode && *CurObj->ObjectStartCommand == '\0')
 	{ /*Don't bother with it, if it has no command.
@@ -166,33 +167,41 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 		return SUCCESS;
 	}
 	
-	/*Copy in the description to be printed to the console.*/
-	if (CurObj->Opts.RawDescription)
-	{
-		snprintf(PrintOutStream, 1024, "%s", CurObj->ObjectDescription);
-	}
-	else if (IsStartingMode && CurObj->Opts.NoWait)
-	{
-		snprintf(PrintOutStream, 1024, "%s %s", "Launching process for", CurObj->ObjectDescription);
-	}
-	else if (!IsStartingMode && CurObj->Opts.HaltCmdOnly)
-	{
-		snprintf(PrintOutStream, 1024, "%s %s", "Starting", CurObj->ObjectDescription);
-	}
-	else
-	{
-		snprintf(PrintOutStream, 1024, "%s %s", (IsStartingMode ? "Starting" : "Stopping"), CurObj->ObjectDescription);
-	}
-	
-	if (IsStartingMode && CurObj->Opts.HaltCmdOnly)
-	{
-		PrintStatusReport(PrintOutStream, FAILURE);
-		return FAILURE;
+	if (!CurObj->Started || !CurObj->Opts.AutoRestart || !IsStartingMode || ObjectWasRunning)
+	{/*Copy in the description to be printed to the console.*/
+		if (CurObj->Opts.RawDescription)
+		{
+			snprintf(PrintOutStream, 1024, "%s", CurObj->ObjectDescription);
+		}
+		else if (IsStartingMode && CurObj->Opts.NoWait)
+		{
+			snprintf(PrintOutStream, 1024, "%s %s", "Launching process for", CurObj->ObjectDescription);
+		}
+		else if (!IsStartingMode && CurObj->Opts.HaltCmdOnly)
+		{
+			snprintf(PrintOutStream, 1024, "%s %s", "Starting", CurObj->ObjectDescription);
+		}
+		else
+		{
+			snprintf(PrintOutStream, 1024, "%s %s", (IsStartingMode ? "Starting" : "Stopping"), CurObj->ObjectDescription);
+		}
+		
+		if (IsStartingMode && CurObj->Opts.HaltCmdOnly)
+		{
+			PrintStatusReport(PrintOutStream, FAILURE);
+			return FAILURE;
+		}
 	}
 	
 	if (IsStartingMode)
 	{
-		printf("%s", PrintOutStream);
+		Bool WasAlreadyStarted = CurObj->Started;
+		
+		if (!CurObj->Started || !CurObj->Opts.AutoRestart || ObjectWasRunning)
+		{
+			printf("%s", PrintOutStream);
+		}
+		
 		fflush(NULL); /*Things tend to get clogged up when we don't flush.*/
 		
 		if (CurObj->Opts.NoWait)
@@ -211,7 +220,10 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 		
 		CurObj->Started = (ExitStatus ? true : false); /*Mark the process dead or alive.*/
 		
-		PrintStatusReport(PrintOutStream, ExitStatus);
+		if (!WasAlreadyStarted || !CurObj->Opts.AutoRestart || ObjectWasRunning)
+		{
+			PrintStatusReport(PrintOutStream, ExitStatus);
+		}
 	}
 	else
 	{		

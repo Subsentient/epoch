@@ -132,7 +132,9 @@ void ParseMemBus(void)
 { /*This function handles EVERYTHING passed to us via membus. It's truly vast.*/
 #define BusDataIs(x) !strncmp(x, BusData, strlen(x))
 	char BusData[MEMBUS_SIZE/2];
-		
+
+	if (!BusRunning) return;
+	
 	if (!MemBus_Read(BusData, true))
 	{
 		return;

@@ -495,12 +495,16 @@ rStatus InitConfig(void)
 				{
 					CurObj->Opts.IsService = true;
 				}
+				else if (!strcmp(CurArg, "AUTORESTART"))
+				{
+					CurObj->Opts.AutoRestart = true;
+				}
 				else
 				{
 					char TmpBuf[1024];
 					
 					snprintf(TmpBuf, 1024, "Bad value %s for attribute ObjectOptions for object %s at line %lu.\n"
-							"Valid values are NOWAIT, PERSISTENT, RAWDESCRIPTION, SERVICE, and HALTONLY.",
+							"Valid values are NOWAIT, PERSISTENT, RAWDESCRIPTION, SERVICE, AUTORESTART,\nand HALTONLY.",
 							DelimCurr, CurObj->ObjectID, LineNum);
 					SpitError(TmpBuf);
 					ShutdownConfig();
@@ -1022,24 +1026,20 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	if (ObjectTable == NULL)
 	{
 		ObjectTable = malloc(sizeof(ObjTable));
-		ObjectTable->Next = malloc(sizeof(ObjTable));
-		ObjectTable->Next->Next = NULL;
-		ObjectTable->Next->Prev = ObjectTable;
 		ObjectTable->Prev = NULL;
+		ObjectTable->Next = NULL;
 
 		Worker = ObjectTable;
 	}
-	else
+	
+	while (Worker->Next)
 	{
-		while (Worker->Next)
-		{
-			Worker = Worker->Next;
-		}
-
-		Worker->Next = malloc(sizeof(ObjTable));
-		Worker->Next->Next = NULL;
-		Worker->Next->Prev = Worker;
+		Worker = Worker->Next;
 	}
+
+	Worker->Next = malloc(sizeof(ObjTable));
+	Worker->Next->Next = NULL;
+	Worker->Next->Prev = Worker;
 
 	/*This is the first thing that must ever be initialized, because it's how we tell objects apart.*/
 	snprintf(Worker->ObjectID, MAX_DESCRIPT_SIZE, "%s", ObjectID);
@@ -1062,6 +1062,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->Opts.HaltCmdOnly = false;
 	Worker->Opts.RawDescription = false;
 	Worker->Opts.IsService = false;
+	Worker->Opts.AutoRestart = false;
 	
 	return Worker;
 }
