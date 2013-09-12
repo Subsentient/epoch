@@ -115,24 +115,30 @@ static void *PrimaryLoop(void *ContinuePrimaryLoop)
 			{ /*If 20 minutes or less until shutdown, warn us every minute.*/
 				char TBuf[MAX_LINE_SIZE];
 				const char *HaltMode = NULL;
+				static short LastMin = -1;
 
-				if (HaltParams.HaltMode == OSCTL_LINUX_HALT)
-				{
-					HaltMode = "halt";
+				if (LastMin != CurMin)
+				{ /*Don't repeat ourselves 80 times while the second rolls over.*/
+					if (HaltParams.HaltMode == OSCTL_LINUX_HALT)
+					{
+						HaltMode = "halt";
+					}
+					else if (HaltParams.HaltMode == OSCTL_LINUX_POWEROFF)
+					{
+						HaltMode = "poweroff";
+					}
+					else
+					{
+						HaltParams.HaltMode = OSCTL_LINUX_REBOOT;
+						HaltMode = "reboot";
+					}
+					
+					snprintf(TBuf, sizeof TBuf, "System is going down for %s in %lu minutes!",
+							HaltMode, DateDiff(HaltParams.TargetHour, HaltParams.TargetMin, NULL, NULL, NULL));
+					EmulWall(TBuf, false);
+					
+					LastMin = CurMin;
 				}
-				else if (HaltParams.HaltMode == OSCTL_LINUX_POWEROFF)
-				{
-					HaltMode = "poweroff";
-				}
-				else
-				{
-					HaltParams.HaltMode = OSCTL_LINUX_REBOOT;
-					HaltMode = "reboot";
-				}
-				
-				snprintf(TBuf, sizeof TBuf, "System is going down for %s in %lu minutes!",
-						HaltMode, DateDiff(HaltParams.TargetHour, HaltParams.TargetMin, NULL, NULL, NULL));
-				EmulWall(TBuf, false);
 			}
 		}
 		
