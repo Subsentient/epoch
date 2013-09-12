@@ -78,18 +78,18 @@ static void *PrimaryLoop(void *ContinuePrimaryLoop)
 		
 		ParseMemBus(); /*Check membus for new data.*/
 		
-		time(&TimeCore);
-		TimePtr = localtime(&TimeCore);
-		
-		CurHr = TimePtr->tm_hour;
-		CurMin = TimePtr->tm_min;
-		CurSec = TimePtr->tm_sec;
-		CurMon = TimePtr->tm_mon + 1;
-		CurDay = TimePtr->tm_mday;
-		CurYear = TimePtr->tm_year + 1900;
-		
 		if (HaltParams.HaltMode != -1)
 		{
+			time(&TimeCore);
+			TimePtr = localtime(&TimeCore);
+			
+			CurHr = TimePtr->tm_hour;
+			CurMin = TimePtr->tm_min;
+			CurSec = TimePtr->tm_sec;
+			CurMon = TimePtr->tm_mon + 1;
+			CurDay = TimePtr->tm_mday;
+			CurYear = TimePtr->tm_year + 1900;
+			
 			if (CurHr == HaltParams.TargetHour && CurMin == HaltParams.TargetMin &&
 				CurSec == HaltParams.TargetSec && CurMon == HaltParams.TargetMonth &&
 				CurDay == HaltParams.TargetDay && CurYear == HaltParams.TargetYear)
