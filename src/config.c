@@ -66,7 +66,7 @@ rStatus InitConfig(void)
 	struct stat FileStat;
 	char *ConfigStream = NULL, *Worker = NULL;
 	ObjTable *CurObj = NULL;
-	char DelimCurr[MAX_LINE_SIZE];
+	char DelimCurr[MAX_LINE_SIZE] = { '\0' };
 	unsigned long LineNum = 1;
 	
 	/*Get the file size of the config file.*/
@@ -117,11 +117,9 @@ rStatus InitConfig(void)
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute DisableCAD in epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute DisableCAD in epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 
 			if (!strcmp(DelimCurr, "true"))
@@ -215,11 +213,9 @@ rStatus InitConfig(void)
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute BootBannerText in epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute BootBannerText in epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 			
 			if (!strcmp(DelimCurr, "NONE")) /*So, they decided to explicitly opt out of banner display. Ok.*/
@@ -248,10 +244,8 @@ rStatus InitConfig(void)
 			{
 				char TmpBuf[1024];
 				snprintf(TmpBuf, 1024, "Missing or bad value for attribute BootBannerColor in epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				SpitWarning(TmpBuf);
+				continue;
 			}
 			
 			if (!strcmp(DelimCurr, "NONE")) /*They don't want a color.*/
@@ -269,21 +263,17 @@ rStatus InitConfig(void)
 			{ /*What the warning says. It'd get all weird if we allowed that.*/
 				char TmpBuf[1024];
 				
-				snprintf(TmpBuf, 1024, "Attribute DefaultRunlevel cannot be set after an ObjectID attribute; epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Attribute DefaultRunlevel cannot be set after an ObjectID attribute; epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute DefaultRunlevel in epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute DefaultRunlevel in epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}	
 			
 			snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", DelimCurr);
@@ -296,21 +286,17 @@ rStatus InitConfig(void)
 			{ /*What the warning says. It'd get all weird if we allowed that.*/
 				char TmpBuf[1024];
 				
-				snprintf(TmpBuf, 1024, "Attribute Hostname cannot be set after an ObjectID attribute; epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Attribute Hostname cannot be set after an ObjectID attribute; epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute Hostname in epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute Hostname in epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
+
 			}
 			
 			if (!strncmp(DelimCurr, "FILE", strlen("FILE")))
@@ -361,11 +347,9 @@ rStatus InitConfig(void)
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectID in epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectID in epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 
 			CurObj = AddObjectToTable(DelimCurr); /*Sets this as our current object.*/
@@ -385,21 +369,17 @@ rStatus InitConfig(void)
 			if (!CurObj)
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Attribute ObjectEnabled comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Attribute ObjectEnabled comes before any ObjectID attribute, epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectEnabled in epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectEnabled in epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 			
 			if (!strcmp(DelimCurr, "true"))
@@ -415,12 +395,9 @@ rStatus InitConfig(void)
 				char TmpBuf[1024];
 				
 				snprintf(TmpBuf, 1024, "Bad value %s for attribute ObjectEnabled for object %s at line %lu.\n"
-						"Valid values are true and false.",
+						"Valid values are true and false.\nIgnoring.",
 						DelimCurr, CurObj->ObjectID, LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				SpitWarning(TmpBuf);
 			}
 			
 			continue;
@@ -434,21 +411,25 @@ rStatus InitConfig(void)
 			if (!CurObj)
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Attribute ObjectOptions comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Attribute ObjectOptions comes before any ObjectID attribute, epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectOptions in epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectOptions in epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
+			}
+			
+			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Attribute ObjectOptions in epoch.conf line %lu has\n"
+						"abnormally long value and may have been truncated.", LineNum);
+				SpitWarning(TmpBuf);
 			}
 			
 			do
@@ -500,20 +481,10 @@ rStatus InitConfig(void)
 					snprintf(TmpBuf, 1024, "Bad value %s for attribute ObjectOptions for object %s at line %lu.\n"
 							"Valid values are NOWAIT, PERSISTENT, RAWDESCRIPTION, SERVICE, AUTORESTART,\nand HALTONLY.",
 							DelimCurr, CurObj->ObjectID, LineNum);
-					SpitError(TmpBuf);
-					ShutdownConfig();
-					free(ConfigStream);
-					return FAILURE;
+					SpitWarning(TmpBuf);
+					break;
 				}
 			} while ((TWorker = NextSpace(TWorker)));
-			
-			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
-			{
-				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Attribute ObjectOptions in epoch.conf line %lu has\n"
-						"abnormally long value and may have been truncated.", LineNum);
-				SpitWarning(TmpBuf);
-			}
 			
 			continue;
 		}
@@ -523,21 +494,17 @@ rStatus InitConfig(void)
 			if (!CurObj)
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Attribute ObjectDescription comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Attribute ObjectDescription comes before any ObjectID attribute, epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectDescription in epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectDescription in epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 			
 			snprintf(CurObj->ObjectDescription, MAX_DESCRIPT_SIZE, "%s", DelimCurr);
@@ -558,21 +525,17 @@ rStatus InitConfig(void)
 			if (!CurObj)
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Attribute ObjectStartCommand comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Attribute ObjectStartCommand comes before any ObjectID attribute, epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStartCommand in epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStartCommand in epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 			
 			snprintf(CurObj->ObjectStartCommand, MAX_LINE_SIZE, "%s", DelimCurr);
@@ -594,21 +557,17 @@ rStatus InitConfig(void)
 			if (!CurObj)
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Attribute ObjectStopCommand comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Attribute ObjectStopCommand comes before any ObjectID attribute, epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStopCommand in epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStopCommand in epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 
 			if (!strncmp(DelimCurr, "PID", strlen("PID")))
@@ -657,31 +616,25 @@ rStatus InitConfig(void)
 			if (!CurObj)
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Attribute ObjectStartPriority comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Attribute ObjectStartPriority comes before any ObjectID attribute, epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStartPriority in epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStartPriority in epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 			
 			if (!AllNumeric(DelimCurr)) /*Make sure we are getting a number, not Shakespeare.*/
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Bad non-integer value for attribute ObjectStartPriority in epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Bad non-integer value for attribute ObjectStartPriority in epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 			
 			CurObj->ObjectStartPriority = atoi(DelimCurr);
@@ -702,31 +655,25 @@ rStatus InitConfig(void)
 			if (!CurObj)
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Attribute ObjectStopPriority comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Attribute ObjectStopPriority comes before any ObjectID attribute, epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStopPriority in epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectStopPriority in epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 			
 			if (!AllNumeric(DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Bad non-integer value for attribute ObjectStopPriority in epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Bad non-integer value for attribute ObjectStopPriority in epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 			
 			CurObj->ObjectStopPriority = atoi(DelimCurr);
@@ -749,21 +696,17 @@ rStatus InitConfig(void)
 			if (!CurObj)
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Attribute ObjectRunlevels comes before any ObjectID attribute, epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Attribute ObjectRunlevels comes before any ObjectID attribute, epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
-				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectRunlevels in epoch.conf line %lu.", LineNum);
-				SpitError(TmpBuf);
-				ShutdownConfig();
-				free(ConfigStream);
-				return FAILURE;
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute ObjectRunlevels in epoch.conf line %lu.\nIgnoring.", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
 			}
 			
 			TWorker = DelimCurr;
