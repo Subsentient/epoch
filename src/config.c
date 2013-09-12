@@ -319,6 +319,7 @@ rStatus InitConfig(void)
 				unsigned long Inc = 0;
 				char TChar;
 				const char *TW = DelimCurr;
+				char THostname[MAX_LINE_SIZE];
 				
 				TW += strlen("FILE");
 				
@@ -334,7 +335,18 @@ rStatus InitConfig(void)
 				
 				for (Inc = 0; (TChar = getc(TDesc)) != EOF && Inc < MAX_LINE_SIZE - 1; ++Inc)
 				{
-					Hostname[Inc] = TChar;
+					THostname[Inc] = TChar;
+				}
+				THostname[Inc] = '\0';
+				
+				/*Skip past spaces, tabs, and newlines.*/
+				for (TW = THostname; *TW == '\n' ||
+					*TW == ' ' || *TW == '\t'; ++TW);
+				
+				/*Copy into the real hostname from our new offset.*/
+				for (Inc = 0; TW[Inc] != '\0' && TW[Inc] != '\n'; ++Inc)
+				{
+					Hostname[Inc] = TW[Inc];
 				}
 				Hostname[Inc] = '\0';
 				
@@ -343,6 +355,15 @@ rStatus InitConfig(void)
 			else
 			{	
 				snprintf(Hostname, MAX_LINE_SIZE, "%s", DelimCurr);
+			}
+			
+								
+			/*Check for spaces and tabs in the actual hostname.*/
+			if (strstr(Hostname, " ") != NULL || strstr(Hostname, "\t") != NULL)
+			{
+				SpitWarning("Tabs and/or spaces in hostname file. Cannot set hostname.");
+				*Hostname = '\0'; /*Set the hostname back to nothing.*/
+				continue;
 			}
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
@@ -1087,10 +1108,10 @@ static rStatus ScanConfigIntegrity(void)
 			RetState = WARNING;
 		}
 		
-		if (*Worker->ObjectStartCommand == '\0' && *Worker->ObjectStopCommand == '\0')
+		if (*Worker->ObjectStartCommand == '\0' && *Worker->ObjectStopCommand == '\0' && Worker->Opts.StopMode == STOP_COMMAND)
 		{
 			snprintf(TmpBuf, 1024, "Object %s has neither ObjectStopCommand nor ObjectStartCommand attributes.", Worker->ObjectID);
-			SpitWarning(TmpBuf);
+			SpitError(TmpBuf);
 			RetState = FAILURE;
 		}
 		
@@ -1106,7 +1127,7 @@ static rStatus ScanConfigIntegrity(void)
 		if (Worker->ObjectRunlevels == NULL)
 		{
 			snprintf(TmpBuf, 1024, "Object \"%s\" has no attribute ObjectRunlevels.", Worker->ObjectID);
-			SpitWarning(TmpBuf);
+			SpitError(TmpBuf);
 			RetState = FAILURE;
 		}
 		
