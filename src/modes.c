@@ -260,6 +260,7 @@ rStatus EmulKillall5(unsigned long InSignal)
 				snprintf(TmpBuf, 1024, "Failed to read session ID file for process %lu. Aborting.", CurPID);
 				
 				SpitError(TmpBuf);
+				closedir(ProcDir);
 				return FAILURE;
 			}
 			
