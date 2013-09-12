@@ -153,7 +153,8 @@ rStatus InitConfig(void)
 			const char *TWorker = DelimCurr;
 			unsigned long Inc = 0;
 			char CurArg[MAX_DESCRIPT_SIZE];
-			
+			const char *VirtualID[2][5] = { { "procfs", "sysfs", "devfs", "devpts", "devshm" },
+											{ "procfs+", "sysfs+", "devfs+", "devpts+", "devshm+" } };
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				char TmpBuf[1024];
@@ -164,36 +165,29 @@ rStatus InitConfig(void)
 			}
 			
 			do
-			{
+			{ /*Load in all the arguments in the line.*/
+				Bool FoundSomething = false;
+				
 				for (Inc = 0; TWorker[Inc] != ' ' && TWorker[Inc] != '\t' && TWorker[Inc] != '\n' &&
 					TWorker[Inc] != '\0' && Inc < (MAX_DESCRIPT_SIZE - 1); ++Inc)
-				{
+				{ /*Copy in the argument for this line.*/
 					CurArg[Inc] = TWorker[Inc];
 				}
 				CurArg[Inc] = '\0';
 				
-				if (!strcmp("procfs", CurArg))
-				{
-					AutoMountOpts[0] = true;
+				
+				for (Inc = 0; Inc < 5; ++Inc)
+				{ /*Search through the argument to see what it matches.*/
+					if (!strncmp(VirtualID[0][Inc], CurArg, strlen(VirtualID[0][Inc])))
+					{
+						AutoMountOpts[Inc] = (!strcmp(VirtualID[1][Inc], CurArg) ? 2 : true);
+						FoundSomething = true;
+						break;
+					}
 				}
-				else if (!strcmp("sysfs", CurArg))
-				{
-					AutoMountOpts[1] = true;
-				}
-				else if (!strcmp("devfs", CurArg))
-				{
-					AutoMountOpts[2] = true;
-				}
-				else if (!strcmp("devpts", CurArg))
-				{
-					AutoMountOpts[3] = true;
-				}
-				else if (!strcmp("devshm", CurArg))
-				{
-					AutoMountOpts[4] = true;
-				}
-				else
-				{
+
+				if (!FoundSomething)
+				{ /*If it doesn't match anything, that's bad.*/
 					char TmpBuf[1024];
 					
 					snprintf(TmpBuf, 1024, "Bad value %s for attribute MountVirtual on line %lu. Ignoring.", CurArg, LineNum);

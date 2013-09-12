@@ -13,6 +13,7 @@
 #include <sys/reboot.h>
 #include <sys/mount.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <signal.h>
 #include <pthread.h>
 #include "epoch.h"
@@ -32,12 +33,25 @@ static void MountVirtuals(void)
 {
 	const char *FSTypes[5] = { "proc", "sysfs", "devtmpfs", "devpts", "tmpfs" };
 	const char *MountLocations[5] = { "/proc", "/sys", "/dev", "/dev/pts", "/dev/shm" };
+	Bool HeavyPermissions[5] = { true, true, true, true, false };
+	mode_t PermissionSet[2] = { (S_IRWXU | S_IRWXG | S_IRWXO), (S_IRWXU | S_IRGRP | S_IXGRP | S_IXOTH) };
 	short Inc = 0;
 	
 	for (; Inc < 5; ++Inc)
 	{
 		if (AutoMountOpts[Inc])
 		{
+			if (AutoMountOpts[Inc] == 2)
+			{ /*If we need to create a directory, do it.*/
+				if (mkdir(MountLocations[Inc], PermissionSet[HeavyPermissions[Inc]] != 0))
+				{
+					char TmpBuf[1024];
+					
+					snprintf(TmpBuf, sizeof TmpBuf, "Failed to create directory for %s!", MountLocations[Inc]);
+					SpitWarning(TmpBuf);
+				} /*No continue statement because it might already exist*/
+			}	/*and we might be able to mount it anyways.*/
+			
 			if (mount(FSTypes[Inc], MountLocations[Inc], FSTypes[Inc], 0, NULL) != 0)
 			{
 				char TmpBuf[1024];
@@ -47,6 +61,7 @@ static void MountVirtuals(void)
 				continue;
 			}
 		}
+		
 	}
 }
 
