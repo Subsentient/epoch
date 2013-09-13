@@ -1081,6 +1081,15 @@ static rStatus ScanConfigIntegrity(void)
 			RetState = FAILURE;
 		}
 		
+		if (Worker->Opts.StopMode == STOP_PID && Worker->Opts.HaltCmdOnly)
+		{ /*We put this here instead of InitConfig() because we can't really do anything but disable.*/
+			snprintf(TmpBuf, 1024, "Object \"%s\" has HALTONLY set,\n"
+					"but stop method is PID!\nDisabling.", Worker->ObjectID);
+			SpitWarning(TmpBuf);
+			Worker->Enabled = false;
+			RetState = WARNING;
+		}
+		
 		/*Check for duplicate ObjectIDs.*/
 		for (TOffender = ObjectTable; TOffender->Next != NULL; TOffender = TOffender->Next)
 		{
