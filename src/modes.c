@@ -214,7 +214,7 @@ rStatus EmulKillall5(unsigned long InSignal)
 	char TmpBuf[1024], SessionID[8192], SessionID_Targ[8192], TChar;
 
 
-	if (InSignal > OSCTL_SIGNAL_STOP || InSignal == 0) /*Won't be negative since we are unsigned.*/
+	if (InSignal > SIGSTOP || InSignal == 0) /*Won't be negative since we are unsigned.*/
 	{
 		SpitError("EmulKillall5() Bad value for unsigned long InSignal.");
 	}

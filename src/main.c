@@ -58,28 +58,28 @@ static void SigHandlerForInit(int Signal)
 	
 	switch (Signal)
 	{
-		case OSCTL_SIGNAL_INT:
+		case SIGINT:
 		{ /*Is this a reboot signal?*/
 			EmulWall("System is going down for reboot NOW!", false);
 			LaunchShutdown(OSCTL_LINUX_REBOOT);
 			return;
 		}
-		case OSCTL_SIGNAL_SEGV:
+		case SIGSEGV:
 		{
 			WallError = "A segmentation fault has occurred in Epoch! Dropping to emergency shell!";
 			break;
 		}
-		case OSCTL_SIGNAL_ILL:
+		case SIGILL:
 		{
 			WallError = "Epoch has encountered an illegal instruction! Dropping to emergency shell!";
 			break;
 		}
-		case OSCTL_SIGNAL_FPE:
+		case SIGFPE:
 		{
 			WallError = "Epoch has encountered an arithmetic error! Dropping to emergency shell!";
 			break;
 		}
-		case OSCTL_SIGNAL_ABRT:
+		case SIGABRT:
 		{
 			WallError = "Epoch has received an abort signal! Dropping to emergency shell!";
 			break;
@@ -113,28 +113,28 @@ static void SigHandler(int Signal)
 	
 	switch (Signal)
 	{
-		case OSCTL_SIGNAL_INT:
+		case SIGINT:
 		{
 			puts("SIGINT received. Exiting.");
 			ShutdownMemBus(false);
 			exit(0);
 		}
-		case OSCTL_SIGNAL_SEGV:
+		case SIGSEGV:
 		{
 			ErrorM = "A segmentation fault has occurred in Epoch!";
 			break;
 		}
-		case OSCTL_SIGNAL_ILL:
+		case SIGILL:
 		{
 			ErrorM = "Epoch has encountered an illegal instruction!";
 			break;
 		}
-		case OSCTL_SIGNAL_FPE:
+		case SIGFPE:
 		{
 			ErrorM = "Epoch has encountered an arithmetic error!";
 			break;
 		}
-		case OSCTL_SIGNAL_ABRT:
+		case SIGABRT:
 		{
 			ErrorM = "Epoch has received an abort signal!";
 			break;
@@ -695,12 +695,12 @@ int main(int argc, char **argv)
 	}
 
 	/*Set up signal handling.*/
-	signal(OSCTL_SIGNAL_SEGV, SigHPtr);
-	signal(OSCTL_SIGNAL_ILL, SigHPtr);
-	signal(OSCTL_SIGNAL_FPE, SigHPtr);
-	signal(OSCTL_SIGNAL_ABRT, SigHPtr);
+	signal(SIGSEGV, SigHPtr);
+	signal(SIGILL, SigHPtr);
+	signal(SIGFPE, SigHPtr);
+	signal(SIGABRT, SigHPtr);
 	
-	signal(OSCTL_SIGNAL_INT, SigHPtr); /*For reboots and closing client membus correctly.*/
+	signal(SIGINT, SigHPtr); /*For reboots and closing client membus correctly.*/
 	if (CmdIs("poweroff") || CmdIs("reboot") || CmdIs("halt"))
 	{
 		Bool RVal;
@@ -834,7 +834,7 @@ int main(int argc, char **argv)
 		}
 		else if (argc == 1)
 		{
-			return !EmulKillall5(OSCTL_SIGNAL_TERM);
+			return !EmulKillall5(SIGTERM);
 		}
 		else
 		{

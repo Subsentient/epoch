@@ -247,7 +247,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 				printf("%s", PrintOutStream);
 				fflush(NULL);
 				
-				if (kill(CurObj->ObjectPID, OSCTL_SIGNAL_TERM) == 0)
+				if (kill(CurObj->ObjectPID, SIGTERM) == 0)
 				{ /*Just send SIGTERM.*/
 					ExitStatus = SUCCESS;
 				}
@@ -301,7 +301,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 				
 				/*Now we can actually kill the process ID.*/
 				
-				if (kill(TruePID, OSCTL_SIGNAL_TERM) == 0)
+				if (kill(TruePID, SIGTERM) == 0)
 				{
 					ExitStatus = SUCCESS;
 				}

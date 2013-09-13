@@ -25,22 +25,6 @@
 /*Version.*/
 #define VERSIONSTRING "Epoch Init System v0.1"
 
-/*Linux signals.*/
-#define OSCTL_SIGNAL_HUP 1
-#define OSCTL_SIGNAL_INT 2
-#define OSCTL_SIGNAL_QUIT 3
-#define OSCTL_SIGNAL_ILL 4
-#define OSCTL_SIGNAL_TRAP 5
-#define OSCTL_SIGNAL_ABRT 6
-#define OSCTL_SIGNAL_FPE 8
-#define OSCTL_SIGNAL_KILL 9
-#define OSCTL_SIGNAL_USR1 10
-#define OSCTL_SIGNAL_SEGV 11
-#define OSCTL_SIGNAL_USR2 12
-#define OSCTL_SIGNAL_TERM 15
-#define OSCTL_SIGNAL_CONT 18
-#define OSCTL_SIGNAL_STOP 19
-
 /*Power control magic. FIXME: Add support for BSD etc. here!*/
 #define OSCTL_LINUX_REBOOT 0x1234567
 #define OSCTL_LINUX_HALT 0xcdef0123
