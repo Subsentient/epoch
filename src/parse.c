@@ -265,7 +265,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 			{
 				FILE *Tdesc = fopen(CurObj->ObjectPIDFile, "r");
 				unsigned long Inc = 0, TruePID = 0;
-				char Buf[MAX_LINE_SIZE], WChar, *TWorker;
+				char Buf[MAX_LINE_SIZE], WChar, *TWorker, *TW2;
 				
 				printf("%s", PrintOutStream);
 				fflush(NULL);
@@ -277,15 +277,16 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 				Buf[Inc] = '\0'; /*Stop. Whining. About. The. Loops. I don't want to use stat() here!*/
 				
 				fclose(Tdesc);
+			
+				for (TWorker = Buf; *TWorker == '\t' || *TWorker == '\n' || *TWorker == ' '; ++TWorker); /*Skip past garbage.*/
 				
-				if ((TWorker = strstr(Buf, "\n")) != NULL) /*Nuke the newlines.*/ 
-				{
-					*TWorker = '\0';
-				}
+				/*Delete extra junk characters at the end.*/
+				for (TW2 = TWorker; *TW2 != '\0' && *TW2 != '\t' && *TW2 != '\n' && *TW2 != ' '; ++TW2);
+				*TW2 = '\0';
 				
-				if (AllNumeric(Buf))
+				if (AllNumeric(TWorker))
 				{
-					TruePID = atoi(Buf);
+					TruePID = atoi(TWorker);
 				}
 				else
 				{
