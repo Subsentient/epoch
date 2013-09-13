@@ -111,6 +111,10 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 	if (LaunchPID == 0) /**Child process code.**/
 	{ /*Child does all this.*/
 		char TmpBuf[1024];
+		
+		/*Change our session id.*/
+		setsid();
+		
 		execlp(ShellPath, "sh", "-c", CurCmd, NULL); /*I bet you think that this is going to return the PID of sh. No.*/
 		/*We still around to talk about it? We were supposed to be imaged with the new command!*/
 		

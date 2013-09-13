@@ -190,6 +190,8 @@ void LaunchBootup(void)
 	pthread_t LoopThread;
 	Bool Insane = false;
 	
+	setsid();
+	
 	printf("\n%s\n", VERSIONSTRING);
 	
 	if (!InitMemBus(true))
