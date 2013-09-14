@@ -267,12 +267,6 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 	signed long OSCode = -1;
 	
 	/*Figure out what we are.*/
-	if (argv[0] == NULL)
-	{
-		SpitError("main(): argv[0] is NULL. Why?");
-		return 1;
-	}
-	
 	if (CmdIs("poweroff") || CmdIs("halt") || CmdIs("reboot"))
 	{
 		char *GCode = NULL, *SuccessMsg = NULL, *FailMsg[2] = { NULL, NULL };
@@ -687,27 +681,27 @@ int main(int argc, char **argv)
 	{
 		SigHPtr = &SigHandler;
 	}
-	
-	if (argv[0] == NULL)
-	{
-		SpitError("main(): argv[0] is NULL. Why?");
-		return 1;
-	}
 
 	/*Set up signal handling.*/
 	signal(SIGSEGV, SigHPtr);
 	signal(SIGILL, SigHPtr);
 	signal(SIGFPE, SigHPtr);
 	signal(SIGABRT, SigHPtr);
-	
 	signal(SIGINT, SigHPtr); /*For reboots and closing client membus correctly.*/
+	
+	if (argv[0] == NULL)
+	{
+		SpitError("main(): argv[0] is NULL. Why?");
+		return 1;
+	}
+	
 	if (CmdIs("poweroff") || CmdIs("reboot") || CmdIs("halt"))
 	{
 		Bool RVal;
 		
 		/*Start membus.*/
-		if (!InitMemBus(false))
-		{
+		if (argc == 1 && !InitMemBus(false))
+		{ /*Don't initialize the membus if we could be doing "-f".*/
 			SpitError("main(): Failed to connect to membus.");
 			return 1;
 		}
