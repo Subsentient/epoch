@@ -338,19 +338,37 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 {
 	const char *CArg = argv[1];
 	
-	/*Help parser.*/
-	if (argc >= 2 && ArgIs("help"))
+	/*Help parser and shutdown commands (for possible -f).*/
+	if (argc >= 2)
 	{
-		if ((CArg = argv[2]))
+		if (ArgIs("help"))
 		{
-			PrintEpochHelp(argv[0], CArg);
-		}
-		else
-		{
-			PrintEpochHelp(argv[0], NULL);
-		}
+			if ((CArg = argv[2]))
+			{
+				PrintEpochHelp(argv[0], CArg);
+			}
+			else
+			{
+				PrintEpochHelp(argv[0], NULL);
+			}
 		
-		return SUCCESS;
+			return SUCCESS;
+		}
+		else if (ArgIs("poweroff") || ArgIs("reboot") || ArgIs("halt"))
+		{
+			Bool RVal;
+			
+			if (!InitMemBus(false))
+			{
+				SpitError("main(): Failed to connect to membus.");
+				return FAILURE;
+			}
+			
+			RVal = !ProcessGenericHalt(argc - 1, argv + 1);
+			
+			ShutdownMemBus(false);
+			return (int)RVal;
+		}
 	}
 	
 	
@@ -364,22 +382,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 	{
 		CArg = argv[1];
 		
-		if (ArgIs("poweroff") || ArgIs("reboot") || ArgIs("halt"))
-		{
-			Bool RVal;
-			
-			if (!InitMemBus(false))
-			{
-				SpitError("main(): Failed to connect to membus.");
-				return FAILURE;
-			}
-			
-			RVal = !ProcessGenericHalt(argc, argv);
-			
-			ShutdownMemBus(false);
-			return (int)RVal;
-		}
-		else if (ArgIs("configreload"))
+		if (ArgIs("configreload"))
 		{
 			char TRecv[MEMBUS_SIZE/2 - 1];
 			char TBuf[3][MAX_LINE_SIZE];
@@ -720,15 +723,8 @@ int main(int argc, char **argv)
 	{ /*This is a bit long winded here, however, it's better than devoting a function for it.*/
 		if (argc == 1)
 		{ /*Just us, as init. That means, begin bootup.*/
-			if (getpid() == 1)
-			{
+
 				LaunchBootup();
-			}
-			else
-			{
-				SpitError("Refusing to launch the whole boot sequence if not PID 1.");
-				return 1;
-			}
 		}
 		else if (argc == 2)
 		{
