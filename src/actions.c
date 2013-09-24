@@ -13,6 +13,7 @@
 #include <sys/reboot.h>
 #include <sys/mount.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/stat.h>
 #include <signal.h>
 #include <pthread.h>
@@ -229,6 +230,12 @@ void LaunchBootup(void)
 	while (!Insane) /*We're still pretty insane.*/
 	{ /*Now wait forever.*/
 		usleep(1000);
+		
+		if (!RunningChildCount)
+		{ /*Clean away extra child processes that are started by the rest of the system.
+			Do this to avoid zombie process apocalypse.*/
+			waitpid(-1, NULL, WNOHANG);
+		}
 	}
 }
 

@@ -166,6 +166,7 @@ extern Bool DisableCAD;
 extern char Hostname[MAX_LINE_SIZE];
 extern struct _HaltParams HaltParams;
 extern Bool AutoMountOpts[5];
+extern unsigned long RunningChildCount;
 
 /**Function forward declarations.*/
 

@@ -14,12 +14,20 @@
 #include <pthread.h>
 #include "epoch.h"
 
+/**Globals**/
+
 /*We store the current runlevel here.*/
 char CurRunlevel[MAX_DESCRIPT_SIZE] = "default";
+unsigned long RunningChildCount = 0; /*How many child processes are running?
+									* I promised myself I wouldn't use this code.*/
 
-/*Function forward declarations.*/
+/**Function forward declarations.**/
+
 static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode);
 static void *IndependentExecuteObject(void *InObj);
+
+
+/**Actual functions.**/
 
 static Bool FileUsable(const char *FileName)
 {
@@ -100,12 +108,20 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 #endif
 	
 	/**Here be where we execute commands.---------------**/
+	
 	LaunchPID = vfork();
 	
 	if (LaunchPID < 0)
 	{
 		SpitError("Failed to call vfork(). This is a critical error.");
 		EmergencyShell();
+	}
+	
+	if (LaunchPID > 0)
+	{
+			++RunningChildCount; /*I have a feeling that when the stars align,
+								* this variable will be accessed by two threads at once
+								* and crash to the ground. I hope I'm wrong.*/
 	}
 	
 	if (LaunchPID == 0) /**Child process code.**/
@@ -122,6 +138,8 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 		SpitError(TmpBuf);
 		EmergencyShell();
 	}
+	
+	/**Parent code resumes.**/
 
 	InObj->ObjectPID = LaunchPID; /*Save our PID.*/
 	
@@ -136,9 +154,9 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 	{ /*If we specify that this is a service, one up the PID again.*/
 		++InObj->ObjectPID;
 	}
-	
-	/**Parent code resumes.**/
+
 	waitpid(LaunchPID, &RawExitStatus, 0); /*Wait for the process to exit.*/
+	--RunningChildCount; /*We're done, so say so.*/
 	
 	/**And back to normalcy after this.------------------**/
 	
