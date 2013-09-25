@@ -538,6 +538,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		}
 		else if (ArgIs("status"))
 		{
+			Bool Started, Running;
 			if (!InitMemBus(false))
 			{
 				SpitError("main(): Failed to connect to membus.");
@@ -546,15 +547,40 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			CArg = argv[2];
 			
-			if (AskObjectStarted(CArg))
+			switch (AskObjectStatus(CArg))
 			{
-				printf("%s is currently running.\n", CArg);
-			}
-			else
-			{
-				printf("%s is stopped.\n", CArg);
+				case 0:
+					Running = Started = false;
+					break;
+				case 1:
+					Running = Started = true;
+					break;
+				case 2:
+					Started = true;
+					Running = false;
+					break;
+				case 3:
+					Started = false;
+					Running = true;
+					break;
+				case 4:
+					printf("Unable to retrieve status of object %s. Does it exist?\n", CArg);
+					ShutdownMemBus(false);
+					return SUCCESS;
+					break;				
+				default:
+				{
+					SpitError("HandleEpochCommand(): Invalid response from AskObjectStatus().");
+					ShutdownMemBus(false);
+					return FAILURE;
+					break;
+				}
 			}
 			
+			printf("Status for object %s:\n---\nStarted: %s\nRunning: %s\n", CArg, /*This bit is kinda weird I think, but the output is pretty.*/
+					(Started ? CONSOLE_COLOR_GREEN "Yes" CONSOLE_ENDCOLOR : CONSOLE_COLOR_RED "No" CONSOLE_ENDCOLOR),
+					(Running ? CONSOLE_COLOR_GREEN "Yes" CONSOLE_ENDCOLOR  : CONSOLE_COLOR_RED "No" CONSOLE_ENDCOLOR));
+
 			ShutdownMemBus(false);
 			return SUCCESS;
 		}

@@ -179,10 +179,10 @@ void ParseMemBus(void)
 		
 		switch (DidWork)
 		{
+			case NOTIFICATION: /*If we have NOWAIT set for this object, we will receive NOTIFICATION in response, and that can be confusing.*/
 			case SUCCESS:
 				MCode = MEMBUS_CODE_ACKNOWLEDGED;
 				break;
-			case NOTIFICATION: /*Ignore this mostly. Guess it's WARNING. Compilers whine if this is not here.*/
 			case WARNING:
 				MCode = MEMBUS_CODE_WARNING;
 				break;
@@ -215,8 +215,9 @@ void ParseMemBus(void)
 		if (CurObj)
 		{
 			char TmpBuf[MEMBUS_SIZE/2 - 1];
-			/*Don't let HaltCmdOnly objects be reported as running, because they always look like that anyways.*/
-			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %d", MEMBUS_CODE_STATUS, TWorker, CurObj->Started && !CurObj->Opts.HaltCmdOnly);
+			/*Don't let HaltCmdOnly objects be reported as started, because they always look like that anyways.*/
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %d %d", MEMBUS_CODE_STATUS, TWorker,
+					CurObj->Started && !CurObj->Opts.HaltCmdOnly, ObjectProcessRunning(CurObj));
 			
 			MemBus_Write(TmpBuf, true);
 		}

@@ -198,7 +198,7 @@ extern rStatus SendPowerControl(const char *MembusCode);
 extern rStatus EmulKillall5(unsigned long InSignal);
 extern void EmulWall(const char *InStream, Bool ShowUser);
 extern rStatus EmulShutdown(long ArgumentCount, const char **ArgStream);
-extern Bool AskObjectStarted(const char *ObjectID);
+extern short AskObjectStatus(const char *ObjectID);
 extern rStatus ObjControl(const char *ObjectID, const char *MemBusSignal);
 
 /*membus.c*/

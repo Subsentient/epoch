@@ -153,11 +153,11 @@ rStatus ObjControl(const char *ObjectID, const char *MemBusSignal)
 	}
 }
 
-Bool AskObjectStarted(const char *ObjectID)
+short AskObjectStatus(const char *ObjectID)
 { /*Just request if the object is running or not.*/
 	char RemoteResponse[MEMBUS_SIZE/2 - 1];
 	char OutMsg[MEMBUS_SIZE/2 - 1];
-	char PossibleResponses[3][MEMBUS_SIZE/2 - 1];
+	char PossibleResponses[5][MEMBUS_SIZE/2 - 1];
 	unsigned long cCounter = 0;
 	
 	snprintf(OutMsg, sizeof OutMsg, "%s %s", MEMBUS_CODE_STATUS, ObjectID);
@@ -180,24 +180,36 @@ Bool AskObjectStarted(const char *ObjectID)
 		}
 	}
 	
-	snprintf(PossibleResponses[0], sizeof PossibleResponses[0], "%s %s %s",
-		MEMBUS_CODE_STATUS, ObjectID, "0");
-	snprintf(PossibleResponses[1], sizeof PossibleResponses[1], "%s %s %s",
-		MEMBUS_CODE_STATUS, ObjectID, "1");
-	snprintf(PossibleResponses[2], sizeof PossibleResponses[2], "%s %s %s",
+	snprintf(PossibleResponses[0], sizeof PossibleResponses[0], "%s %s %s %s",
+		MEMBUS_CODE_STATUS, ObjectID, "0", "0");
+	snprintf(PossibleResponses[1], sizeof PossibleResponses[1], "%s %s %s %s",
+		MEMBUS_CODE_STATUS, ObjectID, "1", "1");
+	snprintf(PossibleResponses[2], sizeof PossibleResponses[2], "%s %s %s %s",
+		MEMBUS_CODE_STATUS, ObjectID, "1", "0");
+	snprintf(PossibleResponses[3], sizeof PossibleResponses[3], "%s %s %s %s",
+		MEMBUS_CODE_STATUS, ObjectID, "0", "1");
+	snprintf(PossibleResponses[4], sizeof PossibleResponses[4], "%s %s %s",
 		MEMBUS_CODE_FAILURE, MEMBUS_CODE_STATUS, ObjectID);
 		
 	if (!strcmp(RemoteResponse, PossibleResponses[0]))
 	{
-		return false;
+		return 0;
 	}
 	else if (!strcmp(RemoteResponse, PossibleResponses[1]))
 	{
-		return true;
+		return 1;
 	}
 	else if (!strcmp(RemoteResponse, PossibleResponses[2]))
-	{ /*Not sure why I do this when the statement below returns the same.*/
-		return -1;
+	{
+		return 2;
+	}
+	else if (!strcmp(RemoteResponse, PossibleResponses[3]))
+	{
+		return 3;
+	}
+	else if (!strcmp(RemoteResponse, PossibleResponses[4]))
+	{
+		return 4;
 	}
 	else
 	{
