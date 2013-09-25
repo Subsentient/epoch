@@ -18,7 +18,7 @@
 
 /*We store the current runlevel here.*/
 char CurRunlevel[MAX_DESCRIPT_SIZE] = "default";
-unsigned long RunningChildCount = 0; /*How many child processes are running?
+volatile unsigned long RunningChildCount = 0; /*How many child processes are running?
 									* I promised myself I wouldn't use this code.*/
 
 /**Function forward declarations.**/

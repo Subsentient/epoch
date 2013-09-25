@@ -24,9 +24,9 @@ static void MountVirtuals(void);
 static void *PrimaryLoop(void *ContinuePrimaryLoop);
 
 /*Globals.*/
-struct _HaltParams HaltParams = { -1, 0, 0, 0, 0, 0 };
+volatile struct _HaltParams HaltParams = { -1, 0, 0, 0, 0, 0 };
 Bool AutoMountOpts[5] = { false, false, false, false, false };
-static Bool ContinuePrimaryLoop = true;
+static volatile Bool ContinuePrimaryLoop = true;
 
 /*Functions.*/
 
@@ -81,7 +81,7 @@ static void *PrimaryLoop(void *ContinuePrimaryLoop)
 	struct tm *TimePtr;
 	time_t TimeCore;
 	
-	while (*(Bool*)ContinuePrimaryLoop)
+	while (*(volatile Bool*)ContinuePrimaryLoop)
 	{
 		usleep(250000); /*Quarter of a second.*/
 		
@@ -232,7 +232,7 @@ void LaunchBootup(void)
 		reboot(OSCTL_LINUX_DISABLE_CTRLALTDEL); /*Disable instant reboot on CTRL-ALT-DEL.*/
 	}
 
-	pthread_create(&LoopThread, NULL, &PrimaryLoop, &ContinuePrimaryLoop);
+	pthread_create(&LoopThread, NULL, &PrimaryLoop, (void*)&ContinuePrimaryLoop);
 	pthread_detach(LoopThread); /*A lazier way than using attrs.*/
 	
 	if (EnableLogging)

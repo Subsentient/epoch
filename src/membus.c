@@ -20,8 +20,8 @@
 #include "epoch.h"
 
 /*Memory bus uhh, static globals.*/
-char *MemData = NULL;
-static Bool BusRunning = false;
+volatile char *MemData = NULL;
+static volatile Bool BusRunning = false;
 
 rStatus InitMemBus(Bool ServerSide)
 { /*Fire up the memory bus.*/
@@ -45,7 +45,7 @@ rStatus InitMemBus(Bool ServerSide)
 	
 	if (ServerSide) /*Don't nuke messages on startup if we aren't init.*/
 	{
-		memset(MemData, 0, MEMBUS_SIZE); /*Zero it out just to be neat. Probably don't really need this.*/
+		memset((void*)MemData, 0, MEMBUS_SIZE); /*Zero it out just to be neat. Probably don't really need this.*/
 		
 		*MemData = MEMBUS_NOMSG; /*Set to no message by default.*/
 		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NEWCONNECTION;
@@ -67,8 +67,8 @@ rStatus InitMemBus(Bool ServerSide)
 
 rStatus MemBus_Write(const char *InStream, Bool ServerSide)
 {
-	char *BusStatus = NULL;
-	char *BusData = NULL;
+	volatile char *BusStatus = NULL;
+	volatile char *BusData = NULL;
 	unsigned short WaitCount = 0;
 	
 	if (ServerSide)
@@ -93,7 +93,7 @@ rStatus MemBus_Write(const char *InStream, Bool ServerSide)
 		}
 	}
 	
-	snprintf(BusData, MEMBUS_SIZE/2 - 1, "%s", InStream);
+	snprintf((char*)BusData, MEMBUS_SIZE/2 - 1, "%s", InStream);
 	
 	*BusStatus = MEMBUS_MSG; /*Now we sent it.*/
 	
@@ -102,8 +102,8 @@ rStatus MemBus_Write(const char *InStream, Bool ServerSide)
 
 Bool MemBus_Read(char *OutStream, Bool ServerSide)
 {
-	char *BusStatus = NULL;
-	char *BusData = NULL;
+	volatile char *BusStatus = NULL;
+	volatile char *BusData = NULL;
 	
 	if (ServerSide)
 	{
@@ -624,7 +624,7 @@ rStatus ShutdownMemBus(Bool ServerSide)
 	
 	*MemData = MEMBUS_NOMSG;
 	
-	if (shmdt(MemData) != 0)
+	if (shmdt((void*)MemData) != 0)
 	{
 		SpitWarning("ShutdownMemBus(): Unable to shut down memory bus.");
 		return FAILURE;
