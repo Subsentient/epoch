@@ -217,7 +217,7 @@ void LaunchBootup(void)
 	PrintBootBanner();
 	
 	if (EnableLogging)
-	{ /*We dynamically allocate this to avoid wasting space.*/
+	{
 		WriteLogLine(VERSIONSTRING " Booting up\n", true);
 	}
 	
