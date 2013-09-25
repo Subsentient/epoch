@@ -237,7 +237,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 		else
 		{
 			
-			ExitStatus = ExecuteConfigObject(CurObj, IsStartingMode); /*Don't bother with return value here.*/
+			ExitStatus = ExecuteConfigObject(CurObj, IsStartingMode);
 		}
 		
 		CurObj->Started = (ExitStatus ? true : false); /*Mark the process dead or alive.*/
