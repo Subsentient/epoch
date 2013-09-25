@@ -218,7 +218,7 @@ void LaunchBootup(void)
 	
 	if (EnableLogging)
 	{
-		WriteLogLine(VERSIONSTRING " Booting up\n", true);
+		WriteLogLine(CONSOLE_COLOR_CYAN VERSIONSTRING " Booting up" CONSOLE_ENDCOLOR "\n", true);
 	}
 	
 	MountVirtuals(); /*Mounts any virtual filesystems, upon request.*/
@@ -250,7 +250,7 @@ void LaunchBootup(void)
 		LogInMemory = false;
 		MemLogBuffer[strlen(MemLogBuffer) - 1] = '\0';
 		WriteLogLine(MemLogBuffer, false);
-		WriteLogLine("Completed starting objects and services. Entering standby loop.", true);
+		WriteLogLine(CONSOLE_COLOR_GREEN "Completed starting objects and services. Entering standby loop." CONSOLE_ENDCOLOR, true);
 		free(MemLogBuffer);
 	}
 	
@@ -270,7 +270,7 @@ void LaunchShutdown(signed long Signal)
 { /*Responsible for reboot, halt, power down, etc.*/
 	const char *AttemptMsg = NULL;
 	
-	WriteLogLine("Shutting down. Goodbye.", true);
+	WriteLogLine(CONSOLE_COLOR_MAGENTA "Shutting down. Goodbye." CONSOLE_ENDCOLOR, true);
 	EnableLogging = false; /*Prevent any additional log entries.*/
 	
 	ContinuePrimaryLoop = false; /*Bring down the primary loop.*/
