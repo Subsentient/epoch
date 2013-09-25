@@ -218,8 +218,8 @@ void ParseMemBus(void)
 		{
 			char TmpBuf[MEMBUS_SIZE/2 - 1];
 			/*Don't let HaltCmdOnly objects be reported as started, because they always look like that anyways.*/
-			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %d %d", MEMBUS_CODE_STATUS, TWorker,
-					CurObj->Started && !CurObj->Opts.HaltCmdOnly, ObjectProcessRunning(CurObj));
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %d %d %d", MEMBUS_CODE_STATUS, TWorker,
+					CurObj->Started && !CurObj->Opts.HaltCmdOnly, ObjectProcessRunning(CurObj), CurObj->Enabled);
 			
 			MemBus_Write(TmpBuf, true);
 		}

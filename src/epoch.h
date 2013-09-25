@@ -160,6 +160,14 @@ struct _HaltParams
 	unsigned long TargetYear;
 };
 
+typedef struct
+{ /*This is useful occasionally.*/
+	Bool Flag;
+	Bool Val1;
+	Bool Val2;
+	Bool Val3;
+} Trinity;
+
 /**Globals go here.**/
 
 extern ObjTable *ObjectTable;
@@ -206,7 +214,7 @@ extern rStatus SendPowerControl(const char *MembusCode);
 extern rStatus EmulKillall5(unsigned long InSignal);
 extern void EmulWall(const char *InStream, Bool ShowUser);
 extern rStatus EmulShutdown(long ArgumentCount, const char **ArgStream);
-extern short AskObjectStatus(const char *ObjectID);
+extern Trinity AskObjectStatus(const char *ObjectID);
 extern rStatus ObjControl(const char *ObjectID, const char *MemBusSignal);
 
 /*membus.c*/

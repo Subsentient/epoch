@@ -153,18 +153,19 @@ rStatus ObjControl(const char *ObjectID, const char *MemBusSignal)
 	}
 }
 
-short AskObjectStatus(const char *ObjectID)
+Trinity AskObjectStatus(const char *ObjectID)
 { /*Just request if the object is running or not.*/
 	char RemoteResponse[MEMBUS_SIZE/2 - 1];
 	char OutMsg[MEMBUS_SIZE/2 - 1];
-	char PossibleResponses[5][MEMBUS_SIZE/2 - 1];
+	char PossibleResponses[2][MEMBUS_SIZE/2 - 1];
 	unsigned long cCounter = 0;
+	Trinity RetVal = { -1, 0, 0, 0 };
 	
 	snprintf(OutMsg, sizeof OutMsg, "%s %s", MEMBUS_CODE_STATUS, ObjectID);
 	
 	if (!MemBus_Write(OutMsg, false))
 	{
-		return -1; /*Yes, you can do that with the Bool type. It's just a char.*/
+		return RetVal;
 	}
 	
 	while (!MemBus_Read(RemoteResponse, false))
@@ -176,45 +177,50 @@ short AskObjectStatus(const char *ObjectID)
 		if (cCounter == 200)
 		{ /*Extra newline because we probably are going to print in a progress report.*/
 			SpitError("\nFailed to get reply via membus.");
-			return -1;
+			return RetVal;
 		}
 	}
 	
-	snprintf(PossibleResponses[0], sizeof PossibleResponses[0], "%s %s %s %s",
-		MEMBUS_CODE_STATUS, ObjectID, "0", "0");
-	snprintf(PossibleResponses[1], sizeof PossibleResponses[1], "%s %s %s %s",
-		MEMBUS_CODE_STATUS, ObjectID, "1", "1");
-	snprintf(PossibleResponses[2], sizeof PossibleResponses[2], "%s %s %s %s",
-		MEMBUS_CODE_STATUS, ObjectID, "1", "0");
-	snprintf(PossibleResponses[3], sizeof PossibleResponses[3], "%s %s %s %s",
-		MEMBUS_CODE_STATUS, ObjectID, "0", "1");
-	snprintf(PossibleResponses[4], sizeof PossibleResponses[4], "%s %s %s",
+	snprintf(PossibleResponses[0], sizeof PossibleResponses[0], "%s %s ",
+		MEMBUS_CODE_STATUS, ObjectID);
+	snprintf(PossibleResponses[1], sizeof PossibleResponses[1], "%s %s %s",
 		MEMBUS_CODE_FAILURE, MEMBUS_CODE_STATUS, ObjectID);
 		
-	if (!strcmp(RemoteResponse, PossibleResponses[0]))
+	if (!strncmp(RemoteResponse, PossibleResponses[0], strlen(PossibleResponses[0])))
 	{
-		return 0;
+		const char *TWorker = RemoteResponse + strlen(PossibleResponses[0]);
+		char StringNumber[2] = { '\0', '\0' };
+		
+		/*Is it started?*/
+		StringNumber[0] = *TWorker;
+		
+		RetVal.Val1 = atoi(StringNumber);
+		
+		/*Is it running?*/
+		TWorker += 2;
+		StringNumber[0] = *TWorker;
+		
+		RetVal.Val2 = atoi(StringNumber);
+		
+		/*Is it enabled?*/
+		TWorker += 2;
+		StringNumber[0] = *TWorker;
+		
+		RetVal.Val3 = atoi(StringNumber);
+		
+		/*Set this to say that the request worked.*/
+		RetVal.Flag = true;
 	}
 	else if (!strcmp(RemoteResponse, PossibleResponses[1]))
 	{
-		return 1;
-	}
-	else if (!strcmp(RemoteResponse, PossibleResponses[2]))
-	{
-		return 2;
-	}
-	else if (!strcmp(RemoteResponse, PossibleResponses[3]))
-	{
-		return 3;
-	}
-	else if (!strcmp(RemoteResponse, PossibleResponses[4]))
-	{
-		return 4;
+		RetVal.Flag = false;
 	}
 	else
 	{
-		return -1;
+		RetVal.Flag = -1;
 	}
+	
+	return RetVal;
 }
 	
 rStatus EmulKillall5(unsigned long InSignal)

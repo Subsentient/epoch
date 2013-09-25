@@ -538,7 +538,9 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		}
 		else if (ArgIs("status"))
 		{
-			Bool Started, Running;
+			Bool Started, Running, Enabled;
+			Trinity InVal;
+			
 			if (!InitMemBus(false))
 			{
 				SpitError("main(): Failed to connect to membus.");
@@ -547,37 +549,29 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			CArg = argv[2];
 			
-			switch (AskObjectStatus(CArg))
+			InVal = AskObjectStatus(CArg);
+			
+			if (!InVal.Flag)
 			{
-				case 0:
-					Running = Started = false;
-					break;
-				case 1:
-					Running = Started = true;
-					break;
-				case 2:
-					Started = true;
-					Running = false;
-					break;
-				case 3:
-					Started = false;
-					Running = true;
-					break;
-				case 4:
-					printf("Unable to retrieve status of object %s. Does it exist?\n", CArg);
-					ShutdownMemBus(false);
-					return SUCCESS;
-					break;				
-				default:
-				{
-					SpitError("HandleEpochCommand(): Invalid response from AskObjectStatus().");
-					ShutdownMemBus(false);
-					return FAILURE;
-					break;
-				}
+				printf("Unable to retrieve status of object %s. Does it exist?\n", CArg);
+				ShutdownMemBus(false);
+				return SUCCESS;
+			}
+			else if (InVal.Flag == -1)
+			{
+				SpitError("HandleEpochCommand(): Internal error retrieving status via membus.");
+				ShutdownMemBus(false);
+				return FAILURE;
+			}
+			else
+			{
+				Started = InVal.Val1;
+				Running = InVal.Val2;
+				Enabled = InVal.Val3;
 			}
 			
-			printf("Status for object %s:\n---\nStarted: %s\nRunning: %s\n", CArg, /*This bit is kinda weird I think, but the output is pretty.*/
+			printf("Status for object %s:\n---\nEnabled on boot: %s\nStarted: %s\nRunning: %s\n", CArg, /*This bit is kinda weird I think, but the output is pretty.*/
+					(Enabled ? CONSOLE_COLOR_GREEN "Yes" CONSOLE_ENDCOLOR : CONSOLE_COLOR_RED "No" CONSOLE_ENDCOLOR),
 					(Started ? CONSOLE_COLOR_GREEN "Yes" CONSOLE_ENDCOLOR : CONSOLE_COLOR_RED "No" CONSOLE_ENDCOLOR),
 					(Running ? CONSOLE_COLOR_GREEN "Yes" CONSOLE_ENDCOLOR  : CONSOLE_COLOR_RED "No" CONSOLE_ENDCOLOR));
 
