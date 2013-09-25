@@ -1341,6 +1341,9 @@ rStatus ReloadConfig(void)
 	ObjTable *TRoot = malloc(sizeof(ObjTable)), *SWorker = TRoot, *Temp;
 	struct _RLTree *RLTemp1, *RLTemp2;
 	
+	WriteLogLine("CONFIG: Reloading configuration.\n", true);
+	WriteLogLine("CONFIG: Backing up current object table.", true);
+	
 	for (; Worker->Next != NULL; Worker = Worker->Next, SWorker = SWorker->Next)
 	{
 		*SWorker = *Worker; /*Direct as-a-unit copy of the main list node to the backup list node.*/
@@ -1359,10 +1362,17 @@ rStatus ReloadConfig(void)
 		}
 	}
 
+	WriteLogLine("CONFIG: Shutting down primary object table.", true);
+	
 	/*Actually do the reload of the config.*/
 	ShutdownConfig();
+	
+	WriteLogLine("CONFIG: Initializing new object table.", true);
+	
 	if (!InitConfig())
 	{
+		WriteLogLine("CONFIG: " CONSOLE_COLOR_RED "FAILED TO RELOAD CONFIGURATION." CONSOLE_ENDCOLOR 
+					" Restoring previous object table from backup.", true);
 		SpitError("ReloadConfig(): Failed to reload configuration.\n"
 					"Restoring old configuration to memory.\n"
 					"Please check epoch.conf for syntax errors.");
@@ -1370,11 +1380,14 @@ rStatus ReloadConfig(void)
 		return FAILURE;
 	}
 	
+	WriteLogLine("CONFIG: Restoring object statuses and deleting backup table.", true);
+	
 	for (SWorker = TRoot; SWorker->Next != NULL; SWorker = Temp)
 	{ /*Add back the Started states, so we don't forget to stop services, etc.*/
 		if ((Worker = LookupObjectInTable(SWorker->ObjectID)))
 		{
 			Worker->Started = SWorker->Started;
+			Worker->ObjectPID = SWorker->ObjectPID;
 		}
 		
 		ObjRL_ShutdownRunlevels(SWorker);
@@ -1383,6 +1396,8 @@ rStatus ReloadConfig(void)
 	}
 	free(SWorker);
 	
+	WriteLogLine("CONFIG: " CONSOLE_COLOR_GREEN "Configuration reload successful." CONSOLE_ENDCOLOR, true);
 	puts(CONSOLE_COLOR_GREEN "Epoch: Configuration reloaded." CONSOLE_ENDCOLOR);
+	
 	return SUCCESS;
 }
