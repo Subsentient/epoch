@@ -145,6 +145,40 @@ rStatus InitConfig(void)
 
 			continue;
 		}
+		else if (!strncmp(Worker, "EnableLogging", strlen("EnableLogging")))
+		{
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				char TmpBuf[1024];
+				snprintf(TmpBuf, 1024, "Missing or bad value for attribute EnableLogging in epoch.conf line %lu.", LineNum);
+				SpitWarning(TmpBuf);
+
+				continue;
+			}
+			
+			if (!strcmp(DelimCurr, "true"))
+			{
+				EnableLogging = true;
+			}
+			else if (!strcmp(DelimCurr, "false"))
+			{
+				EnableLogging = false;
+			}
+			else
+			{
+				char TmpBuf[1024];
+				
+				EnableLogging = false;
+				
+				snprintf(TmpBuf, 1024, "Bad value %s for attribute EnableLogging at line %lu.\n"
+						"Valid values are true and false. Assuming no.",
+						DelimCurr, LineNum);
+						
+				SpitWarning(TmpBuf);
+			}
+			
+			continue;
+		}
 		/*This will mount /dev, /proc, /sys, /dev/pts, and /dev/shm on boot time, upon request.*/
 		else if (!strncmp(Worker, "MountVirtual", strlen("MountVirtual")))
 		{

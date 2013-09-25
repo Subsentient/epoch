@@ -20,7 +20,12 @@
 #define CONFIGDIR "/etc/epoch/"
 #endif
 
+#ifndef LOGDIR
+#define LOGDIR "/var/log/"
+#endif
+
 #define CONF_NAME "epoch.conf"
+#define LOGFILE_NAME "system.log"
 
 /*Version.*/
 #define VERSIONSTRING "Epoch Init System v0.1"
@@ -167,6 +172,9 @@ extern char Hostname[MAX_LINE_SIZE];
 extern struct _HaltParams HaltParams;
 extern Bool AutoMountOpts[5];
 extern unsigned long RunningChildCount;
+extern Bool EnableLogging;
+extern Bool LogInMemory;
+extern char *MemLogBuffer;
 
 /**Function forward declarations.*/
 
@@ -211,7 +219,7 @@ extern rStatus ShutdownMemBus(Bool ServerSide);
 /*console.c*/
 extern void PrintBootBanner(void);
 extern void SetBannerColor(const char *InChoice);
-extern void PrintStatusReport(const char *InStream, rStatus State);
+extern void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog);
 extern void SpitWarning(char *INWarning);
 extern void SpitError(char *INErr);
 
@@ -223,6 +231,7 @@ extern void MinsToDate(unsigned long MinInc, unsigned long *OutHr, unsigned long
 				unsigned long *OutMonth, unsigned long *OutDay, unsigned long *OutYear);
 extern Bool AllNumeric(const char *InStream);
 extern Bool ObjectProcessRunning(const ObjTable *InObj);
+extern rStatus WriteLogLine(const char *InStream, Bool AddDate);
 
 
 #endif /* __EPOCH_H__ */

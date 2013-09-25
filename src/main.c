@@ -508,7 +508,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			fflush(NULL);
 			
 			RV = ObjControl(CArg, (Enabling ? MEMBUS_CODE_OBJENABLE : MEMBUS_CODE_OBJDISABLE));
-			PrintStatusReport(TOut, RV);
+			PerformStatusReport(TOut, RV, false);
 			
 			ShutdownMemBus(false);
 			return !RV;
@@ -531,7 +531,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			fflush(NULL);
 			
 			RV = ObjControl(CArg, (Starting ? MEMBUS_CODE_OBJSTART : MEMBUS_CODE_OBJSTOP));
-			PrintStatusReport(TOut, RV);
+			PerformStatusReport(TOut, RV, false);
 			
 			ShutdownMemBus(false);
 			return !RV;
@@ -775,7 +775,7 @@ int main(int argc, char **argv)
 			
 			if (!InitMemBus(false))
 			{
-				PrintStatusReport(StatusReport, FAILURE);
+				PerformStatusReport(StatusReport, FAILURE, false);
 				
 				SpitError("Failed to communicate with Epoch init, membus is down.");
 				return 1;
@@ -783,7 +783,7 @@ int main(int argc, char **argv)
 			
 			if (!MemBus_Write(TmpBuf, false))
 			{
-				PrintStatusReport(StatusReport, FAILURE);
+				PerformStatusReport(StatusReport, FAILURE, false);
 				
 				SpitError("Failed to change runlevels, failed to write to membus after establishing connection.\n"
 							"Is Epoch the running boot system?");		
@@ -796,21 +796,21 @@ int main(int argc, char **argv)
 			
 			if (!strcmp(MembusResponse, PossibleResponses[0]))
 			{
-				PrintStatusReport(StatusReport, SUCCESS);
+				PerformStatusReport(StatusReport, SUCCESS, false);
 				ShutdownMemBus(false);
 				
 				return 0;
 			}
 			else if (!strcmp(MembusResponse, PossibleResponses[1]))
 			{
-				PrintStatusReport(StatusReport, FAILURE);
+				PerformStatusReport(StatusReport, FAILURE, false);
 				ShutdownMemBus(false);
 				
 				return 1;
 			}
 			else if (!strcmp(MembusResponse, PossibleResponses[2]))
 			{
-				PrintStatusReport(StatusReport, FAILURE);
+				PerformStatusReport(StatusReport, FAILURE, false);
 				ShutdownMemBus(false);
 				SpitError("We are being told that MEMBUS_CODE_RUNLEVEL is not understood.\n"
 						"This is bad. Please report to Epoch.");

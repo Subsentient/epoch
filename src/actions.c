@@ -57,9 +57,17 @@ static void MountVirtuals(void)
 			{
 				char TmpBuf[1024];
 				
-				snprintf(TmpBuf, sizeof TmpBuf, "Failed to mount %s!", MountLocations[Inc]);
+				snprintf(TmpBuf, sizeof TmpBuf, "Failed to mount virtual filesystem %s!", MountLocations[Inc]);
 				SpitWarning(TmpBuf);
+				WriteLogLine(TmpBuf, true);
 				continue;
+			}
+			else
+			{
+				char TmpBuf[1024];
+				
+				snprintf(TmpBuf, sizeof TmpBuf, "Mounted virtual filesystem %s", MountLocations[Inc]);
+				WriteLogLine(TmpBuf, true);
 			}
 		}
 		
@@ -208,6 +216,11 @@ void LaunchBootup(void)
 	
 	PrintBootBanner();
 	
+	if (EnableLogging)
+	{ /*We dynamically allocate this to avoid wasting space.*/
+		WriteLogLine(VERSIONSTRING " Booting up\n", true);
+	}
+	
 	MountVirtuals(); /*Mounts any virtual filesystems, upon request.*/
 	
 	if (Hostname[0] != '\0')
@@ -222,9 +235,23 @@ void LaunchBootup(void)
 	pthread_create(&LoopThread, NULL, &PrimaryLoop, &ContinuePrimaryLoop);
 	pthread_detach(LoopThread); /*A lazier way than using attrs.*/
 	
+	if (EnableLogging)
+	{
+		WriteLogLine("Starting all objects and services.\n", true);
+	}
+	
 	if (!RunAllObjects(true))
 	{
 		EmergencyShell();
+	}
+	
+	if (EnableLogging)
+	{ /*Switch logging out of memory mode and write it's memory buffer to disk.*/
+		LogInMemory = false;
+		MemLogBuffer[strlen(MemLogBuffer) - 1] = '\0';
+		WriteLogLine(MemLogBuffer, false);
+		WriteLogLine("Completed starting objects and services. Entering standby loop.", true);
+		free(MemLogBuffer);
 	}
 	
 	while (!Insane) /*We're still pretty insane.*/
@@ -242,6 +269,9 @@ void LaunchBootup(void)
 void LaunchShutdown(signed long Signal)
 { /*Responsible for reboot, halt, power down, etc.*/
 	const char *AttemptMsg = NULL;
+	
+	WriteLogLine("Shutting down. Goodbye.", true);
+	EnableLogging = false; /*Prevent any additional log entries.*/
 	
 	ContinuePrimaryLoop = false; /*Bring down the primary loop.*/
 	

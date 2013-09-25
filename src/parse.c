@@ -210,7 +210,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 		
 		if (IsStartingMode && CurObj->Opts.HaltCmdOnly)
 		{
-			PrintStatusReport(PrintOutStream, FAILURE);
+			PerformStatusReport(PrintOutStream, FAILURE, true);
 			return FAILURE;
 		}
 	}
@@ -244,7 +244,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 		
 		if (!WasAlreadyStarted || !CurObj->Opts.AutoRestart || ObjectWasRunning)
 		{
-			PrintStatusReport(PrintOutStream, ExitStatus);
+			PerformStatusReport(PrintOutStream, ExitStatus, true);
 		}
 	}
 	else
@@ -258,7 +258,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 				ExitStatus = ExecuteConfigObject(CurObj, IsStartingMode);
 				CurObj->Started = (ExitStatus ? false : true); /*Mark the process dead.*/
 				
-				PrintStatusReport(PrintOutStream, ExitStatus);
+				PerformStatusReport(PrintOutStream, ExitStatus, true);
 				break;
 			case STOP_INVALID:
 				break;
@@ -280,7 +280,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 				
 				CurObj->Started = (ExitStatus ? false : true);
 				
-				PrintStatusReport(PrintOutStream, ExitStatus);
+				PerformStatusReport(PrintOutStream, ExitStatus, true);
 				
 				break;
 			case STOP_PIDFILE:
@@ -316,7 +316,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 					
 					snprintf(TmpBuf, 1024, "Cannot kill %s: The PID file does not contain purely numeric values.", CurObj->ObjectID);
 					SpitError(TmpBuf);
-					PrintStatusReport(PrintOutStream, FAILURE);
+					PerformStatusReport(PrintOutStream, FAILURE, true);
 					
 					return WARNING;
 				}
@@ -332,7 +332,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 					ExitStatus = FAILURE;
 				}
 				CurObj->Started = (ExitStatus ? false : true);
-				PrintStatusReport(PrintOutStream, ExitStatus);
+				PerformStatusReport(PrintOutStream, ExitStatus, true);
 				
 				break;
 			}

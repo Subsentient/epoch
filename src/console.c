@@ -113,7 +113,7 @@ void SetBannerColor(const char *InChoice)
 }
 
 /*Give this function the string you just printed, and it'll print a status report at the end of it, aligned to right.*/
-void PrintStatusReport(const char *InStream, rStatus State)
+void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 {
 	unsigned long StreamLength, Inc = 0;
 	char OutMsg[2048] = { '\0' }, IP2[256];
@@ -155,7 +155,7 @@ void PrintStatusReport(const char *InStream, rStatus State)
 		}
 		default:
 		{
-			SpitWarning("Bad parameter passed to PrintStatusReport() in console.c.");
+			SpitWarning("Bad parameter passed to PerformStatusReport() in console.c.");
 			return;
 		}
 	}
@@ -176,7 +176,7 @@ void PrintStatusReport(const char *InStream, rStatus State)
 			StreamLength -= strlen("[Launched]");
 			break;
 		default:
-			SpitWarning("Bad parameter passed to PrintStatusReport() in console.c");
+			SpitWarning("Bad parameter passed to PerformStatusReport() in console.c");
 			return;
 	}
 	
@@ -198,6 +198,27 @@ void PrintStatusReport(const char *InStream, rStatus State)
 	strncat(OutMsg, StatusFormat, strlen(StatusFormat) + 1);
 	
 	printf("%s", OutMsg);
+	
+	if (WriteToLog)
+	{
+		char TmpBuf[MAX_LINE_SIZE], *TWorker = OutMsg;
+		char HMS[3][16], MDY[3][16];
+		char TimeFormat[64];
+		
+		GetCurrentTime(HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2]);
+		
+		snprintf(TimeFormat, 64, "[%s:%s:%s | %s/%s/%s] ",
+				HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2]);
+				
+		if (strlen(TimeFormat) < StreamLength)
+		{
+			TWorker += strlen(TimeFormat);
+		}
+		
+		OutMsg[strlen(OutMsg) - 1] = '\0'; /*Get rid of the newline.*/
+		snprintf(TmpBuf, MAX_LINE_SIZE, "%s%s%s", TimeFormat, InStream, TWorker);
+		WriteLogLine(TmpBuf, false);
+	}
 	
 	return;
 }

@@ -15,6 +15,11 @@
 #include <dirent.h>
 #include "epoch.h"
 
+/**Constants**/
+Bool EnableLogging = false;
+Bool LogInMemory = true; /*This is necessary so long as we have a readonly filesystem.*/
+char *MemLogBuffer = NULL;
+
 /*Days in the month, for time stuff.*/
 static const short MDays[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
@@ -35,6 +40,63 @@ Bool AllNumeric(const char *InStream)
 	
 	return true;
 }
+
+rStatus WriteLogLine(const char *InStream, Bool AddDate)
+{ /*This is pretty much the entire logging system.*/
+	FILE *Descriptor = NULL;
+	char Hr[16], Min[16], Sec[16], Month[16], Day[16], Year[16], OBuf[MAX_LINE_SIZE + 64] = { '\0' };
+	static Bool FailedBefore = false;
+	
+	if (!EnableLogging)
+	{
+		return SUCCESS;
+	}
+	
+	if (!LogInMemory && !(Descriptor = fopen(LOGDIR LOGFILE_NAME, "a")))
+	{
+		if (!FailedBefore)
+		{
+			FailedBefore = true;
+			SpitWarning("Cannot write to log file. Log system is inoperative. Check permissions?");
+		}
+		
+		return FAILURE;
+	}
+	
+	GetCurrentTime(Hr, Min, Sec, Month, Day, Year);
+	
+	if (AddDate)
+	{
+		snprintf(OBuf, MAX_LINE_SIZE + 64, "[%s:%s:%s | %s/%s/%s] %s\n", Hr, Min, Sec, Month, Day, Year, InStream);
+	}
+	else
+	{
+		snprintf(OBuf, MAX_LINE_SIZE, "%s\n", InStream);
+	}
+	
+	if (LogInMemory)
+	{
+		if (MemLogBuffer == NULL)
+		{
+			MemLogBuffer = malloc(1);
+			*MemLogBuffer = '\0';
+		}
+		
+		MemLogBuffer = realloc(MemLogBuffer, strlen(MemLogBuffer) + strlen(OBuf) + 1);
+		
+		strncat(MemLogBuffer, OBuf, strlen(OBuf));
+	}
+	else
+	{
+		fwrite(OBuf, 1, strlen(OBuf), Descriptor);
+		
+		fflush(Descriptor);
+		fclose(Descriptor);
+	}
+	
+	return SUCCESS;
+}
+	
 
 Bool ObjectProcessRunning(const ObjTable *InObj)
 { /*Checks /proc for a directory with the name of the requested process.*/
