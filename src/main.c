@@ -478,7 +478,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			if (SendPowerControl(MCode))
 			{
-				printf("Ctrl-Alt-Del instant reboot has been %sd\n.", ReportLump);
+				printf("Ctrl-Alt-Del instant reboot has been %s%c.\n", ReportLump, 'd');
 				RetVal = SUCCESS;
 			}
 			else
