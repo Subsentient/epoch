@@ -283,7 +283,7 @@ void LaunchShutdown(signed long Signal)
 { /*Responsible for reboot, halt, power down, etc.*/
 	const char *AttemptMsg = NULL;
 	
-	WriteLogLine(CONSOLE_COLOR_MAGENTA "Shutting down. Goodbye." CONSOLE_ENDCOLOR, true);
+	WriteLogLine(CONSOLE_COLOR_RED "Shutting down. Goodbye." CONSOLE_ENDCOLOR, true);
 	EnableLogging = false; /*Prevent any additional log entries.*/
 	
 	ContinuePrimaryLoop = false; /*Bring down the primary loop.*/
