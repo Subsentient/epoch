@@ -27,6 +27,23 @@
 #define CONF_NAME "epoch.conf"
 #define LOGFILE_NAME "system.log"
 
+/*Environment variables.*/
+#ifndef ENVVAR_HOME
+#define ENVVAR_HOME "/"
+#endif
+
+#ifndef ENVVAR_USER
+#define ENVVAR_USER "root"
+#endif
+
+#ifndef ENVVAR_SHELL
+#define ENVVAR_SHELL "/bin/sh"
+#endif
+
+#ifndef ENVVAR_PATH
+#define ENVVAR_PATH "/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin"
+#endif
+
 /*Version.*/
 #define VERSIONSTRING "Epoch Init System v0.1"
 

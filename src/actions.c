@@ -203,6 +203,12 @@ void LaunchBootup(void)
 	
 	printf("\n%s\n", VERSIONSTRING);
 	
+	/*Set environment variables.*/
+	setenv("USER", ENVVAR_USER, true);
+	setenv("PATH", ENVVAR_PATH, true);
+	setenv("HOME", ENVVAR_HOME, true);
+	setenv("SHELL", ENVVAR_SHELL, true);
+	
 	if (!InitMemBus(true))
 	{
 		SpitError("FAILURE IN MEMBUS! You won't be able to shut down the system with Epoch!");
