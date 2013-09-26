@@ -269,7 +269,7 @@ void LaunchBootup(void)
 	
 	while (!Insane) /*We're still pretty insane.*/
 	{ /*Now wait forever.*/
-		usleep(10000);
+		usleep(50000);
 		
 		if (!RunningChildCount)
 		{ /*Clean away extra child processes that are started by the rest of the system.
