@@ -237,7 +237,7 @@ void LaunchBootup(void)
 	
 	if (EnableLogging)
 	{
-		WriteLogLine("Starting all objects and services.\n", true);
+		WriteLogLine(CONSOLE_COLOR_YELLOW "Starting all objects and services.\n" CONSOLE_ENDCOLOR, true);
 	}
 	
 	if (!RunAllObjects(true))
