@@ -157,7 +157,7 @@ static void *PrimaryLoop(void *ContinuePrimaryLoop)
 			{ /*Handle objects intended for automatic restart.*/
 				if (Worker->Opts.AutoRestart && Worker->Started && !ObjectProcessRunning(Worker))
 				{
-					ProcessConfigObject(Worker, true);
+					ProcessConfigObject(Worker, true, false);
 				}
 			}
 		}
@@ -247,10 +247,23 @@ void LaunchBootup(void)
 	
 	if (EnableLogging)
 	{ /*Switch logging out of memory mode and write it's memory buffer to disk.*/
+		FILE *Descriptor = fopen(LOGDIR LOGFILE_NAME, "a");
+		
 		LogInMemory = false;
-		MemLogBuffer[strlen(MemLogBuffer) - 1] = '\0';
-		WriteLogLine(MemLogBuffer, false);
-		WriteLogLine(CONSOLE_COLOR_GREEN "Completed starting objects and services. Entering standby loop." CONSOLE_ENDCOLOR, true);
+		
+		if (!Descriptor)
+		{
+			SpitWarning("Cannot record logs to disk. Shutting down logging.");
+			EnableLogging = false;
+		}
+		else
+		{
+			fwrite(MemLogBuffer, 1, strlen(MemLogBuffer), Descriptor);
+			fflush(Descriptor);
+			fclose(Descriptor);
+			
+			WriteLogLine(CONSOLE_COLOR_GREEN "Completed starting objects and services. Entering standby loop." CONSOLE_ENDCOLOR, true);
+		}
 		free(MemLogBuffer);
 	}
 	

@@ -200,7 +200,7 @@ extern Bool ObjRL_DelRunlevel(const char *InRL, ObjTable *InObj);
 extern void ObjRL_ShutdownRunlevels(ObjTable *InObj);
 
 /*parse.c*/
-extern rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode);
+extern rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintStatus);
 extern rStatus RunAllObjects(Bool IsStartingMode);
 extern rStatus SwitchRunlevels(const char *Runlevel);
 

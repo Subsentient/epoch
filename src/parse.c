@@ -177,11 +177,10 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 	return ExitStatus;
 }
 
-rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
+rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintStatus)
 {
 	char PrintOutStream[1024];
 	rStatus ExitStatus = SUCCESS;
-	Bool ObjectWasRunning = ObjectProcessRunning(CurObj);
 	
 	if (IsStartingMode && *CurObj->ObjectStartCommand == '\0')
 	{ /*Don't bother with it, if it has no command.
@@ -189,7 +188,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 		return SUCCESS;
 	}
 	
-	if (!CurObj->Started || !CurObj->Opts.AutoRestart || !IsStartingMode || ObjectWasRunning)
+	if (PrintStatus)
 	{/*Copy in the description to be printed to the console.*/
 		if (CurObj->Opts.RawDescription)
 		{
@@ -216,10 +215,8 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 	}
 	
 	if (IsStartingMode)
-	{
-		Bool WasAlreadyStarted = CurObj->Started;
-		
-		if (!CurObj->Started || !CurObj->Opts.AutoRestart || ObjectWasRunning)
+	{		
+		if (PrintStatus)
 		{
 			printf("%s", PrintOutStream);
 		}
@@ -242,7 +239,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 		
 		CurObj->Started = (ExitStatus ? true : false); /*Mark the process dead or alive.*/
 		
-		if (!WasAlreadyStarted || !CurObj->Opts.AutoRestart || ObjectWasRunning)
+		if (PrintStatus)
 		{
 			PerformStatusReport(PrintOutStream, ExitStatus, true);
 		}
@@ -252,13 +249,19 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 		switch (CurObj->Opts.StopMode)
 		{
 			case STOP_COMMAND:
-				printf("%s", PrintOutStream);
-				fflush(NULL);
+				if (PrintStatus)
+				{
+					printf("%s", PrintOutStream);
+					fflush(NULL);
+				}
 				
 				ExitStatus = ExecuteConfigObject(CurObj, IsStartingMode);
 				CurObj->Started = (ExitStatus ? false : true); /*Mark the process dead.*/
 				
-				PerformStatusReport(PrintOutStream, ExitStatus, true);
+				if (PrintStatus)
+				{
+					PerformStatusReport(PrintOutStream, ExitStatus, true);
+				}
 				break;
 			case STOP_INVALID:
 				break;
@@ -266,8 +269,11 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 				CurObj->Started = false; /*Just say we did it even if nothing to do.*/
 				break;
 			case STOP_PID:
-				printf("%s", PrintOutStream);
-				fflush(NULL);
+				if (PrintStatus)
+				{
+					printf("%s", PrintOutStream);
+					fflush(NULL);
+				}
 				
 				if (kill(CurObj->ObjectPID, SIGTERM) == 0)
 				{ /*Just send SIGTERM.*/
@@ -280,7 +286,10 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 				
 				CurObj->Started = (ExitStatus ? false : true);
 				
-				PerformStatusReport(PrintOutStream, ExitStatus, true);
+				if (PrintStatus)
+				{
+					PerformStatusReport(PrintOutStream, ExitStatus, true);
+				}
 				
 				break;
 			case STOP_PIDFILE:
@@ -289,8 +298,11 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 				unsigned long Inc = 0, TruePID = 0;
 				char Buf[MAX_LINE_SIZE], WChar, *TWorker, *TW2;
 				
-				printf("%s", PrintOutStream);
-				fflush(NULL);
+				if (PrintStatus)
+				{
+					printf("%s", PrintOutStream);
+					fflush(NULL);
+				}
 				
 				for (; (WChar = getc(Tdesc)) != EOF && Inc < MAX_LINE_SIZE - 1; ++Inc)
 				{
@@ -316,7 +328,10 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 					
 					snprintf(TmpBuf, 1024, "Cannot kill %s: The PID file does not contain purely numeric values.", CurObj->ObjectID);
 					SpitError(TmpBuf);
-					PerformStatusReport(PrintOutStream, FAILURE, true);
+					if (PrintStatus)
+					{
+						PerformStatusReport(PrintOutStream, FAILURE, true);
+					}
 					
 					return WARNING;
 				}
@@ -332,7 +347,10 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode)
 					ExitStatus = FAILURE;
 				}
 				CurObj->Started = (ExitStatus ? false : true);
-				PerformStatusReport(PrintOutStream, ExitStatus, true);
+				if (PrintStatus)
+				{
+					PerformStatusReport(PrintOutStream, ExitStatus, true);
+				}
 				
 				break;
 			}
@@ -369,7 +387,7 @@ rStatus RunAllObjects(Bool IsStartingMode)
 		
 		if ((IsStartingMode ? !CurObj->Started : CurObj->Started))
 		{
-			ProcessConfigObject(CurObj, IsStartingMode);
+			ProcessConfigObject(CurObj, IsStartingMode, true);
 		}
 	}
 	
@@ -403,7 +421,7 @@ rStatus SwitchRunlevels(const char *Runlevel)
 		
 		if (TObj && TObj->Started && TObj->Opts.CanStop)
 		{
-			ProcessConfigObject(TObj, false);
+			ProcessConfigObject(TObj, false, true);
 		}
 	}
 	
@@ -418,7 +436,7 @@ rStatus SwitchRunlevels(const char *Runlevel)
 		
 		if (TObj && !TObj->Started)
 		{
-			ProcessConfigObject(TObj, true);
+			ProcessConfigObject(TObj, true, true);
 		}
 	}
 	
