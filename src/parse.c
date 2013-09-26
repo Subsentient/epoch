@@ -375,7 +375,7 @@ rStatus RunAllObjects(Bool IsStartingMode)
 	
 	for (; Inc <= MaxPriority; ++Inc)
 	{
-		if (!(CurObj = GetObjectByPriority(CurRunlevel, IsStartingMode, Inc)))
+		if (!(CurObj = GetObjectByPriority(IsStartingMode ? CurRunlevel : NULL, IsStartingMode, Inc)))
 		{ /*Probably set to zero or something, but we don't care if we have a gap in the priority system.*/
 			continue;
 		}

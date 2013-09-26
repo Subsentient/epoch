@@ -1101,7 +1101,7 @@ static rStatus ScanConfigIntegrity(void)
 			RetState = WARNING;
 		}
 		
-		if (Worker->ObjectRunlevels == NULL)
+		if (Worker->ObjectRunlevels == NULL && !Worker->Opts.HaltCmdOnly)
 		{
 			snprintf(TmpBuf, 1024, "Object \"%s\" has no attribute ObjectRunlevels.", Worker->ObjectID);
 			SpitError(TmpBuf);
