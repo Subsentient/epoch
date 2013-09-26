@@ -282,8 +282,12 @@ void LaunchBootup(void)
 void LaunchShutdown(signed long Signal)
 { /*Responsible for reboot, halt, power down, etc.*/
 	const char *AttemptMsg = NULL;
+	const char *LogMsg = ((Signal == OSCTL_LINUX_HALT || Signal == OSCTL_LINUX_POWEROFF) ?
+						CONSOLE_COLOR_RED "Shutting down." CONSOLE_ENDCOLOR :
+						CONSOLE_COLOR_RED "Rebooting." CONSOLE_ENDCOLOR);
 	
-	WriteLogLine(CONSOLE_COLOR_RED "Shutting down. Goodbye." CONSOLE_ENDCOLOR, true);
+	WriteLogLine(LogMsg, true);
+	
 	EnableLogging = false; /*Prevent any additional log entries.*/
 	
 	ContinuePrimaryLoop = false; /*Bring down the primary loop.*/
