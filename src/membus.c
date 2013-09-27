@@ -157,7 +157,7 @@ void ParseMemBus(void)
 		unsigned long LOffset = strlen((BusDataIs(MEMBUS_CODE_OBJSTART) ? MEMBUS_CODE_OBJSTART " " : MEMBUS_CODE_OBJSTOP " "));
 		char *TWorker = BusData + LOffset;
 		ObjTable *CurObj = LookupObjectInTable(TWorker);
-		char TmpBuf[MEMBUS_SIZE/2 - 1], *MCode;
+		char TmpBuf[MEMBUS_SIZE/2 - 1], *MCode = MEMBUS_CODE_FAILURE;
 		rStatus DidWork;
 		
 		if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
