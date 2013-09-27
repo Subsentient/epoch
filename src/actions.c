@@ -209,12 +209,6 @@ void LaunchBootup(void)
 	setenv("HOME", ENVVAR_HOME, true);
 	setenv("SHELL", ENVVAR_SHELL, true);
 	
-	if (!InitMemBus(true))
-	{
-		SpitError("FAILURE IN MEMBUS! You won't be able to shut down the system with Epoch!");
-		putc('\007', stderr); /*Beep.*/
-	}
-	
 	if (!InitConfig())
 	{ /*That is very very bad.*/
 		EmergencyShell();
@@ -237,9 +231,6 @@ void LaunchBootup(void)
 	{
 		reboot(OSCTL_LINUX_DISABLE_CTRLALTDEL); /*Disable instant reboot on CTRL-ALT-DEL.*/
 	}
-
-	pthread_create(&LoopThread, NULL, &PrimaryLoop, (void*)&ContinuePrimaryLoop);
-	pthread_detach(LoopThread); /*A lazier way than using attrs.*/
 	
 	if (EnableLogging)
 	{
@@ -273,15 +264,27 @@ void LaunchBootup(void)
 		free(MemLogBuffer);
 	}
 	
+	if (!InitMemBus(true))
+	{
+		SpitError("FAILURE IN MEMBUS! You won't be able to shut down the system with Epoch!");
+		putc('\007', stderr); /*Beep.*/
+	}
+	
+	/*Start the primary loop's thread. It's responsible for parsimg membus,
+	 * handling scheduled shutdowns and service auto-restarts, and more.
+	 * We pass it a Bool so we can shut it down when the time comes.*/
+	pthread_create(&LoopThread, NULL, &PrimaryLoop, (void*)&ContinuePrimaryLoop);
+	pthread_detach(LoopThread); /*A lazier way than using attrs.*/
+	
 	while (!Insane) /*We're still pretty insane.*/
 	{ /*Now wait forever.*/
-		usleep(50000);
-		
 		if (!RunningChildCount)
 		{ /*Clean away extra child processes that are started by the rest of the system.
 			Do this to avoid zombie process apocalypse.*/
 			waitpid(-1, NULL, WNOHANG);
 		}
+		
+		usleep(50000);
 	}
 }
 
