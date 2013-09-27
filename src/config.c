@@ -1316,9 +1316,10 @@ ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority
 	
 	for (; Worker->Next != NULL; Worker = Worker->Next)
 	{
-		if ((ObjectRunlevel == NULL || ObjRL_CheckRunlevel(ObjectRunlevel, Worker)) && 
-		/*As you can see by below, I obfuscate with efficiency!*/
-		(WantStartPriority ? Worker->ObjectStartPriority : Worker->ObjectStopPriority) == ObjectPriority)
+		if ((ObjectRunlevel == NULL || ((WantStartPriority || !Worker->Opts.HaltCmdOnly) &&
+			ObjRL_CheckRunlevel(ObjectRunlevel, Worker))) && 
+			/*As you can see by below, I obfuscate with efficiency!*/
+			(WantStartPriority ? Worker->ObjectStartPriority : Worker->ObjectStopPriority) == ObjectPriority)
 		{
 			return Worker;
 		}

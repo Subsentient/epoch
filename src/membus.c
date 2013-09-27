@@ -298,7 +298,7 @@ void ParseMemBus(void)
 		
 		for (; TmpTable->Next; TmpTable = TmpTable->Next)
 		{ /*Check if anything uses this runlevel at all.*/
-			if (ObjRL_CheckRunlevel(TWorker, TmpTable))
+			if (!TmpTable->Opts.HaltCmdOnly && ObjRL_CheckRunlevel(TWorker, TmpTable))
 			{
 				ValidRL = true;
 				break;
