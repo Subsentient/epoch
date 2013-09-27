@@ -375,9 +375,17 @@ void ParseMemBus(void)
 		
 		if ((CurObj = LookupObjectInTable(TID)))
 		{
+			if (CurObj->Opts.HaltCmdOnly)
+			{ /*These objects have no runlevels.*/
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+				MemBus_Write(TmpBuf, true);
+				return;
+			}
+			
 			if (BusDataIs(MEMBUS_CODE_OBJRLS_CHECK))
 			{
-				snprintf(TmpBuf, sizeof TmpBuf, "%s %s %d", MEMBUS_CODE_OBJRLS_CHECK, TWorker, ObjRL_CheckRunlevel(TRL, CurObj));
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s %d", MEMBUS_CODE_OBJRLS_CHECK, TID, TRL,
+						ObjRL_CheckRunlevel(TRL, CurObj));
 			}
 			else if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD) || BusDataIs(MEMBUS_CODE_OBJRLS_DEL))
 			{
@@ -445,7 +453,7 @@ void ParseMemBus(void)
 		}
 		else
 		{
-			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s", MEMBUS_CODE_FAILURE, MEMBUS_CODE_OBJRLS_CHECK, TWorker);
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
 			MemBus_Write(TmpBuf, true);
 		}
 	}

@@ -1224,6 +1224,11 @@ Bool ObjRL_CheckRunlevel(const char *InRL, ObjTable *InObj)
 {
 	struct _RLTree *Worker = InObj->ObjectRunlevels;
 	
+	if (Worker == NULL)
+	{
+		return false;
+	}
+	
 	for (; Worker->Next != NULL; Worker = Worker->Next)
 	{
 		if (!strcmp(Worker->RL, InRL))
@@ -1251,6 +1256,11 @@ void ObjRL_AddRunlevel(const char *InRL, ObjTable *InObj)
 Bool ObjRL_DelRunlevel(const char *InRL, ObjTable *InObj)
 {
 	struct _RLTree *Worker = InObj->ObjectRunlevels;
+	
+	if (Worker == NULL)
+	{
+		return false;
+	}
 	
 	for (; Worker->Next != NULL; Worker = Worker->Next)
 	{

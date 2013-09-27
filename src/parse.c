@@ -403,7 +403,8 @@ rStatus SwitchRunlevels(const char *Runlevel)
 	for (; TObj->Next != NULL; TObj = TObj->Next)
 	{ /*I think a while loop would look much better, but if I did that,
 		* I'd get folks asking "why didn't you use a for loop?", so here!*/
-		if (ObjRL_CheckRunlevel(Runlevel, TObj) && TObj->Enabled && (TObj->ObjectStartPriority > 0 || TObj->ObjectStopPriority > 0))
+		if (!TObj->Opts.HaltCmdOnly && ObjRL_CheckRunlevel(Runlevel, TObj) &&
+			TObj->Enabled && TObj->ObjectStartPriority > 0)
 		{
 			++NumInRunlevel;
 		}
@@ -419,7 +420,8 @@ rStatus SwitchRunlevels(const char *Runlevel)
 	{
 		TObj = GetObjectByPriority(CurRunlevel, false, CurPriority);
 		
-		if (TObj && TObj->Started && TObj->Opts.CanStop && !ObjRL_CheckRunlevel(Runlevel, TObj))
+		if (TObj && TObj->Started && TObj->Opts.CanStop && !TObj->Opts.HaltCmdOnly &&
+			!ObjRL_CheckRunlevel(Runlevel, TObj))
 		{
 			ProcessConfigObject(TObj, false, true);
 		}

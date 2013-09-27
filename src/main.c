@@ -592,6 +592,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			const char *ObjectID = argv[2], *RL = argv[4];
 			char OBuf[MEMBUS_SIZE/2 - 1];
 			char IBuf[MEMBUS_SIZE/2 - 1];
+			rStatus ExitStatus = SUCCESS;
 			
 			if (!InitMemBus(false))
 			{
@@ -630,8 +631,8 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			while (!MemBus_Read(IBuf, false)) usleep(1000);
 			
 			if (ArgIs("add") || ArgIs("del"))
-			{
-				char PossibleResponses[3][MAX_LINE_SIZE];
+			{	
+				char PossibleResponses[3][MEMBUS_SIZE/2 - 1];
 				
 				snprintf(PossibleResponses[0], sizeof PossibleResponses[0], "%s %s %s %s", MEMBUS_CODE_ACKNOWLEDGED,
 						(ArgIs("add") ? MEMBUS_CODE_OBJRLS_ADD : MEMBUS_CODE_OBJRLS_DEL), ObjectID, RL);
@@ -639,36 +640,85 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 				snprintf(PossibleResponses[1], sizeof PossibleResponses[1], "%s %s %s %s", MEMBUS_CODE_FAILURE,
 						(ArgIs("add") ? MEMBUS_CODE_OBJRLS_ADD : MEMBUS_CODE_OBJRLS_DEL), ObjectID, RL);
 						
-				snprintf(PossibleResponses[2], sizeof PossibleResponses[2], "%s %s", MEMBUS_CODE_ACKNOWLEDGED, OBuf);
+				snprintf(PossibleResponses[2], sizeof PossibleResponses[2], "%s %s", MEMBUS_CODE_BADPARAM, OBuf);
 				
 				if (!strcmp(PossibleResponses[0], IBuf))
 				{
 					char *PSFormat[2] = { "Object %s added to runlevel %s\n", "Object %s deleted from runlevel %s\n" };
 					printf(PSFormat[(ArgIs("add") ? 0 : 1)], ObjectID, RL);
-					ShutdownMemBus(false);
-					return SUCCESS;
 				}
 				else if (!strcmp(PossibleResponses[1], IBuf))
 				{
 					char *PSFormat[2] = { "Unable to add %s to runlevel %s!\n", "Unable to remove %s from runlevel %s!\n" };
 					
 					fprintf(stderr, PSFormat[(ArgIs("add") ? 0 : 1)], ObjectID, RL);
-					ShutdownMemBus(false);
-					
-					return FAILURE;
+					ExitStatus = FAILURE;
 				}
 				else if (!strcmp(PossibleResponses[2], IBuf))
 				{
 					SpitError("Internal membus error, received BADPARAM upon your request. Please report to Epoch.");
+					ExitStatus = FAILURE;
+				}
+				else
+				{
+					SpitError("Received unrecognized or corrupted response via membus! Please report to Epoch.");
+					ExitStatus = FAILURE;
+				}
+				
+				ShutdownMemBus(false);
+				return ExitStatus;
+			}
+			else if (ArgIs("check"))
+			{
+				char PossibleResponses[3][MEMBUS_SIZE/2 - 1];
+		
+				snprintf(PossibleResponses[0], sizeof PossibleResponses[0], "%s %s %s ", MEMBUS_CODE_OBJRLS_CHECK, ObjectID, RL);
+				snprintf(PossibleResponses[1], sizeof PossibleResponses[1], "%s %s", MEMBUS_CODE_FAILURE, OBuf);
+				snprintf(PossibleResponses[2], sizeof PossibleResponses[2], "%s %s", MEMBUS_CODE_BADPARAM, OBuf);
+			
+				if (!strncmp(PossibleResponses[0], IBuf, strlen(PossibleResponses[0])))
+				{
+					char CNumber[2] = { '\0', '\0' };
+					const char *CNS = IBuf + strlen(PossibleResponses[0]);
+					
+					CNumber[0] = *CNS;
+					
+					if (*CNumber == '0')
+					{
+						printf(CONSOLE_COLOR_RED "Object %s is NOT enabled for runlevel %s.\n" CONSOLE_ENDCOLOR,
+								ObjectID, RL);
+					}
+					else if (*CNumber == '1')
+					{
+						printf(CONSOLE_COLOR_GREEN "Object %s is enabled for runlevel %s.\n" CONSOLE_ENDCOLOR,
+								ObjectID, RL);
+					}
+					else
+					{
+						SpitError("Internal error, bad status number received from membus. Please report to Epoch.");
+						ExitStatus = FAILURE;
+					}
 					ShutdownMemBus(false);
 					
+					return ExitStatus;
+				}
+				else if (!strcmp(PossibleResponses[1], IBuf))
+				{
+					printf("Unable to determine if object %s belongs to runlevel %s. Does it exist?\n", ObjectID, RL);
+					ShutdownMemBus(false);
+					return FAILURE;
+				}
+				else if (!strcmp(PossibleResponses[2], IBuf))
+				{
+					SpitError("We are being told that we sent a bad signal over the membus. "
+								"This is a bug, please report to epoch.");
+					ShutdownMemBus(false);
 					return FAILURE;
 				}
 				else
 				{
 					SpitError("Received unrecognized or corrupted response via membus! Please report to Epoch.");
 					ShutdownMemBus(false);
-					
 					return FAILURE;
 				}
 			}
@@ -677,6 +727,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		{
 			fprintf(stderr, "Bad command %s.\n", CArg);
 			PrintEpochHelp(argv[0], NULL);
+			ShutdownMemBus(false);
 			return FAILURE;
 		}
 	}
