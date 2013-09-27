@@ -61,14 +61,14 @@ static void SigHandler(int Signal)
 		{
 			if (getpid() == 1)
 			{
-				puts("SIGINT received. Exiting.");
-				ShutdownMemBus(false);
-				exit(0);
+				EmulWall("System is going down for reboot NOW!", false);
+				LaunchShutdown(OSCTL_LINUX_REBOOT);
 			}
 			else
 			{
-				EmulWall("System is going down for reboot NOW!", false);
-				LaunchShutdown(OSCTL_LINUX_REBOOT);
+				puts("SIGINT received. Exiting.");
+				ShutdownMemBus(false);
+				exit(0);
 			}
 		}
 		case SIGSEGV:
