@@ -23,7 +23,6 @@ static rStatus ProcessGenericHalt(int argc, char **argv);
 static Bool __CmdIs(const char *CArg, const char *InCmd);
 static void PrintEpochHelp(const char *RootCommand, const char *InCmd);
 static rStatus HandleEpochCommand(int argc, char **argv);
-static void SigHandlerForInit(int Signal);
 static void SigHandler(int Signal);
 
 /*
@@ -48,61 +47,6 @@ static Bool __CmdIs(const char *CArg, const char *InCmd)
 	return false;
 }
 
-static void SigHandlerForInit(int Signal)
-{
-	const char *WallError = NULL;
-	void *BTList[25];
-	char **BTStrings;
-	size_t BTSize;
-	char OutMsg[MAX_LINE_SIZE * 2] = { '\0' }, *TWorker = OutMsg;
-	
-	switch (Signal)
-	{
-		case SIGINT:
-		{ /*Is this a reboot signal?*/
-			EmulWall("System is going down for reboot NOW!", false);
-			LaunchShutdown(OSCTL_LINUX_REBOOT);
-			return;
-		}
-		case SIGSEGV:
-		{
-			WallError = "A segmentation fault has occurred in Epoch! Dropping to emergency shell!";
-			break;
-		}
-		case SIGILL:
-		{
-			WallError = "Epoch has encountered an illegal instruction! Dropping to emergency shell!";
-			break;
-		}
-		case SIGFPE:
-		{
-			WallError = "Epoch has encountered an arithmetic error! Dropping to emergency shell!";
-			break;
-		}
-		case SIGABRT:
-		{
-			WallError = "Epoch has received an abort signal! Dropping to emergency shell!";
-			break;
-		}
-		
-	}
-	
-	BTSize = backtrace(BTList, 25);
-	BTStrings = backtrace_symbols(BTList, BTSize);
-
-	snprintf(OutMsg, sizeof OutMsg, "%s\n\nBacktrace:\n", WallError);
-	
-	TWorker += strlen(TWorker);
-	for (; BTSize > 0 && *BTStrings != NULL; --BTSize, ++BTStrings, TWorker += strlen(TWorker))
-	{
-		snprintf(TWorker, sizeof OutMsg - strlen(OutMsg) - 1, "\n%s", *BTStrings);
-	}
-	
-	EmulWall(OutMsg, false);
-	
-	EmergencyShell();
-}
-
 static void SigHandler(int Signal)
 {
 	const char *ErrorM = NULL;
@@ -115,9 +59,17 @@ static void SigHandler(int Signal)
 	{
 		case SIGINT:
 		{
-			puts("SIGINT received. Exiting.");
-			ShutdownMemBus(false);
-			exit(0);
+			if (getpid() == 1)
+			{
+				puts("SIGINT received. Exiting.");
+				ShutdownMemBus(false);
+				exit(0);
+			}
+			else
+			{
+				EmulWall("System is going down for reboot NOW!", false);
+				LaunchShutdown(OSCTL_LINUX_REBOOT);
+			}
 		}
 		case SIGSEGV:
 		{
@@ -153,9 +105,16 @@ static void SigHandler(int Signal)
 		snprintf(TWorker, sizeof OutMsg - strlen(OutMsg) - 1, "\n%s", *BTStrings);
 	}
 	
-	SpitError(OutMsg);
-	
-	exit(1);
+	if (getpid() == 1)
+	{
+		EmulWall(OutMsg, false);
+		EmergencyShell();
+	}
+	else
+	{
+		SpitError(OutMsg);
+		exit(1);
+	}
 }
 	
 static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
@@ -745,23 +704,13 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 int main(int argc, char **argv)
 { /*Lotsa sloppy CLI processing here.*/
 	/*Figure out what we are.*/
-	void (*SigHPtr)(int Signal);
-
-	if (getpid() == 1)
-	{
-		SigHPtr = &SigHandlerForInit;
-	}
-	else
-	{
-		SigHPtr = &SigHandler;
-	}
 
 	/*Set up signal handling.*/
-	signal(SIGSEGV, SigHPtr);
-	signal(SIGILL, SigHPtr);
-	signal(SIGFPE, SigHPtr);
-	signal(SIGABRT, SigHPtr);
-	signal(SIGINT, SigHPtr); /*For reboots and closing client membus correctly.*/
+	signal(SIGSEGV, SigHandler);
+	signal(SIGILL, SigHandler);
+	signal(SIGFPE, SigHandler);
+	signal(SIGABRT, SigHandler);
+	signal(SIGINT, SigHandler); /*For reboots and closing client membus correctly.*/
 	
 	if (argv[0] == NULL)
 	{
