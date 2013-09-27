@@ -436,7 +436,7 @@ rStatus SwitchRunlevels(const char *Runlevel)
 	{
 		TObj = GetObjectByPriority(CurRunlevel, true, CurPriority);
 		
-		if (TObj && !TObj->Started)
+		if (TObj && TObj->Enabled && !TObj->Started)
 		{
 			ProcessConfigObject(TObj, true, true);
 		}
