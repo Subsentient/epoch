@@ -380,7 +380,7 @@ rStatus RunAllObjects(Bool IsStartingMode)
 			continue;
 		}
 		
-		if (!CurObj->Enabled || CurObj->Opts.HaltCmdOnly)
+		if (!CurObj->Enabled || (IsStartingMode && CurObj->Opts.HaltCmdOnly))
 		{
 			continue;
 		}
