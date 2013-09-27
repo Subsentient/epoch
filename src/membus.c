@@ -318,6 +318,12 @@ void ParseMemBus(void)
 			return;
 		}
 		
+		snprintf(TmpBuf, sizeof TmpBuf, CONSOLE_COLOR_CYAN "Changing runlevel to \"%s\"...\n" CONSOLE_ENDCOLOR, TWorker);
+		WriteLogLine(TmpBuf, true);
+		
+		printf("%s", TmpBuf);
+		fflush(stdout);
+		
 		if (!SwitchRunlevels(TWorker)) /*Switch to it.*/
 		{
 			char TmpBuf[1024];

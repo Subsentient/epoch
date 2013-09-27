@@ -749,7 +749,6 @@ int main(int argc, char **argv)
 		else if (argc == 2)
 		{
 			char TmpBuf[MEMBUS_SIZE/2 - 1];
-			char StatusReport[MAX_DESCRIPT_SIZE + 64];
 			char MembusResponse[MEMBUS_SIZE/2 - 1];
 			char PossibleResponses[3][MEMBUS_SIZE/2 - 1];
 			
@@ -763,22 +762,15 @@ int main(int argc, char **argv)
 			snprintf(PossibleResponses[0], sizeof PossibleResponses[0], "%s %s", MEMBUS_CODE_ACKNOWLEDGED, TmpBuf);
 			snprintf(PossibleResponses[1], sizeof PossibleResponses[1], "%s %s", MEMBUS_CODE_FAILURE, TmpBuf);
 			snprintf(PossibleResponses[2], sizeof PossibleResponses[2], "%s %s", MEMBUS_CODE_BADPARAM, TmpBuf);
-			snprintf(StatusReport, sizeof StatusReport, "Changing runlevel to: %s", argv[1]);
-			
-			printf("%s", StatusReport);
 			
 			if (!InitMemBus(false))
 			{
-				PerformStatusReport(StatusReport, FAILURE, false);
-				
 				SpitError("Failed to communicate with Epoch init, membus is down.");
 				return 1;
 			}
 			
 			if (!MemBus_Write(TmpBuf, false))
-			{
-				PerformStatusReport(StatusReport, FAILURE, false);
-				
+			{				
 				SpitError("Failed to change runlevels, failed to write to membus after establishing connection.\n"
 							"Is Epoch the running boot system?");		
 				ShutdownMemBus(false);
@@ -790,21 +782,19 @@ int main(int argc, char **argv)
 			
 			if (!strcmp(MembusResponse, PossibleResponses[0]))
 			{
-				PerformStatusReport(StatusReport, SUCCESS, false);
 				ShutdownMemBus(false);
 				
 				return 0;
 			}
 			else if (!strcmp(MembusResponse, PossibleResponses[1]))
 			{
-				PerformStatusReport(StatusReport, FAILURE, false);
+				printf("Failed to change runlevel to \"%s\".\n", argv[1]);
 				ShutdownMemBus(false);
 				
 				return 1;
 			}
 			else if (!strcmp(MembusResponse, PossibleResponses[2]))
 			{
-				PerformStatusReport(StatusReport, FAILURE, false);
 				ShutdownMemBus(false);
 				SpitError("We are being told that MEMBUS_CODE_RUNLEVEL is not understood.\n"
 						"This is bad. Please report to Epoch.");
