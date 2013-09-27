@@ -419,7 +419,7 @@ rStatus SwitchRunlevels(const char *Runlevel)
 	{
 		TObj = GetObjectByPriority(CurRunlevel, false, CurPriority);
 		
-		if (TObj && TObj->Started && TObj->Opts.CanStop)
+		if (TObj && TObj->Started && TObj->Opts.CanStop && !ObjRL_CheckRunlevel(Runlevel, TObj))
 		{
 			ProcessConfigObject(TObj, false, true);
 		}
