@@ -185,6 +185,13 @@ typedef struct
 	Bool Val3;
 } Trinity;
 
+struct _CTask
+{
+	ObjTable *Node;
+	unsigned long PID;
+};
+
+
 /**Globals go here.**/
 
 extern ObjTable *ObjectTable;
@@ -200,7 +207,7 @@ extern volatile unsigned long RunningChildCount;
 extern Bool EnableLogging;
 extern Bool LogInMemory;
 extern char *MemLogBuffer;
-extern unsigned long CurrentTaskPID;
+extern struct _CTask CurrentTask;
 
 /**Function forward declarations.*/
 

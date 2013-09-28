@@ -20,7 +20,7 @@
 char CurRunlevel[MAX_DESCRIPT_SIZE] = "default";
 volatile unsigned long RunningChildCount = 0; /*How many child processes are running?
 									* I promised myself I wouldn't use this code.*/
-unsigned long CurrentTaskPID = 0; /*We save this for each linear task, so we can kill the process if it becomes unresponsive.*/
+struct _CTask CurrentTask = { NULL, 0 }; /*We save this for each linear task, so we can kill the process if it becomes unresponsive.*/
 
 
 /**Function forward declarations.**/
@@ -127,7 +127,8 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 			if (!InObj->Opts.NoWait)
 			{ /*Don't record for NOWAIT jobs, because task killing for them is
 				* both useless and difficult to implement.*/
-				CurrentTaskPID = LaunchPID;
+				CurrentTask.Node = InObj;
+				CurrentTask.PID = LaunchPID;
 			}
 	}
 	
@@ -167,7 +168,8 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 	
 	if (!InObj->Opts.NoWait)
 	{
-		CurrentTaskPID = 0; /*Set back to zero for the next one.*/
+		CurrentTask.Node = NULL;
+		CurrentTask.PID = 0; /*Set back to zero for the next one.*/
 	}
 	
 	/**And back to normalcy after this.------------------**/

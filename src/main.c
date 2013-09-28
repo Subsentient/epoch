@@ -64,24 +64,27 @@ static void SigHandler(int Signal)
 			
 			if (getpid() == 1)
 			{
-				if ((LastKillAttempt == 0 || time(NULL) > (LastKillAttempt + 5)) && CurrentTaskPID != 0)
+				if ((LastKillAttempt == 0 || time(NULL) > (LastKillAttempt + 5)) && CurrentTask.Node != NULL)
 				{
 					char MsgBuf[MAX_LINE_SIZE];
 					
-					snprintf(MsgBuf, sizeof MsgBuf, "\n%sKilling current task. Press CTRL-ALT-DEL again within 5 seconds to reboot.%s",
-							CONSOLE_COLOR_YELLOW, CONSOLE_ENDCOLOR);
+					snprintf(MsgBuf, sizeof MsgBuf, 
+							"\n%sKilling task %s. Press CTRL-ALT-DEL again within 5 seconds to reboot.%s",
+							CONSOLE_COLOR_YELLOW, CurrentTask.Node->ObjectID, CONSOLE_ENDCOLOR);
 					puts(MsgBuf);
 					fflush(NULL);
 					
 					WriteLogLine(MsgBuf, true);
 					
-					if (kill(CurrentTaskPID, SIGKILL) != 0)
+					if (kill(CurrentTask.PID, SIGKILL) != 0)
 					{
-						snprintf(MsgBuf, sizeof MsgBuf, "%sUnable to kill task.%s", CONSOLE_COLOR_RED, CONSOLE_ENDCOLOR);
+						snprintf(MsgBuf, sizeof MsgBuf, "%sUnable to kill %s.%s",
+								CONSOLE_COLOR_RED, CurrentTask.Node->ObjectID, CONSOLE_ENDCOLOR);
 					}
 					else
 					{
-						snprintf(MsgBuf, sizeof MsgBuf, "%sTask successfully killed.%s", CONSOLE_COLOR_GREEN, CONSOLE_ENDCOLOR);
+						snprintf(MsgBuf, sizeof MsgBuf, "%s%s was successfully killed.%s", CONSOLE_COLOR_GREEN,
+								CurrentTask.Node->ObjectID, CONSOLE_ENDCOLOR);
 					}
 					puts(MsgBuf);
 					fflush(stdout);
