@@ -765,7 +765,7 @@ int main(int argc, char **argv)
 	}
 	else if (CmdIs("init"))
 	{ /*This is a bit long winded here, however, it's better than devoting a function for it.*/
-		if (argc == 1)
+		if (getpid() == 1)
 		{ /*Just us, as init. That means, begin bootup.*/
 
 				LaunchBootup();
@@ -832,6 +832,11 @@ int main(int argc, char **argv)
 				
 				return 1;
 			}
+		}
+		else
+		{
+			printf("%s", "Too many arguments. Specify one argument to set the runlevel.\n");
+			return 1;
 		}
 	}
 	else if (CmdIs("killall5"))
