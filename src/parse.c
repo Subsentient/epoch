@@ -192,7 +192,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintStatus)
 {
 	char PrintOutStream[1024];
-	rStatus ExitStatus = SUCCESS;
+	rStatus ExitStatus = FAILURE;
 	
 	if (IsStartingMode && *CurObj->ObjectStartCommand == '\0')
 	{ /*Don't bother with it, if it has no command.
@@ -222,9 +222,10 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		if (IsStartingMode && CurObj->Opts.HaltCmdOnly)
 		{
 			PerformStatusReport(PrintOutStream, FAILURE, true);
-			return FAILURE;
 		}
 	}
+	
+	if (IsStartingMode && CurObj->Opts.HaltCmdOnly) return FAILURE;
 	
 	if (IsStartingMode)
 	{		
@@ -279,6 +280,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				break;
 			case STOP_NONE:
 				CurObj->Started = false; /*Just say we did it even if nothing to do.*/
+				ExitStatus = SUCCESS;
 				break;
 			case STOP_PID:
 				if (PrintStatus)

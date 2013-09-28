@@ -66,19 +66,27 @@ static void SigHandler(int Signal)
 			{
 				if ((LastKillAttempt == 0 || time(NULL) > (LastKillAttempt + 5)) && CurrentTaskPID != 0)
 				{
-					printf("\n%sKilling current task. Press CTRL-ALT-DEL again within 5 seconds to reboot.%s\n",
+					char MsgBuf[MAX_LINE_SIZE];
+					
+					snprintf(MsgBuf, sizeof MsgBuf, "\n%sKilling current task. Press CTRL-ALT-DEL again within 5 seconds to reboot.%s",
 							CONSOLE_COLOR_YELLOW, CONSOLE_ENDCOLOR);
-					fflush(stdout);
+					puts(MsgBuf);
+					fflush(NULL);
+					
+					WriteLogLine(MsgBuf, true);
 					
 					if (kill(CurrentTaskPID, SIGKILL) != 0)
 					{
-						printf("\n%sUnable to kill task.\n%s", CONSOLE_COLOR_RED, CONSOLE_ENDCOLOR);
+						snprintf(MsgBuf, sizeof MsgBuf, "%sUnable to kill task.%s", CONSOLE_COLOR_RED, CONSOLE_ENDCOLOR);
 					}
 					else
 					{
-						printf("\n%sTask successfully killed.\n%s", CONSOLE_COLOR_GREEN, CONSOLE_ENDCOLOR);
+						snprintf(MsgBuf, sizeof MsgBuf, "%sTask successfully killed.%s", CONSOLE_COLOR_GREEN, CONSOLE_ENDCOLOR);
 					}
+					puts(MsgBuf);
 					fflush(stdout);
+					
+					WriteLogLine(MsgBuf, true);
 					
 					LastKillAttempt = time(NULL);
 					return;
