@@ -108,7 +108,7 @@ Bool ObjectProcessRunning(const ObjTable *InObj)
 
 	if (InObj->Opts.StopMode == STOP_PIDFILE && (PIDFileDescriptor = fopen(InObj->ObjectPIDFile, "r")) != NULL)
 	{ /*We got a PID file requested and present? Get PID from that.*/
-		char TChar, PIDBuf[MAX_LINE_SIZE];
+		char TChar, PIDBuf[MAX_LINE_SIZE], *TW, *TW2;
 		unsigned long Inc = 0;
 		
 		for (; (TChar = getc(PIDFileDescriptor)) != EOF && Inc < (MAX_LINE_SIZE - 1); ++Inc)
@@ -117,10 +117,10 @@ Bool ObjectProcessRunning(const ObjTable *InObj)
 		}
 		PIDBuf[Inc] = '\0';
 		
-		if (strstr(PIDBuf, "\n"))
-		{
-			*strstr(PIDBuf, "\n") = '\0';
-		}
+		for (TW = PIDBuf; *TW == '\n' || *TW == '\t' || *TW == ' '; ++TW); /*Past initial junk if any.*/
+		
+		for (TW2 = TW; *TW2 != '\0' && *TW2 != '\t' && *TW2 != '\n' && *TW2 != ' '; ++TW2);
+		*TW2 = '\0';
 		
 		if (AllNumeric(PIDBuf))
 		{

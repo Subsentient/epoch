@@ -625,11 +625,7 @@ rStatus InitConfig(void)
 				continue;
 			}
 
-			if (!strncmp(DelimCurr, "PID", strlen("PID")))
-			{
-				CurObj->Opts.StopMode = STOP_PID;
-			}
-			else if (!strncmp(DelimCurr, "PIDFILE", strlen("PIDFILE")))
+			if (!strncmp(DelimCurr, "PIDFILE", strlen("PIDFILE")))
 			{ /*They want us to kill a PID file on exit.*/
 				const char *Worker = DelimCurr;
 				
@@ -643,6 +639,10 @@ rStatus InitConfig(void)
 				snprintf(CurObj->ObjectPIDFile, MAX_LINE_SIZE, "%s", Worker);
 				
 				CurObj->Opts.StopMode = STOP_PIDFILE;
+			}
+			else if (!strncmp(DelimCurr, "PID", strlen("PID")))
+			{
+				CurObj->Opts.StopMode = STOP_PID;
 			}
 			else if (!strncmp(DelimCurr, "NONE", strlen("NONE")))
 			{

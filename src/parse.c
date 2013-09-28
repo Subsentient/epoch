@@ -320,6 +320,12 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					fflush(NULL);
 				}
 				
+				if (!Tdesc)
+				{
+					PerformStatusReport(PrintOutStream, ExitStatus, true);
+					return FAILURE;
+				}
+				
 				for (; (WChar = getc(Tdesc)) != EOF && Inc < MAX_LINE_SIZE - 1; ++Inc)
 				{
 					Buf[Inc] = WChar;
