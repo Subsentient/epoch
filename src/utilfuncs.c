@@ -102,42 +102,14 @@ Bool ObjectProcessRunning(const ObjTable *InObj)
 { /*Checks /proc for a directory with the name of the requested process.*/
 	DIR *DCore;
 	struct dirent *DStruct;
-	FILE *PIDFileDescriptor;
 	pid_t InPID;
 	
 
-	if (InObj->Opts.StopMode == STOP_PIDFILE && (PIDFileDescriptor = fopen(InObj->ObjectPIDFile, "r")) != NULL)
-	{ /*We got a PID file requested and present? Get PID from that.*/
-		char TChar, PIDBuf[MAX_LINE_SIZE], *TW, *TW2;
-		unsigned long Inc = 0;
-		
-		for (; (TChar = getc(PIDFileDescriptor)) != EOF && Inc < (MAX_LINE_SIZE - 1); ++Inc)
-		{
-			PIDBuf[Inc] = TChar;
-		}
-		PIDBuf[Inc] = '\0';
-		
-		for (TW = PIDBuf; *TW == '\n' || *TW == '\t' || *TW == ' '; ++TW); /*Past initial junk if any.*/
-		
-		for (TW2 = TW; *TW2 != '\0' && *TW2 != '\t' && *TW2 != '\n' && *TW2 != ' '; ++TW2);
-		*TW2 = '\0';
-		
-		if (AllNumeric(PIDBuf))
-		{
-			InPID = atoi(PIDBuf);
-		}
-		else
-		{
-			InPID = InObj->ObjectPID;
-		}
-		
-		fclose(PIDFileDescriptor);
-	}
-	else
-	{
+	if (InObj->Opts.StopMode != STOP_PIDFILE || !(InPID = ReadPIDFile(InObj)))
+	{ /*We got a PID file requested and present? Get PID from that, otherwise 
+		* get the PID from memory.*/
 		InPID = InObj->ObjectPID;
 	}
-			
 	
 	DCore = opendir("/proc/");
 	
@@ -336,5 +308,41 @@ void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutMonth, cha
 			snprintf(MDY[Inc], 16, (MDY_I[Inc] >= 10 ? "%ld" : "0%ld"), MDY_I[Inc]);
 		}
 	}
+}
+
+unsigned long ReadPIDFile(const ObjTable *InObj)
+{
+	FILE *PIDFileDescriptor = fopen(InObj->ObjectPIDFile, "r");
+	char TChar, PIDBuf[MAX_LINE_SIZE], *TW = NULL, *TW2 = NULL;
+	unsigned long InPID = 0, Inc = 0;
+	
+	if (!PIDFileDescriptor)
+	{
+		return 0; /*Zero for failure.*/
+	}
+	
+	for (; (TChar = getc(PIDFileDescriptor)) != EOF && Inc < (MAX_LINE_SIZE - 1); ++Inc)
+	{
+		PIDBuf[Inc] = TChar;
+	}
+	PIDBuf[Inc] = '\0';
+	
+	fclose(PIDFileDescriptor);
+	
+	for (TW = PIDBuf; *TW == '\n' || *TW == '\t' || *TW == ' '; ++TW); /*Skip past initial junk if any.*/
+	
+	for (TW2 = TW; *TW2 != '\0' && *TW2 != '\t' && *TW2 != '\n' && *TW2 != ' '; ++TW2); /*Delete any following the number.*/
+	*TW2 = '\0';
+	
+	if (AllNumeric(PIDBuf))
+	{
+		InPID = atoi(PIDBuf);
+	}
+	else
+	{
+		return 0;
+	}
+	
+	return InPID;
 }
 

@@ -264,6 +264,7 @@ extern void MinsToDate(unsigned long MinInc, unsigned long *OutHr, unsigned long
 				unsigned long *OutMonth, unsigned long *OutDay, unsigned long *OutYear);
 extern Bool AllNumeric(const char *InStream);
 extern Bool ObjectProcessRunning(const ObjTable *InObj);
+extern unsigned long ReadPIDFile(const ObjTable *InObj);
 extern rStatus WriteLogLine(const char *InStream, Bool AddDate);
 
 

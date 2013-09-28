@@ -310,9 +310,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				break;
 			case STOP_PIDFILE:
 			{
-				FILE *Tdesc = fopen(CurObj->ObjectPIDFile, "r");
-				unsigned long Inc = 0, TruePID = 0;
-				char Buf[MAX_LINE_SIZE], WChar, *TWorker, *TW2;
+				unsigned long TruePID = 0;
 				
 				if (PrintStatus)
 				{
@@ -320,42 +318,13 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					fflush(NULL);
 				}
 				
-				if (!Tdesc)
+				if (!(TruePID = ReadPIDFile(CurObj)))
 				{
-					PerformStatusReport(PrintOutStream, ExitStatus, true);
-					return FAILURE;
-				}
-				
-				for (; (WChar = getc(Tdesc)) != EOF && Inc < MAX_LINE_SIZE - 1; ++Inc)
-				{
-					Buf[Inc] = WChar;
-				}
-				Buf[Inc] = '\0'; /*Stop. Whining. About. The. Loops. I don't want to use stat() here!*/
-				
-				fclose(Tdesc);
-			
-				for (TWorker = Buf; *TWorker == '\t' || *TWorker == '\n' || *TWorker == ' '; ++TWorker); /*Skip past garbage.*/
-				
-				/*Delete extra junk characters at the end.*/
-				for (TW2 = TWorker; *TW2 != '\0' && *TW2 != '\t' && *TW2 != '\n' && *TW2 != ' '; ++TW2);
-				*TW2 = '\0';
-				
-				if (AllNumeric(TWorker))
-				{
-					TruePID = atoi(TWorker);
-				}
-				else
-				{
-					char TmpBuf[1024];
-					
-					snprintf(TmpBuf, 1024, "Cannot kill %s: The PID file does not contain purely numeric values.", CurObj->ObjectID);
-					SpitError(TmpBuf);
 					if (PrintStatus)
 					{
 						PerformStatusReport(PrintOutStream, FAILURE, true);
+						break;
 					}
-					
-					return WARNING;
 				}
 				
 				/*Now we can actually kill the process ID.*/
