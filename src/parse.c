@@ -20,6 +20,8 @@
 char CurRunlevel[MAX_DESCRIPT_SIZE] = "default";
 volatile unsigned long RunningChildCount = 0; /*How many child processes are running?
 									* I promised myself I wouldn't use this code.*/
+unsigned long CurrentTaskPID = 0; /*We save this for each linear task, so we can kill the process if it becomes unresponsive.*/
+
 
 /**Function forward declarations.**/
 
@@ -122,6 +124,11 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 			++RunningChildCount; /*I have a feeling that when the stars align,
 								* this variable will be accessed by two threads at once
 								* and crash to the ground. I hope I'm wrong.*/
+			if (!InObj->Opts.NoWait)
+			{ /*Don't record for NOWAIT jobs, because task killing for them is
+				* both useless and difficult to implement.*/
+				CurrentTaskPID = LaunchPID;
+			}
 	}
 	
 	if (LaunchPID == 0) /**Child process code.**/
@@ -157,6 +164,11 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 
 	waitpid(LaunchPID, &RawExitStatus, 0); /*Wait for the process to exit.*/
 	--RunningChildCount; /*We're done, so say so.*/
+	
+	if (!InObj->Opts.NoWait)
+	{
+		CurrentTaskPID = 0; /*Set back to zero for the next one.*/
+	}
 	
 	/**And back to normalcy after this.------------------**/
 	

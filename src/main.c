@@ -10,6 +10,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 #include <execinfo.h>
 #include <signal.h>
 #include <sys/reboot.h>
@@ -59,10 +60,34 @@ static void SigHandler(int Signal)
 	{
 		case SIGINT:
 		{
+			static unsigned long LastKillAttempt = 0;
+			
 			if (getpid() == 1)
 			{
-				EmulWall("System is going down for reboot NOW!", false);
-				LaunchShutdown(OSCTL_LINUX_REBOOT);
+				if ((LastKillAttempt == 0 || time(NULL) > (LastKillAttempt + 5)) && CurrentTaskPID != 0)
+				{
+					printf("\n%sKilling current task. Press CTRL-ALT-DEL again within 5 seconds to reboot.%s\n",
+							CONSOLE_COLOR_YELLOW, CONSOLE_ENDCOLOR);
+					fflush(stdout);
+					
+					if (kill(CurrentTaskPID, SIGKILL) != 0)
+					{
+						printf("\n%sUnable to kill task.\n%s", CONSOLE_COLOR_RED, CONSOLE_ENDCOLOR);
+					}
+					else
+					{
+						printf("\n%sTask successfully killed.\n%s", CONSOLE_COLOR_GREEN, CONSOLE_ENDCOLOR);
+					}
+					fflush(stdout);
+					
+					LastKillAttempt = time(NULL);
+					return;
+				}
+				else
+				{
+					EmulWall("System is going down for reboot NOW!", false);
+					LaunchShutdown(OSCTL_LINUX_REBOOT);
+				}
 			}
 			else
 			{

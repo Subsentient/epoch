@@ -200,6 +200,7 @@ extern volatile unsigned long RunningChildCount;
 extern Bool EnableLogging;
 extern Bool LogInMemory;
 extern char *MemLogBuffer;
+extern unsigned long CurrentTaskPID;
 
 /**Function forward declarations.*/
 
