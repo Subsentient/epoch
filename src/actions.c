@@ -102,21 +102,7 @@ static void *PrimaryLoop(void *ContinuePrimaryLoop)
 			if (CurHr == HaltParams.TargetHour && CurMin == HaltParams.TargetMin &&
 				CurSec == HaltParams.TargetSec && CurMon == HaltParams.TargetMonth &&
 				CurDay == HaltParams.TargetDay && CurYear == HaltParams.TargetYear)
-			{
-				if (HaltParams.HaltMode == OSCTL_LINUX_HALT)
-				{
-					EmulWall("System is going down for halt NOW!", false);
-				}
-				else if (HaltParams.HaltMode == OSCTL_LINUX_POWEROFF)
-				{
-					EmulWall("System is going down for poweroff NOW!", false);
-				}
-				else
-				{
-					HaltParams.HaltMode = OSCTL_LINUX_REBOOT;
-					EmulWall("System is going down for reboot NOW!", false);
-				}
-				
+			{				
 				LaunchShutdown(HaltParams.HaltMode);
 			}
 			else if (CurSec == HaltParams.TargetSec && CurMin != HaltParams.TargetMin &&
@@ -290,13 +276,32 @@ void LaunchBootup(void)
 
 void LaunchShutdown(signed long Signal)
 { /*Responsible for reboot, halt, power down, etc.*/
+	char MsgBuf[MAX_LINE_SIZE];
+	const char *HType = NULL;
 	const char *AttemptMsg = NULL;
 	const char *LogMsg = ((Signal == OSCTL_LINUX_HALT || Signal == OSCTL_LINUX_POWEROFF) ?
 						CONSOLE_COLOR_RED "Shutting down." CONSOLE_ENDCOLOR :
 						CONSOLE_COLOR_RED "Rebooting." CONSOLE_ENDCOLOR);
 	
+	switch (Signal)
+	{
+		case OSCTL_LINUX_HALT:
+			HType = "halt";
+			break;
+		case OSCTL_LINUX_POWEROFF:
+			HType = "poweroff";
+			break;
+		default:
+			HType = "reboot";
+			break;
+	}
+	
+	snprintf(MsgBuf, sizeof MsgBuf, "System is going down for %s NOW!", HType);
+	EmulWall(MsgBuf, false);
+	
 	WriteLogLine(LogMsg, true);
 	
+
 	EnableLogging = false; /*Prevent any additional log entries.*/
 	
 	ContinuePrimaryLoop = false; /*Bring down the primary loop.*/
@@ -308,7 +313,7 @@ void LaunchShutdown(signed long Signal)
 	
 	if (Signal == OSCTL_LINUX_HALT || Signal == OSCTL_LINUX_POWEROFF)
 	{
-		printf("%s", CONSOLE_COLOR_RED "Shutting down." CONSOLE_ENDCOLOR "\n");
+		printf("%s", CONSOLE_COLOR_RED "Shutting down.\n" CONSOLE_ENDCOLOR "\n");
 	}
 	else
 	{

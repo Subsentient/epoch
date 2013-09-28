@@ -85,7 +85,6 @@ static void SigHandler(int Signal)
 				}
 				else
 				{
-					EmulWall("System is going down for reboot NOW!", false);
 					LaunchShutdown(OSCTL_LINUX_REBOOT);
 				}
 			}
