@@ -60,6 +60,12 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 	rStatus ExitStatus = FAILURE; /*We failed unless we succeeded.*/
 	Bool ShellDissolves;
 	int RawExitStatus;
+
+#ifdef NOMMU
+#define ForkFunc() fork()
+#else
+#define ForkFunc() vfork()
+#endif
 	
 	CurCmd = (IsStartingMode ? InObj->ObjectStartCommand : InObj->ObjectStopCommand);
 	
@@ -111,7 +117,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 	
 	/**Here be where we execute commands.---------------**/
 	
-	LaunchPID = vfork();
+	LaunchPID = ForkFunc();
 	
 	if (LaunchPID < 0)
 	{
@@ -144,7 +150,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 		
 		snprintf(TmpBuf, 1024, "Failed to execute %s: execlp() failure.", InObj->ObjectID);
 		SpitError(TmpBuf);
-		EmergencyShell();
+		return -1;
 	}
 	
 	/**Parent code resumes.**/
