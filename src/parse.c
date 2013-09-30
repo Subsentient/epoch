@@ -21,7 +21,7 @@ char CurRunlevel[MAX_DESCRIPT_SIZE] = "default";
 volatile unsigned long RunningChildCount = 0; /*How many child processes are running?
 									* I promised myself I wouldn't use this code.*/
 struct _CTask CurrentTask = { NULL, 0 }; /*We save this for each linear task, so we can kill the process if it becomes unresponsive.*/
-
+volatile BootMode CurrentBootMode = BOOT_NEUTRAL;
 
 /**Function forward declarations.**/
 
@@ -397,6 +397,8 @@ rStatus RunAllObjects(Bool IsStartingMode)
 		return FAILURE;
 	}
 	
+	CurrentBootMode = (IsStartingMode ? BOOT_BOOTUP : BOOT_SHUTDOWN);
+	
 	for (; Inc <= MaxPriority; ++Inc)
 	{
 		if (!(CurObj = GetObjectByPriority(IsStartingMode ? CurRunlevel : NULL, IsStartingMode, Inc)))
@@ -414,6 +416,8 @@ rStatus RunAllObjects(Bool IsStartingMode)
 			ProcessConfigObject(CurObj, IsStartingMode, true);
 		}
 	}
+	
+	CurrentBootMode = BOOT_NEUTRAL;
 	
 	return SUCCESS;
 }

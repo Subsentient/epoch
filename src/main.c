@@ -64,13 +64,20 @@ static void SigHandler(int Signal)
 			
 			if (getpid() == 1)
 			{
-				if ((LastKillAttempt == 0 || time(NULL) > (LastKillAttempt + 5)) && CurrentTask.Node != NULL)
+				if (CurrentTask.Node != NULL && CurrentBootMode != BOOT_NEUTRAL
+					&& (LastKillAttempt == 0 || CurrentBootMode == BOOT_SHUTDOWN || time(NULL) > (LastKillAttempt + 5)))
 				{
 					char MsgBuf[MAX_LINE_SIZE];
 					
 					snprintf(MsgBuf, sizeof MsgBuf, 
-							"\n%sKilling task %s. Press CTRL-ALT-DEL again within 5 seconds to reboot.%s",
+							"\n%sKilling task %s. %s",
 							CONSOLE_COLOR_YELLOW, CurrentTask.Node->ObjectID, CONSOLE_ENDCOLOR);
+
+					if (CurrentBootMode == BOOT_BOOTUP)
+					{
+						strncat(MsgBuf, "Press CTRL-ALT-DEL within 5 seconds to reboot.", MAX_LINE_SIZE - strlen(MsgBuf));
+					}
+					
 					puts(MsgBuf);
 					fflush(NULL);
 					

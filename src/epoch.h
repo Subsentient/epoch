@@ -119,6 +119,8 @@ typedef enum { STOP_NONE, STOP_COMMAND, STOP_PID, STOP_PIDFILE, STOP_INVALID } S
 /*Trinary return values for functions.*/
 typedef enum { FAILURE, SUCCESS, WARNING, NOTIFICATION } rStatus;
 
+/*Trinary boot/shutdown/nothing modes.*/
+typedef enum { BOOT_NEUTRAL, BOOT_BOOTUP, BOOT_SHUTDOWN } BootMode;
 
 /**Structures go here.**/
 struct _RLTree
@@ -208,6 +210,7 @@ extern Bool EnableLogging;
 extern Bool LogInMemory;
 extern char *MemLogBuffer;
 extern struct _CTask CurrentTask;
+extern volatile BootMode CurrentBootMode;
 
 /**Function forward declarations.*/
 
