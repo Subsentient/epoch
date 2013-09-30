@@ -59,8 +59,9 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 											*And I'm sure they would rather see a warning than have it just botch up.*/
 	rStatus ExitStatus = FAILURE; /*We failed unless we succeeded.*/
 	Bool ShellDissolves;
-	int RawExitStatus;
-
+	int RawExitStatus, Inc = 0;
+	sigset_t SigMaker[2];
+	
 #ifdef NOMMU
 #define ForkFunc() fork()
 #else
@@ -117,6 +118,18 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 	
 	/**Here be where we execute commands.---------------**/
 	
+	/*We need to block all signals until we have executed the process.*/
+	sigemptyset(&SigMaker[0]);
+	
+	for (; Inc < NSIG; ++Inc)
+	{
+		sigaddset(&SigMaker[0], Inc);
+	}
+	SigMaker[1] = SigMaker[0];
+	
+	pthread_sigmask(SIG_BLOCK, &SigMaker[0], NULL);
+	
+	/**Actually do the (v)fork().**/
 	LaunchPID = ForkFunc();
 	
 	if (LaunchPID < 0)
@@ -136,11 +149,25 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 				CurrentTask.Node = InObj;
 				CurrentTask.PID = LaunchPID;
 			}
+			
+			pthread_sigmask(SIG_UNBLOCK, &SigMaker[1], NULL); /*Unblock now that (v)fork() is complete.*/
 	}
 	
 	if (LaunchPID == 0) /**Child process code.**/
 	{ /*Child does all this.*/
 		char TmpBuf[1024];
+		int Inc = 0;
+		sigset_t Sig2;
+		
+		sigemptyset(&Sig2);
+		
+		for (; Inc < NSIG; ++Inc)
+		{
+			sigaddset(&Sig2, Inc);
+			signal(Inc, SIG_DFL); /*Set all the signal handlers to default while we're at it.*/
+		}
+		
+		pthread_sigmask(SIG_UNBLOCK, &Sig2, NULL); /*Unblock signals.*/
 		
 		/*Change our session id.*/
 		setsid();
