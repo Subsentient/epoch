@@ -111,7 +111,10 @@ Bool ObjectProcessRunning(const ObjTable *InObj)
 		InPID = InObj->ObjectPID;
 	}
 	
-	DCore = opendir("/proc/");
+	if (!(DCore = opendir("/proc/")))
+	{
+		return false;
+	}
 	
 	while ((DStruct = readdir(DCore)))
 	{

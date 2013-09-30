@@ -236,7 +236,10 @@ rStatus EmulKillall5(unsigned long InSignal)
 	}
 	
 	/*We get everything from /proc.*/
-	ProcDir = opendir("/proc/");
+	if (!(ProcDir = opendir("/proc/")))
+	{
+		return FAILURE;
+	}
 	
 	while ((CurDir = readdir(ProcDir)))
 	{
@@ -309,53 +312,54 @@ void EmulWall(const char *InStream, Bool ShowUser)
 	
 	snprintf(&OutBuf[strlen(OutBuf)], sizeof OutBuf - strlen(OutBuf), "\n%s\n\n", InStream);
 	
-	DevDir = opendir("/dev/");
-	
-	/*Now write to the ttys.*/
-	while ((DirPtr = readdir(DevDir))) /*See, we use fopen() as a way to check if the file exists.*/
-	{ /*Your eyes bleeding yet?*/
-		if (!strncmp(DirPtr->d_name, "tty", strlen("tty")) &&
-			strlen(DirPtr->d_name) > strlen("tty") &&
-			isdigit(DirPtr->d_name[strlen("tty")]) &&
-			atoi(DirPtr->d_name + strlen("tty")) > 0)
-		{
-			snprintf(FileNameBuf, MAX_LINE_SIZE, "/dev/%s", DirPtr->d_name);
-			
-			if (!(Descriptor = fopen(FileNameBuf, "w")))
+	if ((DevDir = opendir("/dev/")))
+	{ /*Now write to the ttys.*/
+		while ((DirPtr = readdir(DevDir))) /*See, we use fopen() as a way to check if the file exists.*/
+		{ /*Your eyes bleeding yet?*/
+			if (!strncmp(DirPtr->d_name, "tty", strlen("tty")) &&
+				strlen(DirPtr->d_name) > strlen("tty") &&
+				isdigit(DirPtr->d_name[strlen("tty")]) &&
+				atoi(DirPtr->d_name + strlen("tty")) > 0)
 			{
-				continue;
+				snprintf(FileNameBuf, MAX_LINE_SIZE, "/dev/%s", DirPtr->d_name);
+				
+				if (!(Descriptor = fopen(FileNameBuf, "w")))
+				{
+					continue;
+				}
+				
+				fwrite(OutBuf, 1, strlen(OutBuf), Descriptor);
+				fflush(NULL);
+				
+				fclose(Descriptor);
+				Descriptor = NULL;
 			}
-			
-			fwrite(OutBuf, 1, strlen(OutBuf), Descriptor);
-			fflush(NULL);
-			
-			fclose(Descriptor);
-			Descriptor = NULL;
 		}
+		closedir(DevDir);
 	}
-	closedir(DevDir);
 	
-	PtsDir = opendir("/dev/pts/");
-	
-	while ((DirPtr = readdir(PtsDir)))
+	if ((PtsDir = opendir("/dev/pts/")))
 	{
-		if (isdigit(DirPtr->d_name[0]))
+		while ((DirPtr = readdir(PtsDir)))
 		{
-			snprintf(FileNameBuf, MAX_LINE_SIZE, "/dev/pts/%s", DirPtr->d_name);
-			
-			if (!(Descriptor = fopen(FileNameBuf, "w")))
+			if (isdigit(DirPtr->d_name[0]))
 			{
-				continue;
+				snprintf(FileNameBuf, MAX_LINE_SIZE, "/dev/pts/%s", DirPtr->d_name);
+				
+				if (!(Descriptor = fopen(FileNameBuf, "w")))
+				{
+					continue;
+				}
+				
+				fwrite(OutBuf, 1, strlen(OutBuf), Descriptor);
+				fflush(NULL);
+				
+				fclose(Descriptor);
+				Descriptor = NULL;
 			}
-			
-			fwrite(OutBuf, 1, strlen(OutBuf), Descriptor);
-			fflush(NULL);
-			
-			fclose(Descriptor);
-			Descriptor = NULL;
 		}
+		closedir(PtsDir);
 	}
-	closedir(PtsDir);
 }
 
 rStatus EmulShutdown(long ArgumentCount, const char **ArgStream)
