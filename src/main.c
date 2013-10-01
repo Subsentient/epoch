@@ -75,7 +75,7 @@ static void SigHandler(int Signal)
 
 					if (CurrentBootMode == BOOT_BOOTUP)
 					{
-						strncat(MsgBuf, "Press CTRL-ALT-DEL within 5 seconds to reboot.", MAX_LINE_SIZE - strlen(MsgBuf));
+						strncat(MsgBuf, "Press CTRL-ALT-DEL within 5 seconds to reboot.", MAX_LINE_SIZE - strlen(MsgBuf) - 1);
 					}
 					
 					puts(MsgBuf);
