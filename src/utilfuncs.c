@@ -313,6 +313,91 @@ void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutMonth, cha
 	}
 }
 
+unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
+{ /*Advaaaanced! Ooh, shiney!
+	*Ok, seriously now, it finds PIDs by scanning /proc/somenumber/cmdline.*/
+	DIR *ProcDir = NULL;
+	struct dirent *DirPtr = NULL;
+	char FileName[MAX_LINE_SIZE];
+	char *FileBuf = NULL;
+	unsigned long Inc = 0, Inc2 = 0, NumSpaces = 0;
+	FILE *Descriptor = NULL;
+	
+	
+	for (; InObj->ObjectStartCommand[Inc] != '\0'; ++Inc)
+	{
+		if (InObj->ObjectStartCommand[Inc] == ' ') ++NumSpaces;
+	}
+	
+	if (!(ProcDir = opendir("/proc/")))
+	{
+		return 0;
+	}
+	
+	while ((DirPtr = readdir(ProcDir)))
+	{
+		if (AllNumeric(DirPtr->d_name) && atoi(DirPtr->d_name) >= InObj->ObjectPID &&
+			atoi(DirPtr->d_name) <= InObj->ObjectPID + 10) /*Search 10 PIDs forward.*/
+		{
+			char TChar;
+			
+			snprintf(FileName, sizeof FileName, "/proc/%s/cmdline", DirPtr->d_name);
+			
+			if (!(Descriptor = fopen(FileName, "r")))
+			{
+				closedir(ProcDir);
+				return 0;
+			}
+			
+			FileBuf = malloc(MAX_LINE_SIZE);
+			
+			for (Inc = 0; (TChar = getc(Descriptor)) != EOF && Inc < MAX_LINE_SIZE - 1; ++Inc)
+			{
+				FileBuf[Inc] = TChar;
+			}
+			FileBuf[Inc] = '\0';
+			
+			fclose(Descriptor);
+			
+			for (Inc = 0, Inc2 = NumSpaces; Inc2 != 0; ++Inc)
+			{ /*We need to replace the NUL characters with spaces.*/
+				if (FileBuf[Inc] == '\0')
+				{
+					--Inc2;
+					FileBuf[Inc] = ' ';
+				}
+			}
+			
+			if (!strcmp(FileBuf, InObj->ObjectStartCommand))
+			{
+				unsigned long RealPID;
+				
+				free(FileBuf);
+				FileBuf = NULL;
+				snprintf(FileName, sizeof FileName, "%s", DirPtr->d_name);
+				closedir(ProcDir);
+				
+				RealPID = atoi(FileName);
+				
+				if (UpdatePID)
+				{
+					InObj->ObjectPID = RealPID;
+				}
+				
+				return RealPID;
+				
+			}
+			
+			free(FileBuf);
+		}
+	}
+	closedir(ProcDir);
+	
+	return 0;
+}		
+
+
+
 unsigned long ReadPIDFile(const ObjTable *InObj)
 {
 	FILE *PIDFileDescriptor = fopen(InObj->ObjectPIDFile, "r");
@@ -348,4 +433,3 @@ unsigned long ReadPIDFile(const ObjTable *InObj)
 	
 	return InPID;
 }
-

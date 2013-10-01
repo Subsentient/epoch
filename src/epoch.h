@@ -269,6 +269,7 @@ extern Bool AllNumeric(const char *InStream);
 extern Bool ObjectProcessRunning(const ObjTable *InObj);
 extern unsigned long ReadPIDFile(const ObjTable *InObj);
 extern rStatus WriteLogLine(const char *InStream, Bool AddDate);
+unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID);
 
 
 #endif /* __EPOCH_H__ */

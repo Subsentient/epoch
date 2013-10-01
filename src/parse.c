@@ -71,8 +71,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 	CurCmd = (IsStartingMode ? InObj->ObjectStartCommand : InObj->ObjectStopCommand);
 	
 	/*Check how we should handle PIDs for each shell. In order to get the PID, exit status,
-	* and support shell commands, we need to jump through a bunch of hoops.
-	* PID killing support in this manner, is buggy. That's why we support PIDFILE.*/
+	* and support shell commands, we need to jump through a bunch of hoops.*/
 	if (FileUsable("/bin/bash"))
 	{
 		ShellDissolves = true;
@@ -182,10 +181,16 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 	
 	/**Parent code resumes.**/
 
-	InObj->ObjectPID = LaunchPID; /*Save our PID.*/
+	waitpid(LaunchPID, &RawExitStatus, 0); /*Wait for the process to exit.*/
+	--RunningChildCount; /*We're done, so say so.*/
 	
-	/*This code is really awful and somewhat unreliable, but hey, it's the price you pay for this support right now
-	 * I'll implement a more reliable way eventually.*/
+	if (!InObj->Opts.NoWait)
+	{
+		CurrentTask.Node = NULL;
+		CurrentTask.PID = 0; /*Set back to zero for the next one.*/
+	}
+	
+	InObj->ObjectPID = LaunchPID; /*Save our PID.*/
 	
 	if (!ShellDissolves)
 	{
@@ -195,15 +200,10 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 	{ /*If we specify that this is a service, one up the PID again.*/
 		++InObj->ObjectPID;
 	}
-
-	waitpid(LaunchPID, &RawExitStatus, 0); /*Wait for the process to exit.*/
-	--RunningChildCount; /*We're done, so say so.*/
 	
-	if (!InObj->Opts.NoWait)
-	{
-		CurrentTask.Node = NULL;
-		CurrentTask.PID = 0; /*Set back to zero for the next one.*/
-	}
+	/*Check if the PID we found is accurate and update it if not. This method is very,
+	 * very accurate compared to the buggy morass above.*/
+	AdvancedPIDFind(InObj, true);
 	
 	/**And back to normalcy after this.------------------**/
 	
