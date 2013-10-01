@@ -320,6 +320,11 @@ rStatus InitConfig(void)
 		}
 		else if (!strncmp(Worker, "DefaultRunlevel", strlen("DefaultRunlevel")))
 		{
+			if (CurRunlevel[0] == 1)
+			{ /*If we set a default runlevel on the CLI, ignore this attribute.*/
+				continue;
+			}
+			
 			CurrentAttribute = "DefaultRunlevel";
 			
 			if (CurObj != NULL)

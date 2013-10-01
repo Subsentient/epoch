@@ -785,8 +785,32 @@ int main(int argc, char **argv)
 	{ /*This is a bit long winded here, however, it's better than devoting a function for it.*/
 		if (getpid() == 1)
 		{ /*Just us, as init. That means, begin bootup.*/
-
-				LaunchBootup();
+			const char *TRunlevel = NULL;
+			
+			if (argc > 1)
+			{
+				short ArgCount = (short)argc, Inc = 1;
+				const char *Arguments[] = { "shell" }; /*I'm sick of repeating myself with literals.*/
+				
+				for (; Inc < ArgCount; ++Inc)
+				{
+					if (!strcmp(argv[Inc], Arguments[0]))
+					{
+						puts(CONSOLE_COLOR_GREEN "Now launching a simple shell as per your request." CONSOLE_ENDCOLOR);
+						EmergencyShell(); /*Drop everything we're doing and start an emergency shell.*/
+					}
+				}
+			}
+			
+			/*Need we set a default runlevel?*/
+			if ((TRunlevel = getenv("runlevel")) != NULL)
+			{ /*Sets the default runlevel we use on bootup.*/
+				snprintf(CurRunlevel + 1, MAX_DESCRIPT_SIZE - 1, "%s", TRunlevel);
+				*CurRunlevel = 1; /*Set this flag to say "ignore all DefaultRunlevel attributes and use this initially instead.".*/
+			}
+			
+			/*Now that args are set, boot.*/		
+			LaunchBootup();
 		}
 		else if (argc == 2)
 		{
