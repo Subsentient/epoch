@@ -330,6 +330,13 @@ void ParseMemBus(void)
 			
 			snprintf(TmpBuf, sizeof TmpBuf, "Failed to switch to runlevel \"%s\".", TWorker);
 			SpitError(TmpBuf);
+			WriteLogLine(TmpBuf, true);
+		}
+		else
+		{
+			snprintf(TmpBuf, sizeof TmpBuf, CONSOLE_COLOR_GREEN "Switched to runlevel \"%s\"." CONSOLE_ENDCOLOR, TWorker);
+			puts(TmpBuf);
+			WriteLogLine(TmpBuf, true);
 		}
 	}
 	else if (BusDataIs(MEMBUS_CODE_OBJRLS))
