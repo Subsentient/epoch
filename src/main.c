@@ -207,7 +207,7 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 	enum { HCMD, ENDIS, STAP, OBJRL, STATUS, SETCAD, CONFRL };
 	
 	
-	printf("%s\n\n", VERSIONSTRING);
+	printf("%s\nCompiled %s\n\n", VERSIONSTRING, __DATE__);
 	
 	if (InCmd == NULL)
 	{
