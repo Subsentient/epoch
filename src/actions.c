@@ -187,7 +187,7 @@ void LaunchBootup(void)
 	
 	setsid();
 	
-	printf("\n%s\n", VERSIONSTRING);
+	printf("\n%s\nCompiled %s\n", VERSIONSTRING, __DATE__);
 	
 	/*Set environment variables.*/
 	setenv("USER", ENVVAR_USER, true);
@@ -201,10 +201,10 @@ void LaunchBootup(void)
 	}
 	
 	PrintBootBanner();
-	
+
 	if (EnableLogging)
 	{
-		WriteLogLine(CONSOLE_COLOR_CYAN VERSIONSTRING " Booting up" CONSOLE_ENDCOLOR "\n", true);
+		WriteLogLine(CONSOLE_COLOR_CYAN VERSIONSTRING " Booting up\n" "Compiled " __DATE__ "\n", true);
 	}
 	
 	if (CurRunlevel[0] == 1)
