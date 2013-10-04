@@ -406,7 +406,12 @@ rStatus RunAllObjects(Bool IsStartingMode)
 			continue;
 		}
 		
-		if (!CurObj->Enabled || (IsStartingMode && CurObj->Opts.HaltCmdOnly))
+		if (!CurObj->Enabled && (IsStartingMode || CurObj->Opts.HaltCmdOnly))
+		{ /*Stop even disabled objects, but not disabled HALTONLY objects.*/
+			continue;
+		}
+		
+		if (IsStartingMode && CurObj->Opts.HaltCmdOnly)
 		{
 			continue;
 		}
@@ -448,7 +453,7 @@ rStatus SwitchRunlevels(const char *Runlevel)
 	{
 		TObj = GetObjectByPriority(CurRunlevel, false, CurPriority);
 		
-		if (TObj && TObj->Enabled && TObj->Started && TObj->Opts.CanStop && !TObj->Opts.HaltCmdOnly &&
+		if (TObj && TObj->Started && TObj->Opts.CanStop && !TObj->Opts.HaltCmdOnly &&
 			!ObjRL_CheckRunlevel(Runlevel, TObj))
 		{
 			ProcessConfigObject(TObj, false, true);
