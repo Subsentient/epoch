@@ -201,7 +201,7 @@ void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 	
 	if (WriteToLog)
 	{
-		char TmpBuf[MAX_LINE_SIZE], *TWorker = OutMsg;
+		char TmpBuf[MAX_LINE_SIZE];
 		char HMS[3][16], MDY[3][16];
 		char TimeFormat[64];
 		
@@ -209,14 +209,9 @@ void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 		
 		snprintf(TimeFormat, 64, "[%s:%s:%s | %s/%s/%s] ",
 				HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2]);
-				
-		if (strlen(TimeFormat) < StreamLength)
-		{
-			TWorker += strlen(TimeFormat);
-		}
 		
-		OutMsg[strlen(OutMsg) - 1] = '\0'; /*Get rid of the newline.*/
-		snprintf(TmpBuf, MAX_LINE_SIZE, "%s%s%s", TimeFormat, InStream, TWorker);
+		StatusFormat[strlen(StatusFormat) - 1] = '\0'; /*Get rid of the newline.*/
+		snprintf(TmpBuf, MAX_LINE_SIZE, "%s%s %s", TimeFormat, InStream, StatusFormat);
 		WriteLogLine(TmpBuf, false);
 	}
 	
