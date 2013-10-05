@@ -232,6 +232,13 @@ void ParseMemBus(void)
 			MemBus_Write(TmpBuf, true);
 		}
 	}
+	else if (BusDataIs(MEMBUS_CODE_GETRL))
+	{
+		char TmpBuf[MEMBUS_SIZE/2 - 1];
+		
+		snprintf(TmpBuf, sizeof TmpBuf, MEMBUS_CODE_GETRL " %s", CurRunlevel);
+		MemBus_Write(TmpBuf, true);
+	}		
 	else if (BusDataIs(MEMBUS_CODE_OBJENABLE) || BusDataIs(MEMBUS_CODE_OBJDISABLE))
 	{
 		Bool EnablingThis = (BusDataIs(MEMBUS_CODE_OBJENABLE) ? true : false);

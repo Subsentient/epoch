@@ -103,6 +103,7 @@
 #define MEMBUS_CODE_OBJRLS_DEL "OBJRLS_DEL"
 #define MEMBUS_CODE_STATUS "OBJSTAT"
 #define MEMBUS_CODE_RUNLEVEL "RUNLEVEL"
+#define MEMBUS_CODE_GETRL "GETRL"
 
 /**Types, enums, structs and whatnot**/
 

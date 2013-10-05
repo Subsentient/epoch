@@ -201,10 +201,15 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		  "Enter configreload to reload the configuration file epoch.conf.\nThis is useful for "
 		  "when you change epoch.conf\n"
 		  "to add or remove services, change runlevels, and more."
+		),
+		
+		( "currentrunlevel:\n\n"
+		
+		  "Enter currentrunlevel to print the system's current runlevel."
 		)
 	};
 	
-	enum { HCMD, ENDIS, STAP, OBJRL, STATUS, SETCAD, CONFRL };
+	enum { HCMD, ENDIS, STAP, OBJRL, STATUS, SETCAD, CONFRL, CURRL };
 	
 	
 	printf("%s\nCompiled %s\n\n", VERSIONSTRING, __DATE__);
@@ -215,7 +220,7 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		
 		puts(CONSOLE_COLOR_RED "Printing all help.\n" CONSOLE_ENDCOLOR "----\n");
 		
-		for (; Inc <= CONFRL; ++Inc)
+		for (; Inc <= CURRL; ++Inc)
 		{
 			printf("%s %s\n%s----%s\n", RootCommand, HelpMsgs[Inc], CONSOLE_COLOR_RED, CONSOLE_ENDCOLOR);
 		}
@@ -253,6 +258,11 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 	else if (!strcmp(InCmd, "configreload"))
 	{
 		printf("%s %s\n\n", RootCommand, HelpMsgs[CONFRL]);
+		return;
+	}
+	else if (!strcmp(InCmd, "currentrunlevel"))
+	{
+		printf("%s %s\n\n", RootCommand, HelpMsgs[CURRL]);
 		return;
 	}
 	else
@@ -435,6 +445,36 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 				
 				return FAILURE;
 			}
+		}
+		else if (ArgIs("currentrunlevel"))
+		{
+			rStatus RV = SUCCESS;
+			char InBuf[MEMBUS_SIZE/2 - 1];
+			
+			if (!InitMemBus(false))
+			{
+				SpitError("main(): Failed to connect to membus.");
+				return FAILURE;
+			}
+			
+			MemBus_Write(MEMBUS_CODE_GETRL, false);
+			
+			while (!MemBus_Read(InBuf, false)) usleep(1000);
+			
+			if (!strcmp(MEMBUS_CODE_BADPARAM " " MEMBUS_CODE_GETRL, InBuf))
+			{
+				SpitError("We are being told that MEMBUS_CODE_GETRL is not valid.\n"
+						"This is a bug. Please report to Epoch.");
+				RV = FAILURE;
+			}
+			else if (!strncmp(MEMBUS_CODE_GETRL " ", InBuf, strlen(MEMBUS_CODE_GETRL " ")))
+			{
+				printf("Current runlevel is \"%s\".\n", InBuf + strlen(MEMBUS_CODE_GETRL " "));
+				RV = SUCCESS;
+			}
+			
+			ShutdownMemBus(false);
+			return !RV;
 		}
 		
 		else
@@ -779,7 +819,7 @@ int main(int argc, char **argv)
 	}
 	else if (CmdIs("epoch")) /*Our main management program.*/
 	{	
-		HandleEpochCommand(argc, argv);
+		return HandleEpochCommand(argc, argv);
 	}
 	else if (CmdIs("init"))
 	{ /*This is a bit long winded here, however, it's better than devoting a function for it.*/
