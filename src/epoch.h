@@ -212,6 +212,7 @@ extern Bool LogInMemory;
 extern char *MemLogBuffer;
 extern struct _CTask CurrentTask;
 extern volatile BootMode CurrentBootMode;
+extern Bool AlignStatusReports;
 
 /**Function forward declarations.*/
 

@@ -15,6 +15,7 @@
 struct _BootBanner BootBanner = { false, { '\0' }, { '\0' } };
 /*Should we Disable CTRL-ALT-DEL instant reboots?*/
 Bool DisableCAD = true;
+Bool AlignStatusReports = true;
 
 void PrintBootBanner(void)
 { /*Real simple stuff.*/
@@ -116,41 +117,49 @@ void SetBannerColor(const char *InChoice)
 void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 {
 	unsigned long StreamLength, Inc = 0;
-	char OutMsg[2048] = { '\0' }, IP2[256];
-	char StatusFormat[1024];
+	char OutMsg[8192] = { '\0' }, IP2[MAX_DESCRIPT_SIZE];
+	char StatusFormat[64];
 	struct winsize WSize;
 	
 	/*Get terminal width so we can adjust the status report.*/
     ioctl(0, TIOCGWINSZ, &WSize);
-    StreamLength = WSize.ws_col;
     
-	if (StreamLength >= sizeof OutMsg/2)
-	{ /*Default to 80 if we get a very big number.*/
-		StreamLength = 80;
+    if (AlignStatusReports)
+    {
+		StreamLength = WSize.ws_col;
+    
+		if (StreamLength >= sizeof OutMsg/2)
+		{ /*Default to 80 if we get a very big number.*/
+			StreamLength = 80;
+		}
+	}
+	else
+	{
+		StreamLength = 1;
 	}
 
-	snprintf(IP2, 256, "%s", InStream);
+	snprintf(IP2, sizeof IP2, "%s", InStream);
 	
 	switch (State)
 	{
 		case FAILURE:
 		{
-			snprintf(StatusFormat, 1024, "[%s]\n", CONSOLE_COLOR_RED "FAILED" CONSOLE_ENDCOLOR);
+			snprintf(StatusFormat, sizeof StatusFormat, "[%s]\n", CONSOLE_COLOR_RED "FAILED" CONSOLE_ENDCOLOR);
 			break;
 		}
 		case SUCCESS:
 		{
-			snprintf(StatusFormat, 1024, "[%s]\n", CONSOLE_COLOR_GREEN "Done" CONSOLE_ENDCOLOR);
+			snprintf(StatusFormat, sizeof StatusFormat, "[%s]\n", CONSOLE_COLOR_GREEN "Done" CONSOLE_ENDCOLOR);
 			break;
 		}
 		case WARNING:
 		{
-			snprintf(StatusFormat, 1024, "[%s]\n", CONSOLE_COLOR_YELLOW "WARNING" CONSOLE_ENDCOLOR);
+			snprintf(StatusFormat, sizeof StatusFormat, "[%s]\n", CONSOLE_COLOR_YELLOW "WARNING" CONSOLE_ENDCOLOR);
 			break;
 		}
 		case NOTIFICATION:
 		{ /*Used for objects where Opts.NoWait == true.*/
-			snprintf(StatusFormat, 1024, "[%s]\n", CONSOLE_COLOR_CYAN "Launched" CONSOLE_ENDCOLOR);
+			snprintf(StatusFormat, sizeof StatusFormat, "[%s]\n", CONSOLE_COLOR_CYAN "Launched" CONSOLE_ENDCOLOR);
 			break;
 		}
 		default:
@@ -160,33 +169,37 @@ void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 		}
 	}
 	
-	switch (State)
-	{ /*Take our status reporting into account, but not with the color characters and newlines and stuff, 
-		because that gives misleading results due to the extra characters that you can't see.*/
-		case SUCCESS:
-			StreamLength -= strlen("[Done]");
-			break;
-		case FAILURE:
-			StreamLength -= strlen("[FAILED]");
-			break;
-		case WARNING:
-			StreamLength -= strlen("[WARNING]");
-			break;
-		case NOTIFICATION:
-			StreamLength -= strlen("[Launched]");
-			break;
-		default:
-			SpitWarning("Bad parameter passed to PerformStatusReport() in console.c");
-			return;
-	}
-	
-	if (strlen(IP2) >= StreamLength)
-	{ /*Keep it aligned if we are printing a multi-line report.*/
-		strncat(OutMsg, "\n", 2);
-	}
-	else
+	if (AlignStatusReports)
 	{
-		StreamLength -= strlen(IP2);
+		switch (State)
+		{ /*Take our status reporting into account, but not with the color characters and newlines and stuff, 
+			because that gives misleading results due to the extra characters that you can't see.*/
+			case SUCCESS:
+				StreamLength -= strlen("[Done]");
+				break;
+			case FAILURE:
+				StreamLength -= strlen("[FAILED]");
+				break;
+			case WARNING:
+				StreamLength -= strlen("[WARNING]");
+				break;
+			case NOTIFICATION:
+				StreamLength -= strlen("[Launched]");
+				break;
+			default:
+				SpitWarning("Bad parameter passed to PerformStatusReport() in console.c");
+				return;
+		}
+
+	
+		if (strlen(IP2) >= StreamLength)
+		{ /*Keep it aligned if we are printing a multi-line report.*/
+			strncat(OutMsg, "\n", 2);
+		}
+		else
+		{
+			StreamLength -= strlen(IP2);
+		}
 	}
 	
 	/*Appropriate spacing.*/
@@ -195,7 +208,7 @@ void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 		strncat(OutMsg, " ", 2);
 	}
 	
-	strncat(OutMsg, StatusFormat, strlen(StatusFormat) + 1);
+	strncat(OutMsg, StatusFormat, strlen(StatusFormat));
 	
 	printf("%s", OutMsg);
 	

@@ -214,6 +214,35 @@ rStatus InitConfig(void)
 			
 			continue;
 		}
+		else if (!strncmp(Worker, "AlignStatusReports", strlen("AlignStatusReports")))
+		{
+			CurrentAttribute = "AlignStatusReports";
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+
+				continue;
+			}
+			
+			if (!strcmp(DelimCurr, "true"))
+			{
+				AlignStatusReports = true;
+			}
+			else if (!strcmp(DelimCurr, "false"))
+			{
+				AlignStatusReports = false;
+			}
+			else
+			{
+				
+				AlignStatusReports = false;
+				
+				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+			}
+			
+			continue;
+		}
 		/*This will mount /dev, /proc, /sys, /dev/pts, and /dev/shm on boot time, upon request.*/
 		else if (!strncmp(Worker, "MountVirtual", strlen("MountVirtual")))
 		{
