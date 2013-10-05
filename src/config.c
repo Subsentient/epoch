@@ -1043,6 +1043,13 @@ static rStatus ScanConfigIntegrity(void)
 		return FAILURE;
 	}
 	
+	if (!ObjRL_ValidRunlevel(CurRunlevel))
+	{
+		snprintf(TmpBuf, 1024, "Specified default runlevel %s is not valid; no objects use it.", CurRunlevel);
+		SpitError(TmpBuf);
+		RetState = FAILURE;
+	}
+	
 	for (; Worker->Next != NULL; Worker = Worker->Next)
 	{
 		if (*Worker->ObjectDescription == '\0')
@@ -1192,7 +1199,7 @@ unsigned long GetHighestPriority(Bool WantStartPriority)
 }
 
 /*Functions for runlevel management.*/
-Bool ObjRL_CheckRunlevel(const char *InRL, ObjTable *InObj)
+Bool ObjRL_CheckRunlevel(const char *InRL, const ObjTable *InObj)
 {
 	struct _RLTree *Worker = InObj->ObjectRunlevels;
 	
@@ -1263,6 +1270,23 @@ Bool ObjRL_DelRunlevel(const char *InRL, ObjTable *InObj)
 	return false;
 }
 
+Bool ObjRL_ValidRunlevel(const char *InRL)
+{ /*checks if a runlevel has anything at all using it.*/
+	const ObjTable *Worker = ObjectTable;
+	Bool ValidRL = false;
+	
+	for (; Worker->Next; ++Worker)
+	{
+		if (!Worker->Opts.HaltCmdOnly && ObjRL_CheckRunlevel(InRL, Worker))
+		{
+			ValidRL = true;
+			break;
+		}
+	}
+	
+	return ValidRL;
+}
+
 void ObjRL_ShutdownRunlevels(ObjTable *InObj)
 {
 	struct _RLTree *Worker = InObj->ObjectRunlevels, *NDel;
@@ -1275,7 +1299,6 @@ void ObjRL_ShutdownRunlevels(ObjTable *InObj)
 	
 	InObj->ObjectRunlevels = NULL;
 }
-	
 
 ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority, unsigned long ObjectPriority)
 { /*The primary lookup function to be used when executing commands.*/

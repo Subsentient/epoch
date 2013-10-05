@@ -285,8 +285,6 @@ void ParseMemBus(void)
 		unsigned long LOffset = strlen(MEMBUS_CODE_RUNLEVEL " ");
 		char *TWorker = BusData + LOffset;
 		char TmpBuf[MEMBUS_SIZE/2 - 1];
-		ObjTable *TmpTable = ObjectTable;
-		Bool ValidRL = false;
 		
 		if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
 		{ /*No argument?*/
@@ -296,16 +294,7 @@ void ParseMemBus(void)
 			return;
 		}
 		
-		for (; TmpTable->Next; TmpTable = TmpTable->Next)
-		{ /*Check if anything uses this runlevel at all.*/
-			if (!TmpTable->Opts.HaltCmdOnly && ObjRL_CheckRunlevel(TWorker, TmpTable))
-			{
-				ValidRL = true;
-				break;
-			}
-		}
-		
-		if (ValidRL)
+		if (ObjRL_ValidRunlevel(TWorker))
 		{
 			/*Tell them everything is OK, because we don't want to wait the whole time for the runlevel to start up.*/
 			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s", MEMBUS_CODE_ACKNOWLEDGED, MEMBUS_CODE_RUNLEVEL, TWorker);

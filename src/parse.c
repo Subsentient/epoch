@@ -44,7 +44,7 @@ static Bool FileUsable(const char *FileName)
 	{
 		return false;
 	}
-}
+}	
 
 static void *IndependentExecuteObject(void *InObj)
 { /*Stub function for threading support.*/
