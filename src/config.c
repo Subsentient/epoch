@@ -320,8 +320,9 @@ rStatus InitConfig(void)
 		}
 		else if (!strncmp(Worker, "DefaultRunlevel", strlen("DefaultRunlevel")))
 		{
-			if (CurRunlevel[0] == 1)
-			{ /*If we set a default runlevel on the CLI, ignore this attribute.*/
+			if (CurRunlevel[0] != 0)
+			{ /*If the runlevel has already been set, don't set it again.
+				* This prevents a rather nasty bug.*/
 				continue;
 			}
 			
@@ -1040,6 +1041,13 @@ static rStatus ScanConfigIntegrity(void)
 	if (ObjectTable == NULL)
 	{ /*This can happen if configuration is filled with trash and nothing valid.*/
 		SpitError("No objects found in configuration or invalid configuration.");
+		return FAILURE;
+	}
+	
+	if (*CurRunlevel == 0)
+	{ /*This also allows us to skip the DefaultRunlevel attribute
+		* if we specify a default on the kernel command line.*/
+		SpitError("No default runlevel specified!");
 		return FAILURE;
 	}
 	

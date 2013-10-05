@@ -196,7 +196,7 @@ void LaunchBootup(void)
 	setenv("SHELL", ENVVAR_SHELL, true);
 	
 	if (!InitConfig())
-	{ /*That is very very bad.*/
+	{ /*That is very very bad if we fail here.*/
 		EmergencyShell();
 	}
 	
@@ -205,17 +205,6 @@ void LaunchBootup(void)
 	if (EnableLogging)
 	{
 		WriteLogLine(CONSOLE_COLOR_CYAN VERSIONSTRING " Booting up\n" "Compiled " __DATE__ CONSOLE_ENDCOLOR "\n", true);
-	}
-	
-	if (CurRunlevel[0] == 1)
-	{ /*Remove the one at [0] for CurRunlevel, so we can use the runlevels.*/
-		char *Tweedle[2] = { CurRunlevel, CurRunlevel + 1 };
-		
-		while (*Tweedle[1] != '\0')
-		{
-			*Tweedle[0]++ = *Tweedle[1]++;
-		}
-		*Tweedle[0] = '\0';
 	}
 	
 	MountVirtuals(); /*Mounts any virtual filesystems, upon request.*/

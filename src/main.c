@@ -805,8 +805,7 @@ int main(int argc, char **argv)
 			/*Need we set a default runlevel?*/
 			if ((TRunlevel = getenv("runlevel")) != NULL)
 			{ /*Sets the default runlevel we use on bootup.*/
-				snprintf(CurRunlevel + 1, MAX_DESCRIPT_SIZE - 1, "%s", TRunlevel);
-				*CurRunlevel = 1; /*Set this flag to say "ignore all DefaultRunlevel attributes and use this initially instead.".*/
+				snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", TRunlevel);
 			}
 			
 			/*Now that args are set, boot.*/		

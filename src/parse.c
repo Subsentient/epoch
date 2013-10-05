@@ -17,7 +17,7 @@
 /**Globals**/
 
 /*We store the current runlevel here.*/
-char CurRunlevel[MAX_DESCRIPT_SIZE] = "default";
+char CurRunlevel[MAX_DESCRIPT_SIZE] = { '\0' };
 volatile unsigned long RunningChildCount = 0; /*How many child processes are running?
 									* I promised myself I wouldn't use this code.*/
 struct _CTask CurrentTask = { NULL, 0 }; /*We save this for each linear task, so we can kill the process if it becomes unresponsive.*/
