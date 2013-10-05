@@ -204,7 +204,7 @@ void LaunchBootup(void)
 
 	if (EnableLogging)
 	{
-		WriteLogLine(CONSOLE_COLOR_CYAN VERSIONSTRING " Booting up\n" "Compiled " __DATE__ "\n", true);
+		WriteLogLine(CONSOLE_COLOR_CYAN VERSIONSTRING " Booting up\n" "Compiled " __DATE__ CONSOLE_ENDCOLOR "\n", true);
 	}
 	
 	if (CurRunlevel[0] == 1)
