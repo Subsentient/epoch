@@ -1383,6 +1383,7 @@ rStatus ReloadConfig(void)
 	ObjTable *Worker = ObjectTable;
 	ObjTable *TRoot = malloc(sizeof(ObjTable)), *SWorker = TRoot, *Temp;
 	struct _RLTree *RLTemp1, *RLTemp2;
+	Bool GlobalTriple[3], ConfigOK = true;
 	
 	WriteLogLine("CONFIG: Reloading configuration.\n", true);
 	WriteLogLine("CONFIG: Backing up current object table.", true);
@@ -1410,6 +1411,11 @@ rStatus ReloadConfig(void)
 	/*Actually do the reload of the config.*/
 	ShutdownConfig();
 	
+	/*Do this to prevent some weird options from being changeable by a config reload.*/
+	GlobalTriple[0] = EnableLogging;
+	GlobalTriple[1] = DisableCAD;
+	GlobalTriple[2] = AlignStatusReports;
+	
 	WriteLogLine("CONFIG: Initializing new object table.", true);
 	
 	if (!InitConfig())
@@ -1420,8 +1426,15 @@ rStatus ReloadConfig(void)
 					"Restoring old configuration to memory.\n"
 					"Please check epoch.conf for syntax errors.");
 		ObjectTable = TRoot; /*Point ObjectTable to our new, identical copy of the old tree.*/
-		return FAILURE;
+		ConfigOK = false;
 	}
+	
+	/*And then restore those options to their previous states.*/
+	EnableLogging = GlobalTriple[0];
+	DisableCAD = GlobalTriple[1];
+	AlignStatusReports = GlobalTriple[2];
+	
+	if (!ConfigOK) return ConfigOK;
 	
 	WriteLogLine("CONFIG: Restoring object statuses and deleting backup table.", true);
 	
