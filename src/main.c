@@ -163,31 +163,31 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 { /*Used for help for the epoch command.*/
 	const char *HelpMsgs[] =
 	{ 
-		("[poweroff/halt/reboot]:\n\n"
+		("[poweroff/halt/reboot]:\n-----\n"
 		
 		 "Enter poweroff, halt, or reboot to do the obvious."
 		),
 		
-		( "[disable/enable] objectid:\n\n"
+		( "[disable/enable] objectid:\n-----\n"
 		  "Enter disable or enable followed by an object ID to disable or enable\nthat object."
 		),
 		
-		( "[start/stop] objectid:\n\n"
+		( "[start/stop] objectid:\n-----\n"
 		  "Enter start or stop followed by an object ID to start or stop that object."
 		),
 		
-		( "objrl objectid [del/add/check] runlevel:\n\n"
+		( "objrl objectid [del/add/check] runlevel:\n-----\n"
 		
 		  "runlevel del and add do pretty much what it sounds like,\n"
 		  "and check will tell you if that object is enabled for that runlevel."
 		),
 		  
-		( "status objectid:\n\n"
+		( "status objectid:\n-----\n"
 		
 		  "Enter status followed by an object ID to see if that object\nis currently started."
 		),
 		
-		( "setcad [on/off]:\n\n"
+		( "setcad [on/off]:\n-----\n"
 		
 		  "Sets Ctrl-Alt-Del instant reboot modes. If set to on, striking Ctrl-Alt-Del\n"
 		  "at a console will instantly reboot the system without intervention by Epoch.\n"
@@ -196,14 +196,14 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		),
 			
 		
-		( "configreload:\n\n"
+		( "configreload:\n-----\n"
 		
 		  "Enter configreload to reload the configuration file epoch.conf.\nThis is useful for "
 		  "when you change epoch.conf\n"
 		  "to add or remove services, change runlevels, and more."
 		),
 		
-		( "currentrunlevel:\n\n"
+		( "currentrunlevel:\n-----\n"
 		
 		  "Enter currentrunlevel to print the system's current runlevel."
 		)
@@ -218,11 +218,11 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 	{
 		short Inc = 0;
 		
-		puts(CONSOLE_COLOR_RED "Printing all help.\n" CONSOLE_ENDCOLOR "----\n");
+		puts(CONSOLE_COLOR_RED "Printing all help.\n" CONSOLE_ENDCOLOR "-----\n");
 		
 		for (; Inc <= CURRL; ++Inc)
 		{
-			printf("%s %s\n%s----%s\n", RootCommand, HelpMsgs[Inc], CONSOLE_COLOR_RED, CONSOLE_ENDCOLOR);
+			printf("%s %s\n\n", RootCommand, HelpMsgs[Inc]);
 		}
 	}
 	else if (!strcmp(InCmd, "poweroff") || !strcmp(InCmd, "halt") || !strcmp(InCmd, "reboot"))
