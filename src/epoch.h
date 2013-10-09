@@ -45,7 +45,7 @@
 #endif
 
 /*Version.*/
-#define VERSIONSTRING "Epoch Init System (git/master)"
+#define VERSIONSTRING "Epoch Init System 1.0 Beta 1"
 
 /*Power control magic. FIXME: Add support for BSD etc. here!*/
 #define OSCTL_LINUX_REBOOT 0x1234567
