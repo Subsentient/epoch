@@ -39,6 +39,7 @@ CMD "$CC $CFLAGS -c ../src/utilfuncs.c"
 echo -e "\nBuilding main executable.\n"
 
 mkdir -p ../built/sbin/
+mkdir -p ../built/bin/
 
 CMD "$CC $LDFLAGS $CFLAGS -pthread -o ../built/sbin/epoch\
  actions.o config.o console.o main.o membus.o modes.o parse.o utilfuncs.o"
@@ -52,7 +53,10 @@ CMD "ln -s -f ./epoch poweroff"
 CMD "ln -s -f ./epoch reboot"
 CMD "ln -s -f ./epoch shutdown"
 CMD "ln -s -f ./epoch killall5"
-CMD "ln -s -f ./epoch wall"
+
+cd ../bin/
+
+CMD "ln -s -f ../sbin/epoch wall"
 
 echo -e "\nBuild complete.\n"
 cd ..

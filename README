@@ -5,11 +5,18 @@ that don't want a huge mess just to boot up.
 It has one unified configuration file, is very small in size,
 and it has no external dependencies besides glibc.
 
+Epoch is public domain software.
+Please visit unlicense.org for more information.
+
 To build the Epoch Init System, just execute ./buildepoch.sh.
 If you export CC, CFLAGS and/or LDFLAGS,
 those new settings WILL be honored.
 You can add flags like -D'CONFIGDIR="/wherever/you/want/"', 
 -D'MEMBUS_SIZE=1024', and -DWEIRDSHELLPERMITTED.
+The compiled binary and symlinks will be available in built/.
 
-Please direct all further questions to
-Subsentient at "http://universe2.us/contactinfo.html".
+For instructions on creating a configuration file for Epoch,
+please visit http://universe2.us/epochconfig.html.
+
+Additional information is available at http://universe2.us/epoch.html.
+
