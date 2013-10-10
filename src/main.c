@@ -474,7 +474,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			}
 			
 			ShutdownMemBus(false);
-			return !RV;
+			return RV;
 		}
 		
 		else
@@ -552,7 +552,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			PerformStatusReport(TOut, RV, false);
 			
 			ShutdownMemBus(false);
-			return !RV;
+			return RV;
 		}
 		else if (ArgIs("start") || ArgIs("stop"))
 		{
@@ -575,7 +575,94 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			PerformStatusReport(TOut, RV, false);
 			
 			ShutdownMemBus(false);
-			return !RV;
+			return RV;
+		}
+		else if (ArgIs("getpid"))
+		{
+			rStatus RV = SUCCESS;
+			char InBuf[MEMBUS_SIZE/2 - 1];
+			char OutBuf[MEMBUS_SIZE/2 - 1];
+			char PossibleResponses[3][MEMBUS_SIZE/2 - 1];
+			
+			if (!InitMemBus(false)) return FAILURE;
+			
+			snprintf(OutBuf, sizeof InBuf, "%s %s", MEMBUS_CODE_SENDPID, argv[2]);
+			
+			snprintf(PossibleResponses[0], sizeof PossibleResponses[0], "%s %s ", MEMBUS_CODE_SENDPID, argv[2]);
+			snprintf(PossibleResponses[1], sizeof PossibleResponses[1], "%s %s", MEMBUS_CODE_FAILURE, OutBuf);
+			snprintf(PossibleResponses[2], sizeof PossibleResponses[2], "%s %s", MEMBUS_CODE_BADPARAM, OutBuf);
+			
+			MemBus_Write(OutBuf, false);
+			
+			while (!MemBus_Read(InBuf, false)) usleep(1000);
+			
+			if (!strncmp(InBuf, PossibleResponses[0], strlen(PossibleResponses[0])))
+			{
+				const char *TextPID = InBuf + strlen(PossibleResponses[0]);
+				
+				printf("PID for object %s: %s\n", argv[2], TextPID);
+			}
+			else if (!strcmp(PossibleResponses[1], InBuf))
+			{
+				printf(CONSOLE_COLOR_RED "Unable to retrieve PID for object %s" CONSOLE_ENDCOLOR "\n", argv[2]);
+				RV = FAILURE;
+			}
+			else if (!strcmp(PossibleResponses[2], InBuf))
+			{
+				SpitError("We are being told that MEMBUS_CODE_SENDPID is not understood. Please report this to Epoch.");
+				RV = FAILURE;
+			}
+			else
+			{
+				SpitError("Bad response received over membus. Please report this to Epoch.");
+				RV = FAILURE;
+			}
+			
+			ShutdownMemBus(false);
+			return RV;
+		}
+		else if (ArgIs("kill"))
+		{
+			char InBuf[MEMBUS_SIZE/2 - 1], OutBuf[MEMBUS_SIZE/2 - 1];
+			char PossibleResponses[3][MEMBUS_SIZE/2 - 1];
+			rStatus RV = SUCCESS;
+			
+			if (!InitMemBus(false)) return FAILURE;
+			
+			snprintf(OutBuf, sizeof OutBuf, "%s %s", MEMBUS_CODE_KILLOBJ, argv[2]);
+			
+			snprintf(PossibleResponses[0], sizeof PossibleResponses[0], "%s %s", MEMBUS_CODE_ACKNOWLEDGED, OutBuf);
+			snprintf(PossibleResponses[1], sizeof PossibleResponses[1], "%s %s", MEMBUS_CODE_FAILURE, OutBuf);
+			snprintf(PossibleResponses[2], sizeof PossibleResponses[2], "%s %s", MEMBUS_CODE_BADPARAM, OutBuf);
+			
+			MemBus_Write(OutBuf, false);
+			
+			while (!MemBus_Read(InBuf, false)) usleep(1000);
+			
+			if (!strcmp(InBuf, PossibleResponses[0]))
+			{
+				printf("Object %s successfully killed.\n", argv[2]);
+			}
+			else if (!strcmp(InBuf, PossibleResponses[1]))
+			{
+				printf(CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR "Unable to kill object %s.\n", argv[2]);
+				RV = FAILURE;
+			}
+			else if (!strcmp(InBuf, PossibleResponses[2]))
+			{
+				SpitError("We are being told that MEMBUS_CODE_KILLOBJ is not understood.\n"
+							"Please report to Epoch.");
+				RV = FAILURE;
+			}
+			else
+			{
+				SpitError("Bad response received over membus. This is likely a bug, please report to Epoch.");
+				RV = FAILURE;
+			}
+			
+			ShutdownMemBus(false);
+			
+			return RV;
 		}
 		else if (ArgIs("status"))
 		{
@@ -819,7 +906,7 @@ int main(int argc, char **argv)
 	}
 	else if (CmdIs("epoch")) /*Our main management program.*/
 	{	
-		return HandleEpochCommand(argc, argv);
+		return !HandleEpochCommand(argc, argv);
 	}
 	else if (CmdIs("init"))
 	{ /*This is a bit long winded here, however, it's better than devoting a function for it.*/

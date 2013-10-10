@@ -104,6 +104,8 @@
 #define MEMBUS_CODE_STATUS "OBJSTAT"
 #define MEMBUS_CODE_RUNLEVEL "RUNLEVEL"
 #define MEMBUS_CODE_GETRL "GETRL"
+#define MEMBUS_CODE_KILLOBJ "KILLOBJ"
+#define MEMBUS_CODE_SENDPID "SENDPID"
 
 /**Types, enums, structs and whatnot**/
 

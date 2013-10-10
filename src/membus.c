@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
@@ -610,6 +611,68 @@ void ParseMemBus(void)
 		{
 			MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_CADON, true);
 		}
+	}
+	else if (BusDataIs(MEMBUS_CODE_SENDPID))
+	{
+		char TmpBuf[MEMBUS_SIZE/2 - 1];
+		unsigned long LOffset = strlen(MEMBUS_CODE_SENDPID " ");
+		const char *TWorker = BusData + LOffset;
+		const ObjTable *TmpObj = NULL;
+		
+		if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
+		{ /*No argument?*/
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+			MemBus_Write(TmpBuf, true);
+	
+			return;
+		}
+		
+		if (!(TmpObj = LookupObjectInTable(TWorker)) || !TmpObj->Started)
+		{ /*Bad argument?*/
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+			MemBus_Write(TmpBuf, true);
+			
+			return;
+		}
+		
+		snprintf(TmpBuf, sizeof TmpBuf, "%s %s %lu", MEMBUS_CODE_SENDPID, TWorker,
+				(TmpObj->Opts.StopMode == STOP_PIDFILE ? ReadPIDFile(TmpObj) : TmpObj->ObjectPID));
+		MemBus_Write(TmpBuf, true);
+	}
+	else if (BusDataIs(MEMBUS_CODE_KILLOBJ))
+	{
+		char TmpBuf[MEMBUS_SIZE/2 - 1];
+		unsigned long LOffset = strlen(MEMBUS_CODE_KILLOBJ " ");
+		const char *TWorker = BusData + LOffset;
+		ObjTable *TmpObj = NULL;
+		
+		if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
+		{ /*No argument?*/
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+			MemBus_Write(TmpBuf, true);
+			
+			return;
+		}
+		
+		if (!(TmpObj = LookupObjectInTable(TWorker)) || !TmpObj->Started)
+		{ /*Bad argument?*/
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+			MemBus_Write(TmpBuf, true);
+			
+			return;
+		}
+		
+		/*Attempt to send SIGKILL to the PID.*/
+		if (kill((TmpObj->Opts.StopMode == STOP_PIDFILE ? ReadPIDFile(TmpObj) : TmpObj->ObjectPID), SIGKILL) != 0)
+		{
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+		}
+		else
+		{
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, BusData);
+			TmpObj->Started = false; /*Mark it as stopped now that it's dead.*/
+		}
+		MemBus_Write(TmpBuf, true);
 	}
 	/*Something we don't understand. Send BADPARAM.*/
 	else
