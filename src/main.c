@@ -854,7 +854,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 				}
 				else if (!strcmp(PossibleResponses[1], IBuf))
 				{
-					fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR
+					fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR 
 							"Unable to determine if object %s belongs to runlevel %s. Does it exist?\n", ObjectID, RL);
 					ShutdownMemBus(false);
 					return FAILURE;
@@ -1003,7 +1003,7 @@ int main(int argc, char **argv)
 			}
 			else if (!strcmp(MembusResponse, PossibleResponses[1]))
 			{
-				fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR "Failed to change runlevel to \"%s\".\n", argv[1]);
+				fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR "Failed to change runlevel to \"%s\".", argv[1]);
 				ShutdownMemBus(false);
 				
 				return 1;
@@ -1026,8 +1026,7 @@ int main(int argc, char **argv)
 		}
 		else
 		{
-			fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR "%s",
-					"Too many arguments. Specify one argument to set the runlevel.\n");
+			SmallError("Too many arguments. Specify one argument to set the runlevel.");
 			return 1;
 		}
 	}
@@ -1048,9 +1047,9 @@ int main(int argc, char **argv)
 			}
 			else
 			{
-				fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR
+				SmallError(
 						"Bad signal number. Please specify an integer signal number.\n"
-						"Pass no arguments to assume signal 15.\n");
+						"Pass no arguments to assume signal 15.");
 				
 				return 1;
 			}
@@ -1061,8 +1060,8 @@ int main(int argc, char **argv)
 		}
 		else
 		{
-			fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR
-					"Too many arguments. Syntax is killall5 -signum where signum\nis the integer signal number to send.");
+			SmallError("Too many arguments. Syntax is killall5 -signum where signum\n"
+						"is the integer signal number to send.");
 			return 1;
 		}
 		
@@ -1092,7 +1091,7 @@ int main(int argc, char **argv)
 	}
 	else
 	{
-		fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR "Unrecognized applet name.\n");
+		SmallError("Unrecognized applet name.");
 		return 1;
 	}
 	

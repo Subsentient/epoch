@@ -231,8 +231,8 @@ void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 	return;
 }
 
-/*Two little error handling functions. Yay!*/
-void SpitError(char *INErr)
+/*Three little error handling functions. Yay!*/
+void SpitError(const char *INErr)
 {
 	char HMS[3][16], MDY[3][16];
 	
@@ -242,7 +242,12 @@ void SpitError(char *INErr)
 			HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2], INErr);
 }
 
-void SpitWarning(char *INWarning)
+void SmallError(const char *INErr)
+{
+	fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR "%s\n", INErr);
+}
+
+void SpitWarning(const char *INWarning)
 {
 	char HMS[3][16], MDY[3][16];
 	
