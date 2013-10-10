@@ -206,10 +206,22 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		( "currentrunlevel:\n-----\n"
 		
 		  "Enter currentrunlevel to print the system's current runlevel."
+		),
+		
+		( "getpid objectid:\n-----\n"
+		
+		  "Retrieves the PID Epoch has on record for the given object. If a PID file is specified,\n"
+		  "then the PID will be gotten from there."
+		),
+		
+		( "kill objectid:\n-----\n"
+		
+		  "Sends SIGKILL to the object specified. If a PID file is specified, the PID\n"
+		  "will be retrieved from that."
 		)
 	};
 	
-	enum { HCMD, ENDIS, STAP, OBJRL, STATUS, SETCAD, CONFRL, CURRL };
+	enum { HCMD, ENDIS, STAP, OBJRL, STATUS, SETCAD, CONFRL, CURRL, GETPID, KILLOBJ, ENUM_MAX };
 	
 	
 	printf("%s\nCompiled %s\n\n", VERSIONSTRING, __DATE__);
@@ -220,7 +232,7 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		
 		puts(CONSOLE_COLOR_RED "Printing all help.\n" CONSOLE_ENDCOLOR "-----\n");
 		
-		for (; Inc <= CURRL; ++Inc)
+		for (; Inc < ENUM_MAX; ++Inc)
 		{
 			printf("%s %s\n\n", RootCommand, HelpMsgs[Inc]);
 		}
@@ -263,6 +275,16 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 	else if (!strcmp(InCmd, "currentrunlevel"))
 	{
 		printf("%s %s\n\n", RootCommand, HelpMsgs[CURRL]);
+		return;
+	}
+	else if (!strcmp(InCmd, "getpid"))
+	{
+		printf("%s %s\n\n", RootCommand, HelpMsgs[GETPID]);
+		return;
+	}
+	else if (!strcmp(InCmd, "kill"))
+	{
+		printf("%s %s\n\n", RootCommand, HelpMsgs[KILLOBJ]);
 		return;
 	}
 	else
@@ -524,7 +546,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			}
 			else
 			{
-				fprintf(stderr, CONSOLE_COLOR_RED "Failed to %s Ctrl-Alt-Del instant reboot!\n" CONSOLE_ENDCOLOR, ReportLump);
+				fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR "Failed to %s Ctrl-Alt-Del instant reboot!\n", ReportLump);
 				RetVal = FAILURE;
 			}
 			
@@ -604,7 +626,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			}
 			else if (!strcmp(PossibleResponses[1], InBuf))
 			{
-				printf(CONSOLE_COLOR_RED "Unable to retrieve PID for object %s" CONSOLE_ENDCOLOR "\n", argv[2]);
+				fprintf(stderr, CONSOLE_COLOR_RED "Unable to retrieve PID for object %s" CONSOLE_ENDCOLOR "\n", argv[2]);
 				RV = FAILURE;
 			}
 			else if (!strcmp(PossibleResponses[2], InBuf))
@@ -645,7 +667,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			}
 			else if (!strcmp(InBuf, PossibleResponses[1]))
 			{
-				printf(CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR "Unable to kill object %s.\n", argv[2]);
+				fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR "Unable to kill object %s.\n", argv[2]);
 				RV = FAILURE;
 			}
 			else if (!strcmp(InBuf, PossibleResponses[2]))
@@ -744,7 +766,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			}
 			else
 			{
-				fprintf(stderr, "Invalid runlevel option %s.\n", CArg);
+				fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR "Invalid runlevel option %s.\n", CArg);
 				ShutdownMemBus(false);
 				return FAILURE;
 			}
@@ -832,7 +854,8 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 				}
 				else if (!strcmp(PossibleResponses[1], IBuf))
 				{
-					printf("Unable to determine if object %s belongs to runlevel %s. Does it exist?\n", ObjectID, RL);
+					fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR
+							"Unable to determine if object %s belongs to runlevel %s. Does it exist?\n", ObjectID, RL);
 					ShutdownMemBus(false);
 					return FAILURE;
 				}
@@ -980,7 +1003,7 @@ int main(int argc, char **argv)
 			}
 			else if (!strcmp(MembusResponse, PossibleResponses[1]))
 			{
-				printf("Failed to change runlevel to \"%s\".\n", argv[1]);
+				fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR "Failed to change runlevel to \"%s\".\n", argv[1]);
 				ShutdownMemBus(false);
 				
 				return 1;
@@ -1003,7 +1026,8 @@ int main(int argc, char **argv)
 		}
 		else
 		{
-			printf("%s", "Too many arguments. Specify one argument to set the runlevel.\n");
+			fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR "%s",
+					"Too many arguments. Specify one argument to set the runlevel.\n");
 			return 1;
 		}
 	}
@@ -1024,7 +1048,9 @@ int main(int argc, char **argv)
 			}
 			else
 			{
-				SpitError("Bad signal number. Please specify an integer signal number.\nPass no arguments to assume signal 15.");
+				fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR
+						"Bad signal number. Please specify an integer signal number.\n"
+						"Pass no arguments to assume signal 15.\n");
 				
 				return 1;
 			}
@@ -1035,7 +1061,8 @@ int main(int argc, char **argv)
 		}
 		else
 		{
-			SpitError("Too many arguments. Syntax is killall5 -signum where signum is the integer signal number to send.");
+			fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR
+					"Too many arguments. Syntax is killall5 -signum where signum\nis the integer signal number to send.");
 			return 1;
 		}
 		
@@ -1065,7 +1092,7 @@ int main(int argc, char **argv)
 	}
 	else
 	{
-		SpitError("Unrecognized applet name.");
+		fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR "Unrecognized applet name.\n");
 		return 1;
 	}
 	
