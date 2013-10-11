@@ -187,7 +187,7 @@ void LaunchBootup(void)
 	
 	setsid();
 	
-	printf("\n%s\nCompiled %s\n", VERSIONSTRING, __DATE__);
+	printf("\n%s\nCompiled %s\n\n", VERSIONSTRING, __DATE__);
 	
 	/*Set environment variables.*/
 	setenv("USER", ENVVAR_USER, true);
@@ -195,6 +195,12 @@ void LaunchBootup(void)
 	setenv("HOME", ENVVAR_HOME, true);
 	setenv("SHELL", ENVVAR_SHELL, true);
 	
+	/*Add tiny message if we passed runlevel= on the kernel cli.*/
+	if (*CurRunlevel == 0)
+	{
+		printf("Booting to runlevel \"%s\".\n\n", CurRunlevel);
+	}
+
 	if (!InitConfig())
 	{ /*That is very very bad if we fail here.*/
 		EmergencyShell();
