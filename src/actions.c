@@ -196,7 +196,7 @@ void LaunchBootup(void)
 	setenv("SHELL", ENVVAR_SHELL, true);
 	
 	/*Add tiny message if we passed runlevel= on the kernel cli.*/
-	if (*CurRunlevel == 0)
+	if (*CurRunlevel != '\0')
 	{
 		printf("Booting to runlevel \"%s\".\n\n", CurRunlevel);
 	}
