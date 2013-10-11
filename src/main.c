@@ -1003,7 +1003,7 @@ int main(int argc, char **argv)
 			}
 			else if (!strcmp(MembusResponse, PossibleResponses[1]))
 			{
-				fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR "Failed to change runlevel to \"%s\".", argv[1]);
+				fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR "Failed to change runlevel to \"%s\".\n", argv[1]);
 				ShutdownMemBus(false);
 				
 				return 1;
