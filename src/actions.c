@@ -236,7 +236,7 @@ void LaunchBootup(void)
 	
 	if (EnableLogging)
 	{ /*Switch logging out of memory mode and write it's memory buffer to disk.*/
-		FILE *Descriptor = fopen(LOGDIR LOGFILE_NAME, "a");
+		FILE *Descriptor = fopen(LOGDIR LOGFILE_NAME, (BlankLogOnBoot ? "w" : "a"));
 		
 		LogInMemory = false;
 		

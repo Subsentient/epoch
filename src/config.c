@@ -185,6 +185,34 @@ rStatus InitConfig(void)
 
 			continue;
 		}
+		else if (!strncmp(Worker, "BlankLogOnBoot", strlen("BlankLogOnBoot")))
+		{ /*Should the log only hold the current boot cycle's logs?*/
+
+			CurrentAttribute = "BlankLogOnBoot";
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+
+			if (!strcmp(DelimCurr, "true"))
+			{
+				BlankLogOnBoot = true;
+			}
+			else if (!strcmp(DelimCurr, "false"))
+			{
+				BlankLogOnBoot = false;
+			}
+			else
+			{				
+				BlankLogOnBoot = false;
+				
+				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+			}
+
+			continue;
+		}
 		else if (!strncmp(Worker, "EnableLogging", strlen("EnableLogging")))
 		{
 			CurrentAttribute = "EnableLogging";

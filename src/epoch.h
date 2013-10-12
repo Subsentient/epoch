@@ -211,6 +211,7 @@ extern Bool AutoMountOpts[5];
 extern volatile unsigned long RunningChildCount;
 extern Bool EnableLogging;
 extern Bool LogInMemory;
+extern Bool BlankLogOnBoot;
 extern char *MemLogBuffer;
 extern struct _CTask CurrentTask;
 extern volatile BootMode CurrentBootMode;

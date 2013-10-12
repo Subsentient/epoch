@@ -18,6 +18,7 @@
 /**Constants**/
 Bool EnableLogging = false;
 Bool LogInMemory = true; /*This is necessary so long as we have a readonly filesystem.*/
+Bool BlankLogOnBoot = false;
 char *MemLogBuffer = NULL;
 
 /*Days in the month, for time stuff.*/
