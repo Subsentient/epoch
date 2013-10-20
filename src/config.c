@@ -150,6 +150,10 @@ rStatus InitConfig(void)
 
 	do /*This loop does most of the parsing.*/
 	{
+		
+		/*Allow whitespace to precede a line in case people want to create a block-styled appearance.*/
+		while (*Worker == ' ' || *Worker == '\t') ++Worker;
+		
 		/**Multi-line comment support: Multi-line comments are created in the following way:
 		 * >!> stuff
 		 * stuff
