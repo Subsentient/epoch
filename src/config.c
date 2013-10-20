@@ -113,6 +113,7 @@ rStatus InitConfig(void)
 	unsigned long LineNum = 1;
 	const char *CurrentAttribute = NULL;
 	Bool LongComment = false;
+	char ErrBuf[MAX_LINE_SIZE];
 	
 	enum { CONFIG_EMISSINGVAL = 1, CONFIG_EBADVAL, CONFIG_ETRUNCATED, CONFIG_EAFTER, CONFIG_EBEFORE, CONFIG_ELARGENUM };
 	
@@ -169,9 +170,8 @@ rStatus InitConfig(void)
 		{ /*It's probably not good to have stray multi-line comment terminators around.*/
 			if (!LongComment)
 			{
-				char TmpBuf[MAX_LINE_SIZE];
-				snprintf(TmpBuf, MAX_LINE_SIZE, "Stray multi-line comment terminator on line %lu\n", LineNum);
-				SpitWarning(TmpBuf);
+				snprintf(ErrBuf, MAX_LINE_SIZE, "Stray multi-line comment terminator on line %lu\n", LineNum);
+				SpitWarning(ErrBuf);
 				continue;
 			}
 			LongComment = false;
@@ -477,9 +477,8 @@ rStatus InitConfig(void)
 				
 				if (!(TDesc = fopen(TW, "r")))
 				{
-					char TmpBuf[1024];
-					snprintf(TmpBuf, sizeof TmpBuf, "Failed to set hostname from file \"%s\".\n", TW);
-					SpitWarning(TmpBuf);
+										snprintf(ErrBuf, sizeof ErrBuf, "Failed to set hostname from file \"%s\".\n", TW);
+					SpitWarning(ErrBuf);
 					continue;
 				}
 				
@@ -643,12 +642,11 @@ rStatus InitConfig(void)
 				}
 				else
 				{
-					char TmpBuf[1024];
-					
-					snprintf(TmpBuf, 1024, "Bad value %s for attribute ObjectOptions for object %s at line %lu.\n"
+										
+					snprintf(ErrBuf, sizeof ErrBuf, "Bad value %s for attribute ObjectOptions for object %s at line %lu.\n"
 							"Valid values are NOWAIT, PERSISTENT, RAWDESCRIPTION, SERVICE, AUTORESTART,\nand HALTONLY.",
 							DelimCurr, CurObj->ObjectID, LineNum);
-					SpitWarning(TmpBuf);
+					SpitWarning(ErrBuf);
 					break;
 				}
 			} while ((TWorker = NextSpace(TWorker)));
@@ -866,9 +864,8 @@ rStatus InitConfig(void)
 		}
 		else
 		{ /*No big deal.*/
-			char TmpBuf[1024];
-			snprintf(TmpBuf, 1024, "Unidentified attribute in epoch.conf on line %lu.", LineNum);
-			SpitWarning(TmpBuf);
+						snprintf(ErrBuf, sizeof ErrBuf, "Unidentified attribute in epoch.conf on line %lu.", LineNum);
+			SpitWarning(ErrBuf);
 			
 			continue;
 		}
@@ -876,9 +873,8 @@ rStatus InitConfig(void)
 	
 	if (LongComment)
 	{
-		char TmpBuf[1024];
-		snprintf(TmpBuf, 1024, "No comment terminator at end of configuration file.");
-		SpitWarning(TmpBuf);
+				snprintf(ErrBuf, sizeof ErrBuf, "No comment terminator at end of configuration file.");
+		SpitWarning(ErrBuf);
 	}
 	
 	switch (ScanConfigIntegrity())
