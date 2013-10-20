@@ -112,6 +112,7 @@ rStatus InitConfig(void)
 	char DelimCurr[MAX_LINE_SIZE] = { '\0' };
 	unsigned long LineNum = 1;
 	const char *CurrentAttribute = NULL;
+	Bool LongComment = false;
 	
 	enum { CONFIG_EMISSINGVAL = 1, CONFIG_EBADVAL, CONFIG_ETRUNCATED, CONFIG_EAFTER, CONFIG_EBEFORE, CONFIG_ELARGENUM };
 	
@@ -149,6 +150,44 @@ rStatus InitConfig(void)
 
 	do /*This loop does most of the parsing.*/
 	{
+		/**Multi-line comment support: Multi-line comments are created in the following way:
+		 * >!> stuff
+		 * stuff
+		 * stuff stuff
+		 * stuffy stuff
+		 * <!< stuff
+		 * stuff
+		 * 
+		 * It is not recognized to place a multi-line comment beginner or terminator anywhere but the beginning
+		 * of the line. As such, one may place do things like "ObjectID >!>" to create an object with ID ">!>". **/
+
+		if (!strncmp(Worker, "<!<", strlen("<!<")))
+		{ /*It's probably not good to have stray multi-line comment terminators around.*/
+			if (!LongComment)
+			{
+				char TmpBuf[MAX_LINE_SIZE];
+				snprintf(TmpBuf, MAX_LINE_SIZE, "Stray multi-line comment terminator on line %lu\n", LineNum);
+				SpitWarning(TmpBuf);
+				continue;
+			}
+			LongComment = false;
+			
+			/*Allow next line to begin right ater the terminator on the same line.*/
+			Worker += strlen("<!<");
+			while (*Worker == ' ' || *Worker == '\t') ++Worker;
+		}
+		else if (LongComment)
+		{
+			continue;
+		}
+		else if (!strncmp(Worker, ">!>", strlen(">!>")))
+		{
+			LongComment = true;
+			continue;
+		}
+		
+		/**Single-line comments are created by placing "#" at the beginning of the line. Placing them
+		 * anywhere else has no effect and as such '#' may be used in commands and object IDs and descriptions.**/
 		if (*Worker == '\n')
 		{ /*Empty line.*/
 			continue;
@@ -157,7 +196,9 @@ rStatus InitConfig(void)
 		{ /*Line is just a comment.*/
 			continue;
 		}
-		else if (!strncmp(Worker, "DisableCAD", strlen("DisableCAD")))
+		
+		/**Global configuration begins here.**/
+		if (!strncmp(Worker, "DisableCAD", strlen("DisableCAD")))
 		{ /*Should we disable instant reboots on CTRL-ALT-DEL?*/
 
 			CurrentAttribute = "DisableCAD";
@@ -828,6 +869,13 @@ rStatus InitConfig(void)
 			continue;
 		}
 	} while (++LineNum, (Worker = NextLine(Worker)));
+	
+	if (LongComment)
+	{
+		char TmpBuf[1024];
+		snprintf(TmpBuf, 1024, "No comment terminator at end of configuration file.");
+		SpitWarning(TmpBuf);
+	}
 	
 	switch (ScanConfigIntegrity())
 	{
