@@ -7,6 +7,7 @@
  * I can't see this file getting too big.**/
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include "epoch.h"
@@ -198,7 +199,50 @@ void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 		}
 		else
 		{
-			StreamLength -= strlen(IP2);
+			FILE *Descriptor = fopen("/dev/vcs", "r");
+			Bool Matches = true;
+			
+			if (Descriptor != NULL)
+			{
+				unsigned long Filesize = 0;
+				char *FileBuf = NULL;
+				char *Locator = NULL;
+				
+				/*Get the file size since nothing in those virtual filesystems
+				 * has it in the filesystem.*/
+				while (getc(Descriptor) != EOF) ++Filesize;
+				rewind(Descriptor);
+
+				FileBuf = malloc(Filesize + 1);
+				
+				fread(FileBuf, 1, Filesize, Descriptor);
+				FileBuf[Filesize] = '\0';
+				
+				fclose(Descriptor);
+				
+				if (!(Locator = strstr(FileBuf, IP2)))
+				{
+					Matches = false;
+				}
+				else
+				{
+					Locator += strlen(IP2);
+					
+					for (; *Locator != '\0'; ++Locator)
+					{
+						if (*Locator != ' ' && *Locator != '\t')
+						{
+							Matches = false;
+							break;
+						}
+					}
+				}
+				free(FileBuf);
+					
+			}
+			
+			if (Matches) StreamLength -= strlen(IP2);
+			else strncat(OutMsg, "\n", 1);
 		}
 	}
 	
