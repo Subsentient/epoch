@@ -222,7 +222,9 @@ void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 				
 				if (!(Locator = strstr(FileBuf, IP2)))
 				{
-					Matches = false;
+					Matches = true; /*Set this to true, because sometimes,
+					* weird stuff can happen that makes the current console
+					* not the current console.*/
 				}
 				else
 				{
@@ -242,7 +244,11 @@ void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 			}
 			
 			if (Matches) StreamLength -= strlen(IP2);
-			else strncat(OutMsg, "\n", 1);
+			else
+			{
+				strncat(OutMsg, "\n", 1);
+				strncat(StatusFormat, "\n", 1);
+			}
 		}
 	}
 	
