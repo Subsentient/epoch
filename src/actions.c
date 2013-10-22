@@ -217,17 +217,43 @@ void LaunchBootup(void)
 	
 	if (Hostname[0] != '\0')
 	{ /*The system hostname.*/
-		sethostname(Hostname, strlen(Hostname));
-	}
-	if (DisableCAD)
-	{
-		reboot(OSCTL_LINUX_DISABLE_CTRLALTDEL); /*Disable instant reboot on CTRL-ALT-DEL.*/
+		char TmpBuf[MAX_LINE_SIZE];
+		
+		if (!sethostname(Hostname, strlen(Hostname)))
+		{
+			snprintf(TmpBuf, MAX_LINE_SIZE, "Hostname set to \"%s\".", Hostname);
+		}
+		else
+		{
+			snprintf(TmpBuf, MAX_LINE_SIZE, "Unable to set hostname to \"%s\"!\n"
+					"Ensure that this is a valid hostname.", Hostname);
+			SpitWarning(TmpBuf);
+		}
+		
+		WriteLogLine(TmpBuf, true);
 	}
 	
-	if (EnableLogging)
-	{
-		WriteLogLine(CONSOLE_COLOR_YELLOW "Starting all objects and services.\n" CONSOLE_ENDCOLOR, true);
+	if (DisableCAD)
+	{	
+		const char *CADMsg[2] = { "Epoch has taken control of CTRL-ALT-DEL events.",
+							"Epoch was unable to take control of CTRL-ALT-DEL events." };
+			
+		if (!reboot(OSCTL_LINUX_DISABLE_CTRLALTDEL)) /*Disable instant reboot on CTRL-ALT-DEL.*/
+		{			
+			WriteLogLine(CADMsg[0], true);
+		}
+		else
+		{
+			WriteLogLine(CADMsg[1], true);
+			SpitWarning(CADMsg[1]);
+		}
 	}
+	else
+	{
+		WriteLogLine("Epoch will not request control of CTRL-ALT-DEL events.", true);
+	}
+	
+	WriteLogLine(CONSOLE_COLOR_YELLOW "Starting all objects and services.\n" CONSOLE_ENDCOLOR, true);
 	
 	if (!RunAllObjects(true))
 	{
@@ -251,14 +277,20 @@ void LaunchBootup(void)
 			fflush(Descriptor);
 			fclose(Descriptor);
 			
-			WriteLogLine(CONSOLE_COLOR_GREEN "Completed starting objects and services. Entering standby loop." CONSOLE_ENDCOLOR, true);
+			WriteLogLine(CONSOLE_COLOR_GREEN "Completed starting objects and services. Entering standby loop.\n" CONSOLE_ENDCOLOR, true);
 		}
 		free(MemLogBuffer);
 	}
 	
 	if (!InitMemBus(true))
 	{
-		SpitError("FAILURE IN MEMBUS! You won't be able to shut down the system with Epoch!");
+		const char *MemBusErr = CONSOLE_COLOR_RED "FAILURE IN MEMBUS! "
+								"You won't be able to shut down the system with Epoch!"
+								CONSOLE_ENDCOLOR;
+		
+		SpitError(MemBusErr);
+		WriteLogLine(MemBusErr, true);
+		
 		putc('\007', stderr); /*Beep.*/
 	}
 	
