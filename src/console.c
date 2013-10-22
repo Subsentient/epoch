@@ -273,7 +273,12 @@ void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 		snprintf(TimeFormat, 64, "[%s:%s:%s | %s/%s/%s] ",
 				HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2]);
 		
-		StatusFormat[strlen(StatusFormat) - 1] = '\0'; /*Get rid of the newline.*/
+		while (StatusFormat[strlen(StatusFormat) - 1] == '\n')
+		{
+			StatusFormat[strlen(StatusFormat) - 1] = '\0'; /*Get rid of the newline.*/
+		}
+
+		
 		snprintf(TmpBuf, MAX_LINE_SIZE, "%s%s %s", TimeFormat, InStream, StatusFormat);
 		WriteLogLine(TmpBuf, false);
 	}
