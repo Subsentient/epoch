@@ -26,6 +26,9 @@ static rStatus GetLineDelim(const char *InStream, char *OutStream);
 static rStatus ScanConfigIntegrity(void);
 static void ConfigProblem(short Type, const char *Attribute, const char *AttribVal, unsigned long LineNum);
 
+/*Used for error handling in InitConfig() by ConfigProblem().*/
+enum { CONFIG_EMISSINGVAL = 1, CONFIG_EBADVAL, CONFIG_ETRUNCATED, CONFIG_EAFTER, CONFIG_EBEFORE, CONFIG_ELARGENUM };
+
 /*Actual functions.*/
 static char *NextLine(const char *InStream)
 {
@@ -66,30 +69,30 @@ static void ConfigProblem(short Type, const char *Attribute, const char *AttribV
 { /*Special little error handler used by InitConfig() to prevent repetitive duplicate errors.*/
 	char TmpBuf[1024];
 	char LogBuffer[MAX_LINE_SIZE];
-	
+
 	switch (Type)
 	{
-		case 1:
+		case CONFIG_EMISSINGVAL:
 			snprintf(TmpBuf, 1024, "Missing or bad value for attribute %s in epoch.conf line %lu.\nIgnoring.",
 					Attribute, LineNum);
 			break;
-		case 2:
+		case CONFIG_EBADVAL:
 			snprintf(TmpBuf, 1024, "Bad value %s for attribute %s in epoch.conf line %lu.\n"
 					"Valid values are true and false. Ignoring.", AttribVal, Attribute, LineNum);
 			break;
-		case 3:
+		case CONFIG_ETRUNCATED:
 			snprintf(TmpBuf, 1024, "Attribute %s in epoch.conf line %lu has\n"
 					"abnormally long value and may have been truncated.", Attribute, LineNum);
 			break;
-		case 4:
+		case CONFIG_EAFTER:
 			snprintf(TmpBuf, 1024, "Attribute %s cannot be set after an ObjectID attribute; "
 					"epoch.conf line %lu. Ignoring.", Attribute, LineNum);
 			break;
-		case 5:
+		case CONFIG_EBEFORE:
 			snprintf(TmpBuf, 1024, "Attribute %s comes before any ObjectID attribute.\n"
 					"epoch.conf line %lu. Ignoring.", Attribute, LineNum);
 			break;
-		case 6:
+		case CONFIG_ELARGENUM:
 			snprintf(TmpBuf, 1024, "Attribute %s in epoch.conf line %lu has\n"
 					"abnormally high numeric value and may cause malfunctions.", Attribute, LineNum);
 			break;
@@ -114,8 +117,6 @@ rStatus InitConfig(void)
 	const char *CurrentAttribute = NULL;
 	Bool LongComment = false;
 	char ErrBuf[MAX_LINE_SIZE];
-	
-	enum { CONFIG_EMISSINGVAL = 1, CONFIG_EBADVAL, CONFIG_ETRUNCATED, CONFIG_EAFTER, CONFIG_EBEFORE, CONFIG_ELARGENUM };
 	
 	/*Get the file size of the config file.*/
 	if (stat(CONFIGDIR CONF_NAME, &FileStat) != 0)
