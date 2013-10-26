@@ -22,12 +22,11 @@
 /*Prototypes.*/
 static void MountVirtuals(void);
 static void *PrimaryLoop(void *ContinuePrimaryLoop);
-static void *MemBusLoop(void *ContinueMemBusLoop);
 
 /*Globals.*/
 volatile struct _HaltParams HaltParams = { -1, 0, 0, 0, 0, 0 };
 Bool AutoMountOpts[5] = { false, false, false, false, false };
-static volatile Bool ContinuePrimaryLoop = true, ContinueMemBusLoop = true;
+static volatile Bool ContinuePrimaryLoop = true;
 
 /*Functions.*/
 
@@ -84,7 +83,9 @@ static void *PrimaryLoop(void *ContinuePrimaryLoop)
 	
 	while (*(volatile Bool*)ContinuePrimaryLoop)
 	{
-		usleep(50000);
+		usleep(250000); /*Quarter of a second.*/
+		
+		ParseMemBus(); /*Check membus for new data.*/
 		
 		if (HaltParams.HaltMode != -1)
 		{
@@ -150,20 +151,6 @@ static void *PrimaryLoop(void *ContinuePrimaryLoop)
 		/*Lots of brilliant code here, but I typed it in invisible pixels.*/
 	}
 	
-	*(volatile Bool*)ContinuePrimaryLoop = true; /*Set back to true to indicate that we are done.*/
-	return NULL;
-}
-
-static void *MemBusLoop(void *ContinueMemBusLoop)
-{
-	while (*(volatile Bool*)ContinueMemBusLoop)
-	{
-		ParseMemBus(); /*Check membus for new data.*/
-		
-		usleep(250000);
-	}
-	
-	*(volatile Bool*)ContinueMemBusLoop = true; /*Set back to true to tell LaunchShutdown() we are done.*/
 	return NULL;
 }
 
@@ -195,7 +182,7 @@ void EmergencyShell(void)
 
 void LaunchBootup(void)
 { /*Handles what would happen if we were PID 1.*/
-	pthread_t PrimaryLoopThread, MemBusLoopThread;
+	pthread_t LoopThread;
 	Bool Insane = false;
 	
 	setsid();
@@ -307,17 +294,12 @@ void LaunchBootup(void)
 		putc('\007', stderr); /*Beep.*/
 	}
 	
-	/*We parse membus in a separate thread because otherwise it's possible to miss
-	 * a scheduled shutdown or alert while parsing a membus command.*/
-	pthread_create(&MemBusLoopThread, NULL, &MemBusLoop, (void*)&ContinueMemBusLoop);
-	pthread_detach(MemBusLoopThread);
-	
-	/*Start the primary loop's thread. It's responsible for handling
-	 * scheduled shutdowns and service auto-restarts, and more.
+	/*Start the primary loop's thread. It's responsible for parsimg membus,
+	 * handling scheduled shutdowns and service auto-restarts, and more.
 	 * We pass it a Bool so we can shut it down when the time comes.*/
-	pthread_create(&PrimaryLoopThread, NULL, &PrimaryLoop, (void*)&ContinuePrimaryLoop);
-	pthread_detach(PrimaryLoopThread); /*A lazier way than using attrs.*/
-		
+	pthread_create(&LoopThread, NULL, &PrimaryLoop, (void*)&ContinuePrimaryLoop);
+	pthread_detach(LoopThread); /*A lazier way than using attrs.*/
+	
 	while (!Insane) /*We're still pretty insane.*/
 	{ /*Now wait forever.*/
 		if (!RunningChildCount)
@@ -361,11 +343,6 @@ void LaunchShutdown(signed long Signal)
 	EnableLogging = false; /*Prevent any additional log entries.*/
 	
 	ContinuePrimaryLoop = false; /*Bring down the primary loop.*/
-	ContinueMemBusLoop = false; /*Stop checking the membus.*/
-	
-	/*There are two ways we could be shut down, so only one loop will respond.
-	 * We need to shut it down nonetheless.*/
-	while (!ContinueMemBusLoop && !ContinuePrimaryLoop) usleep(1000);
 	
 	if (!ShutdownMemBus(true))
 	{ /*Shutdown membus first, so no other signals will reach us.*/
