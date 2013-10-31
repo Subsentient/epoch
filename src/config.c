@@ -1002,16 +1002,15 @@ static rStatus GetLineDelim(const char *InStream, char *OutStream)
 
 rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char *Value)
 { /*Looks up the attribute for the passed ID and replaces the value for that attribute.*/
-	
-	/**Have fun reading this one, boys! Behehehehehh!!!
-	 * I'm going to submit this to one of those bad code
-	 * archive sites!**/
-	char *Worker1, *Worker2, *Worker3;
-	char *MasterStream, *HalfTwo;
-	char LineWorker[2][MAX_LINE_SIZE];
-	FILE *Descriptor;
+	char *MasterStream = NULL, *HalfTwo = NULL;
+	char *NewValue = NULL, *Worker = NULL, *Stopper = NULL, *LineArm = NULL;
+	char LineWorkerR[MAX_LINE_SIZE];
+	FILE *Descriptor = NULL;
+	char *WhiteSpace = NULL, *LineWorker = NULL;
 	struct stat FileStat;
-	unsigned long TempVal = 0;
+	unsigned long Inc = 0, Inc2 = 0, LineNum = 1;
+	unsigned long NumWhiteSpaces = 0;
+	Bool PresentHalfTwo = false;
 	
 	if (stat(CONFIGDIR CONF_NAME, &FileStat) != 0)
 	{
@@ -1027,104 +1026,157 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 	
 	MasterStream = malloc(FileStat.st_size + 1);
 	
+	/*Read in the file.*/
 	fread(MasterStream, 1, FileStat.st_size, Descriptor);
 	MasterStream[FileStat.st_size] = '\0';
 	
+	/*We don't need this anymore.*/
 	fclose(Descriptor);
 	
-	Worker1 = MasterStream;
-	
-	if (!(Worker1 = strstr(Worker1, ObjectID)))
+	if (*MasterStream == '\0')
 	{
-		snprintf(LineWorker[0], MAX_LINE_SIZE, "EditConfigValue(): No ObjectID %s present in epoch.conf.", ObjectID);
-		SpitError(LineWorker[0]);
 		free(MasterStream);
 		return FAILURE;
-	}
-	
-	Worker2 = Worker1;
-	
-	if ((Worker2 = strstr(Worker2, "ObjectID")))
-	{
-		*Worker2 = '\0';
 	}
 
-	if (!(Worker1 = strstr(Worker1, Attribute)))
+	/*Erase the newlines at the end of the file so we don't need to mess with them later.*/
+	for (; MasterStream[Inc2] != '\0'; ++Inc2);
+	
+	for (; MasterStream[Inc2] == '\n'; --Inc2)
 	{
-		snprintf(LineWorker[0], MAX_LINE_SIZE, "EditConfigValue(): Object %s specifies no %s attribute.", ObjectID, Attribute);
-		SpitError(LineWorker[0]);
-		free(MasterStream);
-		return FAILURE;
+		MasterStream[Inc2] = '\0';
 	}
 	
-	if (Worker2) *Worker2 = 'O'; /*Letter O.*/
-	
-	/*Now copy in the line with our value.*/
-	Worker2 = Worker1;
-	Worker3 = LineWorker[1];
-	
-	
-	for (; *Worker2 != '\n' && *Worker2 != '\0'; ++Worker2, ++Worker3)
+	/*Find the object ID of our object in config.*/
+	LineArm = MasterStream; do
 	{
-		*Worker3 = *Worker2;
-	}
-	*Worker3 = '\0';
-	
-	/*Now, terminate MasterStream at the beginning of our attribute, to keep it as a HalfOne for us.*/
-	*Worker1 = '\0';
-	
-	/*Allocate and copy in HalfTwo, which is everything beyond our line.*/
-	HalfTwo = malloc(strlen(Worker2) + 1);
-	snprintf(HalfTwo, strlen(Worker2) + 1, "%s", Worker2);
-	
-	/*Edit the value.*/
-	Worker3 = LineWorker[1];
-	
-	if (!strstr(Worker3, " "))
-	{
-		if (strlen(Worker3) < (MAX_LINE_SIZE - 1))
+		for (Inc = 0; LineArm[Inc] != '\n' && LineArm[Inc] != '\0'; ++Inc)
 		{
-			TempVal = strlen(Worker3);
-			Worker3[TempVal++] = ' ';
-			Worker3[TempVal] = '\0';
+			LineWorkerR[Inc] = LineArm[Inc];
 		}
-		else
-		{
-			snprintf(LineWorker[0], MAX_LINE_SIZE, "EditConfigValue(): Malformed attribute %s for object %s: No value.",
-					Attribute, ObjectID);
-			SpitError(LineWorker[0]);
+		LineWorkerR[Inc] = '\0';
+		
+		/*Skip past any whitespace at the beginning of the line.*/
+		for (Inc2 = 0; LineWorkerR[Inc2] == ' ' || LineWorkerR[Inc2] == '\t'; ++Inc2);
+		
+		LineWorker = &LineWorkerR[Inc2];
+		
+		if (strncmp(LineWorker, "ObjectID", strlen("ObjectID")) != 0)
+		{ /*Not ObjectID?*/
+			continue;
+		}
+		
+		/*Assume we found an ObjectID beyond here.*/
+		
+		/*Get to the beginning of the whitespace. We use Inc2 as a marker for it's beginning*/
+		for (Inc2 = 0; LineWorker[Inc2] != ' ' && LineWorker[Inc2] != '\t' &&
+			LineWorker[Inc2] != '\0' && LineWorker[Inc2] != '\n'; ++Inc2);
+		/*Count the number of whitespaces.*/
+		for (NumWhiteSpaces = 0 ; LineWorker[NumWhiteSpaces + Inc2] == ' ' ||
+			LineWorker[NumWhiteSpaces + Inc2] == '\t'; ++NumWhiteSpaces);
 			
-			free(HalfTwo);
+		if (LineWorker[NumWhiteSpaces + Inc2] == '\0' ||
+			LineWorker[NumWhiteSpaces + Inc2] == '\n')
+		{ /*Malformed config lines cannot be edited.*/
 			free(MasterStream);
 			return FAILURE;
 		}
 		
-	}
-	
-	for (; *Worker3 != ' ' && *Worker3 != '\n' &&
-		*Worker3 != '\0'; ++Worker3) ++TempVal; /*We have to get to the spaces anyways. Harvest string length up until a space.*/
-	for (; *Worker3 == ' '; ++Worker3) ++TempVal;
-	
-	snprintf(Worker3, MAX_LINE_SIZE - TempVal, "%s", Value);
-	
-	/*Now record it back to disk.*/
-	if ((Descriptor = fopen(CONFIGDIR CONF_NAME, "w")))
-	{
-		MasterStream = realloc(MasterStream, (TempVal = strlen(MasterStream) + strlen(LineWorker[1]) + strlen(HalfTwo) + 1));
+		if (strcmp(&LineWorker[NumWhiteSpaces + Inc2], ObjectID) != 0)
+		{ /*Not the ObjectID we were looking for?*/
+			continue;
+		}
 		
-		/*We do a really ugly hack here. See first argument to snprintf().*/
-		snprintf(&MasterStream[strlen(MasterStream)], TempVal, "%s%s", LineWorker[1], HalfTwo);
-		
-		fwrite(MasterStream, 1, strlen(MasterStream), Descriptor);
-		fclose(Descriptor);
-	}
-	else
-	{
-		SpitError("EditConfigValue(): Unable to open " CONFIGDIR CONF_NAME " for writing. No write permission?");
+		/*We found it! Save the pointer.*/
+		Worker = LineArm + Inc2 + NumWhiteSpaces + strlen(ObjectID);
+	} while (++LineNum, (LineArm = NextLine(LineArm)));
+	
+	if (Worker == NULL)
+	{ /*If we didn't find it.*/
+		free(MasterStream);
+		return FAILURE;
 	}
 	
-	free(MasterStream);
+	/*Do not accidentally jump to a different object's attribute of the same name.*/
+	if ((Stopper = strstr(Worker, "ObjectID")) != NULL)
+	{
+		*Stopper = '\0';
+	}
+	
+	if (!(Worker = strstr(Worker, Attribute)) || (Worker > &LineArm[0] && *(Worker - 1) == '#'))
+	{ /*Doesn't exist for that object? We also ignore comments.*/
+		free(MasterStream);
+		return FAILURE;
+	}
+	
+	if (Stopper) *Stopper = 'O'; /*set back, use capital O.*/
+	
+	/*Null-terminate half one.*/
+	*Worker++ = '\0';
+	
+	/*Jump to the whitespace.*/
+	for (Inc = 0; Worker[Inc] != ' ' && Worker[Inc] != '\t' &&
+		Worker[Inc] != '\n' && Worker[Inc] != '\0'; ++Inc);
+		
+	if (Worker[Inc] == '\n' || Worker[Inc] == '\0')
+	{ /*Malformed line. Can't edit it.*/
+		free(MasterStream);
+		return FAILURE;
+	}
+		
+	/*Count the whitespace.*/
+	for (NumWhiteSpaces = 0, Worker += Inc; Worker[NumWhiteSpaces] == ' ' ||
+		Worker[NumWhiteSpaces] == '\t'; ++NumWhiteSpaces);
+	
+	WhiteSpace = malloc(NumWhiteSpaces + 1);
+	
+	/*Save the whitespace while incrementing Worker to the value of this line at the same time.*/
+	for (Inc2 = 0; *Worker == ' ' || *Worker == '\t'; ++Inc2, ++Worker)
+	{
+		WhiteSpace[Inc2] = *Worker;
+	}
+	WhiteSpace[Inc2] = '\0';
+	
+	/*Jump past the newline on the end of this line.*/
+	for (; *Worker != '\n' && *Worker != '\0'; ++Worker);
+	
+	if (*Worker != '\0')
+	{ /*There is more beyond this line.*/
+		PresentHalfTwo = true;
+		HalfTwo = malloc(strlen(Worker) + 1);
+		
+		strncpy(HalfTwo, Worker, strlen(Worker) + 1); /*Plus one to copy the null terminator.*/
+		
+	}
+	
+	/*Set up the new value.*/
+	NewValue = malloc(strlen(Attribute) + NumWhiteSpaces + strlen(Value) + 1);
+	snprintf(NewValue, (strlen(Attribute) + NumWhiteSpaces + strlen(Value) + 1),
+			"%s%s%s", Attribute, WhiteSpace, Value);
+	
+	/*Wwe copied the whitespace back into the new value, so release it's memory now.*/
+	free(WhiteSpace);
+	
+	/*Reallocate MasterStream to accomodate the new data.*/
+	MasterStream = realloc(MasterStream, strlen(MasterStream) + strlen(NewValue) +
+							(PresentHalfTwo ? strlen(HalfTwo) : 0) + 1);
+							
+	/*Copy in the new string.*/
+	snprintf( (MasterStream + strlen(MasterStream)), (strlen(MasterStream) +
+				strlen(NewValue) +(PresentHalfTwo ? strlen(HalfTwo) : 0) + 1),
+				"%s%s", NewValue, (PresentHalfTwo ? HalfTwo : ""));
+				
+	/*Release the other variables now that we don't need them.*/
+	free(NewValue);
 	free(HalfTwo);
+	
+	/*Write the configuration back to disk.*/
+	Descriptor = fopen(CONFIGDIR CONF_NAME, "w");
+	fwrite(MasterStream, 1, strlen(MasterStream), Descriptor);
+	fclose(Descriptor);
+	
+	/*Release MasterStream.*/
+	free(MasterStream);
 	
 	return SUCCESS;
 }
