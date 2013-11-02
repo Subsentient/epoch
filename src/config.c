@@ -827,6 +827,7 @@ rStatus InitConfig(void)
 		{ /*Runlevel.*/
 			char *TWorker;
 			char TRL[MAX_DESCRIPT_SIZE], *TRL2;
+			static const ObjTable *LastObject = NULL;
 			
 			CurrentAttribute = "ObjectRunlevels";
 			if (!CurObj)
@@ -834,6 +835,17 @@ rStatus InitConfig(void)
 				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
+			
+			if (CurObj == LastObject)
+			{ /*We cannot have multiple runlevel attributes because it messes up config file editing.*/
+				snprintf(ErrBuf, sizeof ErrBuf, "Object %s has more than one ObjectRunlevels line.\n"
+						"This is not advised because the config file editing code is not smart enough\n"
+						"to handle multiple lines. You should put the additional runlevels on the same line.\n"
+						"Line %lu in epoch.conf",
+						CurObj->ObjectID, LineNum);
+				SpitWarning(ErrBuf);
+			}
+			LastObject = CurObj;
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
@@ -1220,8 +1232,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->Opts.StopMode = STOP_NONE;
 	Worker->Opts.CanStop = true;
 	Worker->ObjectPID = 0;
-	Worker->ObjectRunlevels = malloc(sizeof(struct _RLTree));
-	Worker->ObjectRunlevels->Next = NULL;
+	Worker->ObjectRunlevels = NULL;
 	Worker->Opts.NoWait = false;
 	Worker->Enabled = 2; /*We can indeed store this in a bool you know. There's no 1 bit datatype.*/
 	Worker->Opts.HaltCmdOnly = false;
@@ -1403,6 +1414,15 @@ void ObjRL_AddRunlevel(const char *InRL, ObjTable *InObj)
 {
 	struct _RLTree *Worker = InObj->ObjectRunlevels;
 	
+	if (InObj->ObjectRunlevels == NULL)
+	{
+		InObj->ObjectRunlevels = malloc(sizeof(struct _RLTree));
+		
+		InObj->ObjectRunlevels->Prev = NULL;
+		InObj->ObjectRunlevels->Next = NULL;
+		Worker = InObj->ObjectRunlevels;
+	}
+	
 	while (Worker->Next != NULL) Worker = Worker->Next;
 	
 	Worker->Next = malloc(sizeof(struct _RLTree));
@@ -1421,26 +1441,31 @@ Bool ObjRL_DelRunlevel(const char *InRL, ObjTable *InObj)
 		return false;
 	}
 	
-	for (; Worker->Next != NULL; Worker = Worker->Next)
+	for (; Worker->Next; Worker = Worker->Next)
 	{
 		if (!strcmp(InRL, Worker->RL))
 		{
-			Worker->Next->Prev = Worker->Prev;
-			
-			if (Worker->Prev)
-			{
-				Worker->Prev->Next = Worker->Next;
+			if (Worker == InObj->ObjectRunlevels)
+			{ /*If it's the first node*/
+				
+				if (InObj->ObjectRunlevels->Next->Next != NULL)
+				{ /*Are there other runlevels enabled, or just us?*/
+					InObj->ObjectRunlevels->Next->Prev = NULL;
+					InObj->ObjectRunlevels = InObj->ObjectRunlevels->Next;
+					free(Worker);
+				}
+				else
+				{ /*Apparently just us.*/
+					ObjRL_ShutdownRunlevels(InObj);
+				}
+				
+				return true;
 			}
-			else if (Worker->Next->Next)
-			{
-				InObj->ObjectRunlevels = Worker->Next;
-			}
-			else
-			{
-				InObj->ObjectRunlevels = NULL;
-				free(Worker->Next);
-			}
-			
+				
+			/*Otherwise, do this.*/
+			Worker->Prev->Next = Worker->Next;
+			Worker->Next->Prev = Worker->Prev;	
+				
 			free(Worker);
 			
 			return true;
@@ -1537,6 +1562,12 @@ rStatus ReloadConfig(void)
 		SWorker->Next = malloc(sizeof(ObjTable));
 		SWorker->Next->Next = NULL;
 		SWorker->Next->Prev = SWorker;
+		
+		if (!Worker->ObjectRunlevels)
+		{
+			continue;
+		}
+		
 		RLTemp2 = SWorker->ObjectRunlevels = malloc(sizeof(struct _RLTree));
 		
 		for (RLTemp1 = Worker->ObjectRunlevels; RLTemp1->Next; RLTemp1 = RLTemp1->Next)
