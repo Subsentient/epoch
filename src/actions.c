@@ -143,7 +143,15 @@ static void *PrimaryLoop(void *ContinuePrimaryLoop)
 			{ /*Handle objects intended for automatic restart.*/
 				if (Worker->Opts.AutoRestart && Worker->Started && !ObjectProcessRunning(Worker))
 				{
+					char TmpBuf[MAX_LINE_SIZE];
+					
+					snprintf(TmpBuf, MAX_LINE_SIZE, "AUTORESTART: Object %s is not running. Restarting.", Worker->ObjectID);
+					WriteLogLine(TmpBuf, true);
+					
 					ProcessConfigObject(Worker, true, false);
+					
+					snprintf(TmpBuf, MAX_LINE_SIZE, "AUTORESTART: Object %s successfully restarted.", Worker->ObjectID);
+					WriteLogLine(TmpBuf, true);
 				}
 			}
 		}
