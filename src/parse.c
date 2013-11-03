@@ -293,7 +293,11 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		}
 	}
 	else
-	{		
+	{	
+		Bool LastAutoRestartState = CurObj->Opts.AutoRestart;
+		/*We need to do this so objects that are stopped have no chance of restarting themselves.*/
+		CurObj->Opts.AutoRestart = false;
+		
 		switch (CurObj->Opts.StopMode)
 		{
 			case STOP_COMMAND:
@@ -379,6 +383,9 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				break;
 			}
 		}
+		
+		/*Now that the object is stopped, we should reset the autorestart to it's previous state.*/
+		CurObj->Opts.AutoRestart = LastAutoRestartState;
 	}
 	
 	return ExitStatus;
