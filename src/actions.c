@@ -274,20 +274,23 @@ void LaunchBootup(void)
 		
 		LogInMemory = false;
 		
-		if (!Descriptor)
+		if (MemLogBuffer != NULL)
 		{
-			SpitWarning("Cannot record logs to disk. Shutting down logging.");
-			EnableLogging = false;
+			if (!Descriptor)
+			{
+				SpitWarning("Cannot record logs to disk. Shutting down logging.");
+				EnableLogging = false;
+			}
+			else
+			{
+				fwrite(MemLogBuffer, 1, strlen(MemLogBuffer), Descriptor);
+				fflush(Descriptor);
+				fclose(Descriptor);
+				
+				WriteLogLine(CONSOLE_COLOR_GREEN "Completed starting objects and services. Entering standby loop.\n" CONSOLE_ENDCOLOR, true);
+			}
+			free(MemLogBuffer);
 		}
-		else
-		{
-			fwrite(MemLogBuffer, 1, strlen(MemLogBuffer), Descriptor);
-			fflush(Descriptor);
-			fclose(Descriptor);
-			
-			WriteLogLine(CONSOLE_COLOR_GREEN "Completed starting objects and services. Entering standby loop.\n" CONSOLE_ENDCOLOR, true);
-		}
-		free(MemLogBuffer);
 	}
 	
 	if (!InitMemBus(true))
