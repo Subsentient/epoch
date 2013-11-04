@@ -975,7 +975,8 @@ static rStatus GetLineDelim(const char *InStream, char *OutStream)
 	unsigned long cOffset, Inc = 0;
 
 	/*Jump to the first tab or space. If we get a newline or null, problem.*/
-	while (InStream[Inc] != '\t' && InStream[Inc] != ' ' && InStream[Inc] != '\n' && InStream[Inc] != '\0') ++Inc;
+	while (InStream[Inc] != '\t' && InStream[Inc] != ' ' && InStream[Inc] != '=' &&
+			InStream[Inc] != '\n' && InStream[Inc] != '\0') ++Inc;
 
 	/*Hit a null or newline before tab or space. ***BAD!!!*** */
 	if (InStream[Inc] == '\0' || InStream[Inc] == '\n')
@@ -996,9 +997,16 @@ static rStatus GetLineDelim(const char *InStream, char *OutStream)
 
 		return FAILURE;
 	}
-
-	/*Continue until we are past all tabs and spaces.*/
-	while (InStream[Inc] == ' ' || InStream[Inc] == '\t') ++Inc;
+	
+	if (InStream[Inc] == '=')
+	{ /*We give the choice of using whitespace or using an equals sign. It's only nice.*/
+		++Inc;
+	}
+	else
+	{
+		/*Continue until we are past all tabs and spaces.*/
+		while (InStream[Inc] == ' ' || InStream[Inc] == '\t') ++Inc;
+	}
 
 	cOffset = Inc; /*Store this offset.*/
 
@@ -1082,10 +1090,17 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 		
 		/*Get to the beginning of the whitespace. We use Inc2 as a marker for it's beginning*/
 		for (Inc2 = 0; LineWorker[Inc2] != ' ' && LineWorker[Inc2] != '\t' &&
-			LineWorker[Inc2] != '\0' && LineWorker[Inc2] != '\n'; ++Inc2);
-		/*Count the number of whitespaces.*/
-		for (NumWhiteSpaces = 0 ; LineWorker[NumWhiteSpaces + Inc2] == ' ' ||
-			LineWorker[NumWhiteSpaces + Inc2] == '\t'; ++NumWhiteSpaces);
+			LineWorker[Inc2] != '=' && LineWorker[Inc2] != '\0' && LineWorker[Inc2] != '\n'; ++Inc2);
+		
+		if (LineWorker[Inc2] == '=')
+		{ /* We allow both spaces and whitespace as the delimiter.*/
+			NumWhiteSpaces = 1;
+		}
+		else
+		{ /*Count the number of whitespaces.*/
+			for (NumWhiteSpaces = 0 ; LineWorker[NumWhiteSpaces + Inc2] == ' ' ||
+				LineWorker[NumWhiteSpaces + Inc2] == '\t'; ++NumWhiteSpaces);
+		}
 			
 		if (LineWorker[NumWhiteSpaces + Inc2] == '\0' ||
 			LineWorker[NumWhiteSpaces + Inc2] == '\n')
@@ -1128,22 +1143,29 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 	
 	/*Jump to the whitespace.*/
 	for (Inc = 0; Worker[Inc] != ' ' && Worker[Inc] != '\t' &&
-		Worker[Inc] != '\n' && Worker[Inc] != '\0'; ++Inc);
+		Worker[Inc] != '=' && Worker[Inc] != '\n' && Worker[Inc] != '\0'; ++Inc);
 		
 	if (Worker[Inc] == '\n' || Worker[Inc] == '\0')
 	{ /*Malformed line. Can't edit it.*/
 		free(MasterStream);
 		return FAILURE;
 	}
-		
-	/*Count the whitespace.*/
-	for (NumWhiteSpaces = 0, Worker += Inc; Worker[NumWhiteSpaces] == ' ' ||
-		Worker[NumWhiteSpaces] == '\t'; ++NumWhiteSpaces);
+	
+	if (Worker[Inc] == '=')
+	{
+		NumWhiteSpaces = 1;
+		Worker += Inc;
+	}
+	else
+	{ /*Count the whitespace.*/
+		for (NumWhiteSpaces = 0, Worker += Inc; Worker[NumWhiteSpaces] == ' ' ||
+			Worker[NumWhiteSpaces] == '\t'; ++NumWhiteSpaces);
+	}
 	
 	WhiteSpace = malloc(NumWhiteSpaces + 1);
 	
 	/*Save the whitespace while incrementing Worker to the value of this line at the same time.*/
-	for (Inc2 = 0; *Worker == ' ' || *Worker == '\t'; ++Inc2, ++Worker)
+	for (Inc2 = 0; *Worker == '=' || *Worker == ' ' || *Worker == '\t'; ++Inc2, ++Worker)
 	{
 		WhiteSpace[Inc2] = *Worker;
 	}
