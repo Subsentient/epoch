@@ -21,7 +21,7 @@ char Hostname[MAX_LINE_SIZE] = { '\0' };
 /*Function forward declarations for all the statics.*/
 static ObjTable *AddObjectToTable(const char *ObjectID);
 static char *NextLine(const char *InStream);
-static char *NextSpace(const char *InStream);
+static char *WhitespaceArg(const char *InStream);
 static rStatus GetLineDelim(const char *InStream, char *OutStream);
 static rStatus ScanConfigIntegrity(void);
 static void ConfigProblem(short Type, const char *Attribute, const char *AttribVal, unsigned long LineNum);
@@ -47,20 +47,23 @@ static char *NextLine(const char *InStream)
 	return (char*)InStream;
 }
 
-static char *NextSpace(const char *InStream)
+static char *WhitespaceArg(const char *InStream)
 {  /*This is used for parsing lines that need to be divided by spaces.*/
-	if (!(InStream = strstr(InStream, " ")))
+	while (*InStream != ' ' && *InStream != '\t' &&
+			*InStream != '\n' && *InStream != '\0') ++InStream;
+	
+	if (*InStream == '\n' || *InStream == '\0')
 	{
 		return NULL;
 	}
-
-	if (*(InStream + 1) == '\0')
+	
+	while (*InStream == ' ' || *InStream == '\t') ++InStream;
+	
+	if (*InStream == '\0' || *InStream == '\n')
 	{
 		return NULL;
 	}
-
-	++InStream;
-
+	
 	return (char*)InStream;
 }
 
@@ -364,7 +367,7 @@ rStatus InitConfig(void)
 					continue;
 				}
 					
-			} while ((TWorker = NextSpace(TWorker)));
+			} while ((TWorker = WhitespaceArg(TWorker)));
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
@@ -650,7 +653,7 @@ rStatus InitConfig(void)
 					SpitWarning(ErrBuf);
 					break;
 				}
-			} while ((TWorker = NextSpace(TWorker)));
+			} while ((TWorker = WhitespaceArg(TWorker)));
 			
 			continue;
 		}
@@ -865,7 +868,7 @@ rStatus InitConfig(void)
 				
 				ObjRL_AddRunlevel(TRL, CurObj);
 				
-			} while ((TWorker = NextSpace(TWorker)));
+			} while ((TWorker = WhitespaceArg(TWorker)));
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
