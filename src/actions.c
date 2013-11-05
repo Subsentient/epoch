@@ -148,9 +148,17 @@ static void *PrimaryLoop(void *ContinuePrimaryLoop)
 					snprintf(TmpBuf, MAX_LINE_SIZE, "AUTORESTART: Object %s is not running. Restarting.", Worker->ObjectID);
 					WriteLogLine(TmpBuf, true);
 					
-					ProcessConfigObject(Worker, true, false);
+					if (ProcessConfigObject(Worker, true, false);
+					{
+						snprintf(TmpBuf, MAX_LINE_SIZE, "AUTORESTART: Object %s successfully restarted.", Worker->ObjectID);
+					}
+					else
+					{
+						snprintf(TmpBuf, MAX_LINE_SIZE, "AUTORESTART: " CONSOLE_COLOR_RED "Failed" CONSOLE_ENDCOLOR
+								" to restart object %s automatically.\nMarking object stopped.", Worker->ObjectID);
+						Worker->Started = false;
+					}
 					
-					snprintf(TmpBuf, MAX_LINE_SIZE, "AUTORESTART: Object %s successfully restarted.", Worker->ObjectID);
 					WriteLogLine(TmpBuf, true);
 				}
 			}
