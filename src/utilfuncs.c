@@ -137,84 +137,38 @@ void MinsToDate(unsigned long MinInc, unsigned long *OutHr, unsigned long *OutMi
 				unsigned long *OutMonth, unsigned long *OutDay, unsigned long *OutYear)
 {  /*Returns the projected date that it will be after MinInc minutes.
 	* Not really a good example of a function that belongs in console.c.*/
-	time_t CoreClock;
-	struct tm *TimeStruct = NULL;
-	unsigned long Hr, Min, Day, Mon, Year;
+	time_t CurrentTime, LaterTime;
+	struct tm OutTime;
 	
-	time(&CoreClock);
-	TimeStruct = localtime(&CoreClock);
+	time(&CurrentTime);
 	
-	Hr = TimeStruct->tm_hour;
-	Min = TimeStruct->tm_min;
-	Mon = TimeStruct->tm_mon + 1;
-	Day = TimeStruct->tm_mday;
-	Year = TimeStruct->tm_year + 1900;
+	LaterTime = CurrentTime + 60 * MinInc;
+
+	localtime_r(&LaterTime, &OutTime);
 	
-	for (; MinInc; --MinInc)
-	{
-		if (Min + 1 == 60)
-		{
-			Min = 0;
-			
-			if (Hr + 1 == 24)
-			{
-				Hr = 0;
-				
-				if (Day == MDays[Mon - 1])
-				{
-					Day = 1;
-					
-					if (Mon == 12)
-					{
-						Mon = 1;
-						
-						++Year;
-					}
-					else
-					{
-						++Mon;
-					}
-				}
-				else
-				{
-					++Day;
-				}
-	
-			}
-			else
-			{
-				++Hr;
-			}
-		}
-		else
-		{
-			++Min;
-		}
-	}
-	
-	*OutHr = Hr;
-	*OutMin = Min;
-	*OutMonth = Mon;
-	*OutDay = Day;
-	*OutYear = Year;
+	*OutHr = OutTime.tm_hour;
+	*OutMin = OutTime.tm_min;
+	*OutMonth = OutTime.tm_mon + 1;
+	*OutDay = OutTime.tm_mday;
+	*OutYear = OutTime.tm_year + 1900;
 }
 
 unsigned long DateDiff(unsigned long InHr, unsigned long InMin, unsigned long *OutMonth,
 						unsigned long *OutDay, unsigned long *OutYear)
 { /*Provides a true date as to when the next occurrence of this hour and minute will return via pointers, and
 	* also provides the number of minutes that will elapse during the time between. You can pass NULL for the pointers.*/
-	struct tm *TimeP;
+	struct tm TimeStruct;
 	time_t CoreClock;
 	unsigned long Hr, Min, Month, Day, Year, IncMin = 0;
 	
 	time(&CoreClock);
-	TimeP = localtime(&CoreClock);
+	localtime_r(&CoreClock, &TimeStruct);
 	
-	Hr = TimeP->tm_hour;
-	Min = TimeP->tm_min;
-	Month = TimeP->tm_mon + 1;
-	Day = TimeP->tm_mday;
-	Year = TimeP->tm_year + 1900;
+	Hr = TimeStruct.tm_hour;
+	Min = TimeStruct.tm_min;
+	Month = TimeStruct.tm_mon + 1;
+	Day = TimeStruct.tm_mday;
+	Year = TimeStruct.tm_year + 1900;
 	
 	for (; Hr != InHr || Min != InMin; ++IncMin)
 	{
@@ -266,7 +220,7 @@ unsigned long DateDiff(unsigned long InHr, unsigned long InMin, unsigned long *O
 
 void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutMonth, char *OutDay, char *OutYear)
 { /*You can put NULL for items that you don't want the value of.*/
-	struct tm *TimeP;
+	struct tm TimeStruct;
 	long HMS_I[3];
 	long MDY_I[3];
 	char *HMS[3];
@@ -285,15 +239,15 @@ void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutMonth, cha
 	
 	/*Actually get the time.*/
 	time(&TimeT);
-	TimeP = localtime(&TimeT);
+	localtime_r(&TimeT, &TimeStruct);
 	
-	HMS_I[0] = TimeP->tm_hour;
-	HMS_I[1] = TimeP->tm_min;
-	HMS_I[2] = TimeP->tm_sec;
+	HMS_I[0] = TimeStruct.tm_hour;
+	HMS_I[1] = TimeStruct.tm_min;
+	HMS_I[2] = TimeStruct.tm_sec;
 	
-	MDY_I[0] = TimeP->tm_mon + 1;
-	MDY_I[1] = TimeP->tm_mday;
-	MDY_I[2] = TimeP->tm_year + 1900;
+	MDY_I[0] = TimeStruct.tm_mon + 1;
+	MDY_I[1] = TimeStruct.tm_mday;
+	MDY_I[2] = TimeStruct.tm_year + 1900;
 	
 	for (; Inc < 3; ++Inc)
 	{
@@ -433,4 +387,41 @@ unsigned long ReadPIDFile(const ObjTable *InObj)
 	}
 	
 	return InPID;
+}
+
+short GetStateOfTime(unsigned long Hr, unsigned long Min, unsigned long Sec,
+				unsigned long Month, unsigned long Day, unsigned long Year)
+{  /*This function is used to determine if the passed time is in the past,
+	* present, or future.*/
+	time_t CurrentTime, PassedTime;
+	struct tm PassedTimeS;
+	
+	time(&CurrentTime);
+	
+	PassedTimeS.tm_year = Year - 1900;
+	PassedTimeS.tm_mon = Month - 1;
+	PassedTimeS.tm_mday = Day;
+	PassedTimeS.tm_hour = Hr;
+	PassedTimeS.tm_min = Min;
+	PassedTimeS.tm_sec = Sec;
+	PassedTimeS.tm_isdst = -1;
+	
+	if ((PassedTime = mktime(&PassedTimeS)) == -1)
+	{ /*Not entirely sure how else I can do this.*/
+		return -1;
+	}
+	
+	if (PassedTime < CurrentTime)
+	{ /*The passed time is in the past.*/
+		return 2;
+	}
+	else if (PassedTime == CurrentTime)
+	{ /*The passed time is in the present.*/
+		return 1;
+	}
+	else
+	{ /*The passed time is in the future.*/
+		return 0;
+	}
+	
 }

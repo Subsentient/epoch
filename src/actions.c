@@ -76,9 +76,9 @@ static void MountVirtuals(void)
 
 static void *PrimaryLoop(void *ContinuePrimaryLoop)
 { /*Loop that provides essentially everything we cycle through.*/
-	unsigned long CurHr, CurMin, CurSec, CurMon, CurDay, CurYear;
+	unsigned long CurMin = 0, CurSec = 0;
 	ObjTable *Worker = NULL;
-	struct tm *TimePtr;
+	struct tm TimeStruct;
 	time_t TimeCore;
 	
 	while (*(volatile Bool*)ContinuePrimaryLoop)
@@ -90,24 +90,23 @@ static void *PrimaryLoop(void *ContinuePrimaryLoop)
 		if (HaltParams.HaltMode != -1)
 		{
 			time(&TimeCore);
-			TimePtr = localtime(&TimeCore);
+			localtime_r(&TimeCore, &TimeStruct);
 			
-			CurHr = TimePtr->tm_hour;
-			CurMin = TimePtr->tm_min;
-			CurSec = TimePtr->tm_sec;
-			CurMon = TimePtr->tm_mon + 1;
-			CurDay = TimePtr->tm_mday;
-			CurYear = TimePtr->tm_year + 1900;
+			CurMin = TimeStruct.tm_min;
+			CurSec = TimeStruct.tm_sec;
 			
-			if (CurHr == HaltParams.TargetHour && CurMin == HaltParams.TargetMin &&
-				CurSec == HaltParams.TargetSec && CurMon == HaltParams.TargetMonth &&
-				CurDay == HaltParams.TargetDay && CurYear == HaltParams.TargetYear)
-			{				
+			/*Allow a membus job to finish before shutdown, but actually do the shutdown afterwards.*/
+			if (GetStateOfTime(HaltParams.TargetHour, HaltParams.TargetMin, HaltParams.TargetSec,
+					HaltParams.TargetMonth, HaltParams.TargetDay, HaltParams.TargetYear))
+			{ /*GetStateOfTime() returns 1 if the passed time is the present, and 2 if it's the past,
+				so we can just take whatever positive value we are given.*/		
 				LaunchShutdown(HaltParams.HaltMode);
 			}
 			else if (CurSec == HaltParams.TargetSec && CurMin != HaltParams.TargetMin &&
 					DateDiff(HaltParams.TargetHour, HaltParams.TargetMin, NULL, NULL, NULL) <= 20 )
-			{ /*If 20 minutes or less until shutdown, warn us every minute.*/
+			{ /*If 20 minutes or less until shutdown, warn us every minute.
+				* If we miss a report because the membus was being parsed or something,
+				* don't try to report it after, because that time has probably passed.*/
 				char TBuf[MAX_LINE_SIZE];
 				const char *HaltMode = NULL;
 				static short LastMin = -1;
@@ -148,7 +147,7 @@ static void *PrimaryLoop(void *ContinuePrimaryLoop)
 					snprintf(TmpBuf, MAX_LINE_SIZE, "AUTORESTART: Object %s is not running. Restarting.", Worker->ObjectID);
 					WriteLogLine(TmpBuf, true);
 					
-					if (ProcessConfigObject(Worker, true, false);
+					if (ProcessConfigObject(Worker, true, false))
 					{
 						snprintf(TmpBuf, MAX_LINE_SIZE, "AUTORESTART: Object %s successfully restarted.", Worker->ObjectID);
 					}

@@ -427,16 +427,16 @@ rStatus EmulShutdown(long ArgumentCount, const char **ArgStream)
 			struct _HaltParams TempParams;
 			const char *TArg = *TPtr + 1; /*Targ manure!*/
 			time_t TTime;
-			struct tm *TimeP;
+			struct tm TimeStruct;
 			
 			MinsToDate(atoi(TArg), &TempParams.TargetHour, &TempParams.TargetMin, &TempParams.TargetMonth,
 						&TempParams.TargetDay, &TempParams.TargetYear);
 						
 			time(&TTime); /*Get this for the second.*/
-			TimeP = localtime(&TTime);
+			localtime_r(&TTime, &TimeStruct);
 			
 			snprintf(TimeFormat, sizeof TimeFormat, "%lu:%lu:%d %lu/%lu/%lu",
-					TempParams.TargetHour, TempParams.TargetMin, TimeP->tm_sec, TempParams.TargetMonth,
+					TempParams.TargetHour, TempParams.TargetMin, TimeStruct.tm_sec, TempParams.TargetMonth,
 					TempParams.TargetDay, TempParams.TargetYear);
 					
 			++TimeIsSet;

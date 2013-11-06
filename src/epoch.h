@@ -272,6 +272,8 @@ extern unsigned long DateDiff(unsigned long InHr, unsigned long InMin, unsigned 
 						unsigned long *OutDay, unsigned long *OutYear);
 extern void MinsToDate(unsigned long MinInc, unsigned long *OutHr, unsigned long *OutMin,
 				unsigned long *OutMonth, unsigned long *OutDay, unsigned long *OutYear);
+extern short GetStateOfTime(unsigned long Hr, unsigned long Min, unsigned long Sec,
+				unsigned long Month, unsigned long Day, unsigned long Year);
 extern Bool AllNumeric(const char *InStream);
 extern Bool ObjectProcessRunning(const ObjTable *InObj);
 extern unsigned long ReadPIDFile(const ObjTable *InObj);
