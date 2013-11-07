@@ -100,9 +100,10 @@ rStatus WriteLogLine(const char *InStream, Bool AddDate)
 	
 
 Bool ObjectProcessRunning(const ObjTable *InObj)
-{ /*Checks /proc for a directory with the name of the requested process.*/
-	DIR *DCore;
-	struct dirent *DStruct;
+{ /*This is so much better than the convoluted /proc method we used before,
+	* but I was scared of using kill() for this purpose. I thought that
+	* some processes would notice it and whine. Lucky me that it turns out
+	* signal 0 is not real.*/
 	pid_t InPID;
 	
 
@@ -112,25 +113,14 @@ Bool ObjectProcessRunning(const ObjTable *InObj)
 		InPID = InObj->ObjectPID;
 	}
 	
-	if (!(DCore = opendir("/proc/")))
+	if (kill(InPID, 0) == 0)
+	{
+		return true;
+	}
+	else
 	{
 		return false;
 	}
-	
-	while ((DStruct = readdir(DCore)))
-	{
-		if (AllNumeric(DStruct->d_name) && DStruct->d_type == 4)
-		{
-			if (atoi(DStruct->d_name) == InPID)
-			{
-				closedir(DCore);
-				return true;
-			}
-		}
-	}
-	closedir(DCore);
-	
-	return false;
 }
 
 void MinsToDate(unsigned long MinInc, unsigned long *OutHr, unsigned long *OutMin,
