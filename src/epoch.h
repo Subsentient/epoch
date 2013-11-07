@@ -149,13 +149,15 @@ typedef struct _EpochObjectTable
 	
 	struct 
 	{
-		Bool CanStop; /*Allowed to stop this without starting a shutdown?*/
 		StopType StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
-		Bool NoWait; /*Should we just start this thing and cut it loose, and not wait for it?*/
-		Bool HaltCmdOnly; /*Run just the stop command when we halt, not the start command?*/
-		Bool IsService; /*If true, we assume it's going to fork itself and one-up it's PID.*/
-		Bool RawDescription; /*This inhibits insertion of "Starting", "Stopping", etc in front of descriptions.*/
-		Bool AutoRestart;
+		
+		/*This saves a tiny bit of memory to use bitfields here.*/
+		unsigned int CanStop : 1; /*Allowed to stop this without starting a shutdown?*/
+		unsigned int NoWait : 1; /*Should we just start this thing and cut it loose, and not wait for it?*/
+		unsigned int HaltCmdOnly : 1; /*Run just the stop command when we halt, not the start command?*/
+		unsigned int IsService : 1; /*If true, we assume it's going to fork itself and one-up it's PID.*/
+		unsigned int RawDescription : 1; /*This inhibits insertion of "Starting", "Stopping", etc in front of descriptions.*/
+		unsigned int AutoRestart : 1;
 	} Opts;
 	
 	struct _RLTree *ObjectRunlevels; /*Dynamically allocated, needless to say.*/
