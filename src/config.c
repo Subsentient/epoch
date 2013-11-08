@@ -80,8 +80,7 @@ static void ConfigProblem(short Type, const char *Attribute, const char *AttribV
 					Attribute, LineNum);
 			break;
 		case CONFIG_EBADVAL:
-			snprintf(TmpBuf, 1024, "Bad value %s for attribute %s in epoch.conf line %lu.\n"
-					"Valid values are true and false. Ignoring.", AttribVal, Attribute, LineNum);
+			snprintf(TmpBuf, 1024, "Bad value %s for attribute %s in epoch.conf line %lu.", AttribVal, Attribute, LineNum);
 			break;
 		case CONFIG_ETRUNCATED:
 			snprintf(TmpBuf, 1024, "Attribute %s in epoch.conf line %lu has\n"
