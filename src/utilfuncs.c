@@ -13,6 +13,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <signal.h>
 #include "epoch.h"
 
 /**Constants**/
