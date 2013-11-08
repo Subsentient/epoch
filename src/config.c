@@ -205,10 +205,8 @@ rStatus InitConfig(void)
 		}
 		
 		/**Global configuration begins here.**/
-		if (!strncmp(Worker, "DisableCAD", strlen("DisableCAD")))
+		if (!strncmp(Worker, (CurrentAttribute = "DisableCAD"), strlen("DisableCAD")))
 		{ /*Should we disable instant reboots on CTRL-ALT-DEL?*/
-
-			CurrentAttribute = "DisableCAD";
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
@@ -233,11 +231,9 @@ rStatus InitConfig(void)
 
 			continue;
 		}
-		else if (!strncmp(Worker, "BlankLogOnBoot", strlen("BlankLogOnBoot")))
+		else if (!strncmp(Worker, (CurrentAttribute = "BlankLogOnBoot"), strlen("BlankLogOnBoot")))
 		{ /*Should the log only hold the current boot cycle's logs?*/
 
-			CurrentAttribute = "BlankLogOnBoot";
-			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
@@ -261,10 +257,8 @@ rStatus InitConfig(void)
 
 			continue;
 		}
-		else if (!strncmp(Worker, "EnableLogging", strlen("EnableLogging")))
+		else if (!strncmp(Worker, (CurrentAttribute = "EnableLogging"), strlen("EnableLogging")))
 		{
-			CurrentAttribute = "EnableLogging";
-			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
@@ -290,10 +284,8 @@ rStatus InitConfig(void)
 			
 			continue;
 		}
-		else if (!strncmp(Worker, "AlignStatusReports", strlen("AlignStatusReports")))
+		else if (!strncmp(Worker, (CurrentAttribute = "AlignStatusReports"), strlen("AlignStatusReports")))
 		{
-			CurrentAttribute = "AlignStatusReports";
-			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
@@ -320,15 +312,13 @@ rStatus InitConfig(void)
 			continue;
 		}
 		/*This will mount /dev, /proc, /sys, /dev/pts, and /dev/shm on boot time, upon request.*/
-		else if (!strncmp(Worker, "MountVirtual", strlen("MountVirtual")))
+		else if (!strncmp(Worker, (CurrentAttribute = "MountVirtual"), strlen("MountVirtual")))
 		{
 			const char *TWorker = DelimCurr;
 			unsigned long Inc = 0;
 			char CurArg[MAX_DESCRIPT_SIZE];
 			const char *VirtualID[2][5] = { { "procfs", "sysfs", "devfs", "devpts", "devshm" },
 											{ "procfs+", "sysfs+", "devfs+", "devpts+", "devshm+" } };
-											
-			CurrentAttribute = "MountVirtual";
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
@@ -376,10 +366,8 @@ rStatus InitConfig(void)
 			continue;
 		}
 		/*Now we get into the actual attribute tags.*/
-		else if (!strncmp(Worker, "BootBannerText", strlen("BootBannerText")))
+		else if (!strncmp(Worker, (CurrentAttribute = "BootBannerText"), strlen("BootBannerText")))
 		{ /*The text shown at boot up as a kind of greeter, before we start executing objects. Can be disabled, off by default.*/
-			CurrentAttribute = "BootBannerText";
-			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
@@ -403,11 +391,8 @@ rStatus InitConfig(void)
 			}
 			continue;
 		}
-		else if (!strncmp(Worker, "BootBannerColor", strlen("BootBannerColor")))
+		else if (!strncmp(Worker, (CurrentAttribute = "BootBannerColor"), strlen("BootBannerColor")))
 		{ /*Color for boot banner.*/
-			
-			CurrentAttribute = "BootBannerColor";
-			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
@@ -423,15 +408,13 @@ rStatus InitConfig(void)
 			SetBannerColor(DelimCurr); /*Function to be found elsewhere will do this for us, otherwise this loop would be even bigger.*/
 			continue;
 		}
-		else if (!strncmp(Worker, "DefaultRunlevel", strlen("DefaultRunlevel")))
+		else if (!strncmp(Worker, (CurrentAttribute = "DefaultRunlevel"), strlen("DefaultRunlevel")))
 		{
 			if (CurRunlevel[0] != 0)
 			{ /*If the runlevel has already been set, don't set it again.
 				* This prevents a rather nasty bug.*/
 				continue;
 			}
-			
-			CurrentAttribute = "DefaultRunlevel";
 			
 			if (CurObj != NULL)
 			{ /*What the warning says. It'd get all weird if we allowed that.*/
@@ -449,10 +432,8 @@ rStatus InitConfig(void)
 			
 			continue;
 		}
-		else if (!strncmp(Worker, "Hostname", strlen("Hostname")))
+		else if (!strncmp(Worker, (CurrentAttribute = "Hostname"), strlen("Hostname")))
 		{
-			CurrentAttribute = "Hostname";
-			
 			if (CurObj != NULL)
 			{ /*What the warning says. It'd get all weird if we allowed that.*/
 				ConfigProblem(CONFIG_EAFTER, CurrentAttribute, NULL, LineNum);
@@ -525,10 +506,8 @@ rStatus InitConfig(void)
 			
 			continue;
 		}		
-		else if (!strncmp(Worker, "ObjectID", strlen("ObjectID")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectID"), strlen("ObjectID")))
 		{ /*ASCII value used to identify this object internally, and also a kind of short name for it.*/
-			CurrentAttribute = "ObjectID";
-			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
@@ -544,10 +523,8 @@ rStatus InitConfig(void)
 
 			continue;
 		}
-		else if (!strncmp(Worker, "ObjectEnabled", strlen("ObjectEnabled")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectEnabled"), strlen("ObjectEnabled")))
 		{
-			CurrentAttribute = "ObjectEnabled";
-			
 			if (!CurObj)
 			{
 
@@ -576,13 +553,11 @@ rStatus InitConfig(void)
 			
 			continue;
 		}
-		else if (!strncmp(Worker, "ObjectOptions", strlen("ObjectOptions")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectOptions"), strlen("ObjectOptions")))
 		{
 			const char *TWorker = DelimCurr;
 			unsigned long Inc;
 			char CurArg[MAX_DESCRIPT_SIZE];
-			
-			CurrentAttribute = "ObjectOptions";
 			
 			if (!CurObj)
 			{
@@ -645,21 +620,15 @@ rStatus InitConfig(void)
 				}
 				else
 				{
-										
-					snprintf(ErrBuf, sizeof ErrBuf, "Bad value %s for attribute ObjectOptions for object %s at line %lu.\n"
-							"Valid values are NOWAIT, PERSISTENT, RAWDESCRIPTION, SERVICE, AUTORESTART,\nand HALTONLY.",
-							DelimCurr, CurObj->ObjectID, LineNum);
-					SpitWarning(ErrBuf);
+					ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, CurArg, LineNum);
 					break;
 				}
 			} while ((TWorker = WhitespaceArg(TWorker)));
 			
 			continue;
 		}
-		else if (!strncmp(Worker, "ObjectDescription", strlen("ObjectDescription")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectDescription"), strlen("ObjectDescription")))
 		{ /*It's description.*/
-			CurrentAttribute = "ObjectDescription";
-			
 			if (!CurObj)
 			{
 				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
@@ -681,10 +650,8 @@ rStatus InitConfig(void)
 
 			continue;
 		}
-		else if (!strncmp(Worker, "ObjectStartCommand", strlen("ObjectStartCommand")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStartCommand"), strlen("ObjectStartCommand")))
 		{ /*What we execute to start it.*/
-			CurrentAttribute = "ObjectStartCommand";
-			
 			if (!CurObj)
 			{
 				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
@@ -707,10 +674,8 @@ rStatus InitConfig(void)
 			
 			continue;
 		}
-		else if (!strncmp(Worker, "ObjectStopCommand", strlen("ObjectStopCommand")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStopCommand"), strlen("ObjectStopCommand")))
 		{ /*If it's "PID", then we know that we need to kill the process ID only. If it's "NONE", well, self explanitory.*/
-			CurrentAttribute = "ObjectStopCommand";
-			
 			if (!CurObj)
 			{
 				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
@@ -759,12 +724,10 @@ rStatus InitConfig(void)
 			
 			continue;
 		}
-		else if (!strncmp(Worker, "ObjectStartPriority", strlen("ObjectStartPriority")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStartPriority"), strlen("ObjectStartPriority")))
 		{
 			/*The order in which this item is started. If it is disabled in this runlevel, the next object in line is executed, IF
 			 * and only IF it is enabled. If not, the one after that and so on.*/
-			 
-			CurrentAttribute = "ObjectStartPriority";
 			
 			if (!CurObj)
 			{
@@ -793,11 +756,9 @@ rStatus InitConfig(void)
 			
 			continue;
 		}
-		else if (!strncmp(Worker, "ObjectStopPriority", strlen("ObjectStopPriority")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStopPriority"), strlen("ObjectStopPriority")))
 		{
 			/*Same as above, but used for when the object is being shut down.*/
-			CurrentAttribute = "ObjectStopPriority";
-			
 			if (!CurObj)
 			{
 				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
@@ -825,13 +786,12 @@ rStatus InitConfig(void)
 			
 			continue;
 		}
-		else if (!strncmp(Worker, "ObjectRunlevels", strlen("ObjectRunlevels")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectRunlevels"), strlen("ObjectRunlevels")))
 		{ /*Runlevel.*/
 			char *TWorker;
 			char TRL[MAX_DESCRIPT_SIZE], *TRL2;
 			static const ObjTable *LastObject = NULL;
 			
-			CurrentAttribute = "ObjectRunlevels";
 			if (!CurObj)
 			{
 				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
