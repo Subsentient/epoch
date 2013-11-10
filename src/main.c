@@ -910,7 +910,37 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	
-	if (CmdIs("poweroff") || CmdIs("reboot") || CmdIs("halt"))
+	if (getpid() == 1)
+	{ /*Just us, as init. That means, begin bootup.*/
+		const char *TRunlevel = NULL;
+		
+		if (argc > 1)
+		{
+			short ArgCount = (short)argc, Inc = 1;
+			const char *Arguments[] = { "shell" }; /*I'm sick of repeating myself with literals.*/
+			
+			for (; Inc < ArgCount; ++Inc)
+			{
+				if (!strcmp(argv[Inc], Arguments[0]))
+				{
+					puts(CONSOLE_COLOR_GREEN "Now launching a simple shell as per your request." CONSOLE_ENDCOLOR);
+					EmergencyShell(); /*Drop everything we're doing and start an emergency shell.*/
+				}
+			}
+		}
+		
+		/*Need we set a default runlevel?*/
+		if ((TRunlevel = getenv("runlevel")) != NULL)
+		{ /*Sets the default runlevel we use on bootup.*/
+			snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", TRunlevel);
+		}
+		
+		/*Now that args are set, boot.*/		
+		LaunchBootup();
+	}
+	
+	/**Beyond here we check for argv[0] being one thing or the other.**/
+	else if (CmdIs("poweroff") || CmdIs("reboot") || CmdIs("halt"))
 	{
 		Bool RVal;
 		
@@ -933,35 +963,7 @@ int main(int argc, char **argv)
 	}
 	else if (CmdIs("init"))
 	{ /*This is a bit long winded here, however, it's better than devoting a function for it.*/
-		if (getpid() == 1)
-		{ /*Just us, as init. That means, begin bootup.*/
-			const char *TRunlevel = NULL;
-			
-			if (argc > 1)
-			{
-				short ArgCount = (short)argc, Inc = 1;
-				const char *Arguments[] = { "shell" }; /*I'm sick of repeating myself with literals.*/
-				
-				for (; Inc < ArgCount; ++Inc)
-				{
-					if (!strcmp(argv[Inc], Arguments[0]))
-					{
-						puts(CONSOLE_COLOR_GREEN "Now launching a simple shell as per your request." CONSOLE_ENDCOLOR);
-						EmergencyShell(); /*Drop everything we're doing and start an emergency shell.*/
-					}
-				}
-			}
-			
-			/*Need we set a default runlevel?*/
-			if ((TRunlevel = getenv("runlevel")) != NULL)
-			{ /*Sets the default runlevel we use on bootup.*/
-				snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", TRunlevel);
-			}
-			
-			/*Now that args are set, boot.*/		
-			LaunchBootup();
-		}
-		else if (argc == 2)
+		if (argc == 2)
 		{
 			char TmpBuf[MEMBUS_SIZE/2 - 1];
 			char MembusResponse[MEMBUS_SIZE/2 - 1];
