@@ -32,8 +32,11 @@ static volatile Bool ContinuePrimaryLoop = true;
 
 static void MountVirtuals(void)
 {
+	enum { MVIRT_PROC, MVIRT_SYSFS, MVIRT_DEVFS, MVIRT_PTS, MVIRT_SHM };
+	
 	const char *FSTypes[5] = { "proc", "sysfs", "devtmpfs", "devpts", "tmpfs" };
 	const char *MountLocations[5] = { "/proc", "/sys", "/dev", "/dev/pts", "/dev/shm" };
+	const char *PTSArg = "gid=5,mode=620";
 	Bool HeavyPermissions[5] = { true, true, true, true, false };
 	mode_t PermissionSet[2] = { (S_IRWXU | S_IRWXG | S_IRWXO), (S_IRWXU | S_IRGRP | S_IXGRP | S_IXOTH) };
 	short Inc = 0;
@@ -53,7 +56,7 @@ static void MountVirtuals(void)
 				} /*No continue statement because it might already exist*/
 			}	/*and we might be able to mount it anyways.*/
 			
-			if (mount(FSTypes[Inc], MountLocations[Inc], FSTypes[Inc], 0, NULL) != 0)
+			if (mount(FSTypes[Inc], MountLocations[Inc], FSTypes[Inc], 0, (Inc == MVIRT_PTS ? PTSArg : NULL)) != 0)
 			{
 				char TmpBuf[1024];
 				
