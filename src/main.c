@@ -345,7 +345,7 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 			}
 			else
 			{
-				SpitError("Bad argument(s).");
+				puts("Bad argument(s).");
 				return FAILURE;
 			}
 		}
