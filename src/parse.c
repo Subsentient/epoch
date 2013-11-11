@@ -26,8 +26,6 @@ volatile BootMode CurrentBootMode = BOOT_NEUTRAL;
 /**Function forward declarations.**/
 
 static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode);
-static void *IndependentExecuteObject(void *InObj);
-
 
 /**Actual functions.**/
 
@@ -45,12 +43,6 @@ static Bool FileUsable(const char *FileName)
 		return false;
 	}
 }	
-
-static void *IndependentExecuteObject(void *InObj)
-{ /*Stub function for threading support.*/
-	ExecuteConfigObject((ObjTable*)InObj, true);
-	return NULL;
-}
 
 static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 { /*Not making static because this is probably going to be useful for other stuff.*/
@@ -142,12 +134,9 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 			++RunningChildCount; /*I have a feeling that when the stars align,
 								* this variable will be accessed by two threads at once
 								* and crash to the ground. I hope I'm wrong.*/
-			if (!InObj->Opts.NoWait)
-			{ /*Don't record for NOWAIT jobs, because task killing for them is
-				* both useless and difficult to implement.*/
-				CurrentTask.Node = InObj;
-				CurrentTask.PID = LaunchPID;
-			}
+
+			CurrentTask.Node = InObj;
+			CurrentTask.PID = LaunchPID;
 			
 			pthread_sigmask(SIG_UNBLOCK, &SigMaker[1], NULL); /*Unblock now that (v)fork() is complete.*/
 	}
@@ -184,11 +173,8 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 	waitpid(LaunchPID, &RawExitStatus, 0); /*Wait for the process to exit.*/
 	--RunningChildCount; /*We're done, so say so.*/
 	
-	if (!InObj->Opts.NoWait)
-	{
-		CurrentTask.Node = NULL;
-		CurrentTask.PID = 0; /*Set back to zero for the next one.*/
-	}
+	CurrentTask.Node = NULL;
+	CurrentTask.PID = 0; /*Set back to zero for the next one.*/
 	
 	InObj->ObjectPID = LaunchPID; /*Save our PID.*/
 	
@@ -241,10 +227,6 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		{
 			snprintf(PrintOutStream, 1024, "%s", CurObj->ObjectDescription);
 		}
-		else if (IsStartingMode && CurObj->Opts.NoWait)
-		{
-			snprintf(PrintOutStream, 1024, "%s %s", "Launching process for", CurObj->ObjectDescription);
-		}
 		else if (!IsStartingMode && CurObj->Opts.HaltCmdOnly)
 		{
 			snprintf(PrintOutStream, 1024, "%s %s", "Starting", CurObj->ObjectDescription);
@@ -270,20 +252,8 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		}
 		
 		fflush(NULL); /*Things tend to get clogged up when we don't flush.*/
-		
-		if (CurObj->Opts.NoWait)
-		{
-			pthread_t MiniThread;
 			
-			pthread_create(&MiniThread, NULL, &IndependentExecuteObject, CurObj);
-			pthread_detach(MiniThread);
-			ExitStatus = NOTIFICATION;
-		}
-		else
-		{
-			
-			ExitStatus = ExecuteConfigObject(CurObj, IsStartingMode);
-		}
+		ExitStatus = ExecuteConfigObject(CurObj, IsStartingMode);
 		
 		CurObj->Started = (ExitStatus ? true : false); /*Mark the process dead or alive.*/
 		

@@ -588,13 +588,10 @@ rStatus InitConfig(void)
 				
 				if (!strcmp(CurArg, "NOWAIT"))
 				{
-					if (CurObj->Opts.HaltCmdOnly)
-					{
-						SpitWarning("ObjectOptions value NOWAIT contradicts another's HALTONLY.\nSticking with HALTONLY.");
-						CurObj->Opts.NoWait = false;
-						continue;
-					}
-					CurObj->Opts.NoWait = true;
+					CurObj->Opts.EmulNoWait = true;
+					snprintf(ErrBuf, sizeof ErrBuf, "Option NOWAIT is deprecated and has been partially removed.\n"
+							"Emulating NOWAIT for object %s.\nLine %lu in epoch.conf", CurObj->ObjectID, LineNum);
+					SpitWarning(ErrBuf);
 				}
 				else if (!strcmp(CurArg, "HALTONLY"))
 				{ /*Allow entries that execute on shutdown only.*/
@@ -665,7 +662,6 @@ rStatus InitConfig(void)
 			}
 			
 			snprintf(CurObj->ObjectStartCommand, MAX_LINE_SIZE, "%s", DelimCurr);
-			
 
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
@@ -887,6 +883,25 @@ rStatus InitConfig(void)
 		}
 	}
 	
+	/*NOWAIT is deprecated, so emulate it's effect with an ampersand.*/
+	for (ObjWorker = ObjectTable; ObjWorker->Next; ObjWorker = ObjWorker->Next)
+	{
+		if (ObjWorker->Opts.EmulNoWait)
+		{
+			unsigned long TInc = strlen(ObjWorker->ObjectStartCommand) - 1;
+			
+			/*Check if we already have an ampersand at the end.*/
+			
+			/*Go back behind any whitespace at the end.*/
+			for (; ObjWorker->ObjectStartCommand[TInc] == ' ' || ObjWorker->ObjectStartCommand[TInc] == '\t'; --TInc);
+			
+			if (ObjWorker->ObjectStartCommand[TInc] != '&')
+			{
+				strncat(ObjWorker->ObjectStartCommand, "&", MAX_LINE_SIZE - strlen(ObjWorker->ObjectStartCommand) - 1);
+			}
+		}
+	}
+	
 	/*This is harmless, but it's bad form and could indicate human error in writing the config file.*/
 	if (LongComment)
 	{
@@ -896,7 +911,6 @@ rStatus InitConfig(void)
 	
 	switch (ScanConfigIntegrity())
 	{
-		case NOTIFICATION:
 		case SUCCESS:
 			break;
 		case FAILURE:
@@ -1217,12 +1231,12 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->Opts.CanStop = true;
 	Worker->ObjectPID = 0;
 	Worker->ObjectRunlevels = NULL;
-	Worker->Opts.NoWait = false;
 	Worker->Enabled = 2; /*We can indeed store this in a bool you know. There's no 1 bit datatype.*/
 	Worker->Opts.HaltCmdOnly = false;
 	Worker->Opts.RawDescription = false;
 	Worker->Opts.IsService = false;
 	Worker->Opts.AutoRestart = false;
+	Worker->Opts.EmulNoWait = false;
 	
 	return Worker;
 }

@@ -158,11 +158,6 @@ void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 			snprintf(StatusFormat, sizeof StatusFormat, "[%s]\n", CONSOLE_COLOR_YELLOW "WARNING" CONSOLE_ENDCOLOR);
 			break;
 		}
-		case NOTIFICATION:
-		{ /*Used for objects where Opts.NoWait == true.*/
-			snprintf(StatusFormat, sizeof StatusFormat, "[%s]\n", CONSOLE_COLOR_CYAN "Launched" CONSOLE_ENDCOLOR);
-			break;
-		}
 		default:
 		{
 			SpitWarning("Bad parameter passed to PerformStatusReport() in console.c.");
@@ -183,9 +178,6 @@ void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 				break;
 			case WARNING:
 				StreamLength -= strlen("[WARNING]");
-				break;
-			case NOTIFICATION:
-				StreamLength -= strlen("[Launched]");
 				break;
 			default:
 				SpitWarning("Bad parameter passed to PerformStatusReport() in console.c");

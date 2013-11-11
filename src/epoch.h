@@ -120,7 +120,7 @@ typedef signed char Bool;
 typedef enum { STOP_NONE, STOP_COMMAND, STOP_PID, STOP_PIDFILE, STOP_INVALID } StopType;
 
 /*Trinary return values for functions.*/
-typedef enum { FAILURE, SUCCESS, WARNING, NOTIFICATION } rStatus;
+typedef enum { FAILURE, SUCCESS, WARNING } rStatus;
 
 /*Trinary boot/shutdown/nothing modes.*/
 typedef enum { BOOT_NEUTRAL, BOOT_BOOTUP, BOOT_SHUTDOWN } BootMode;
@@ -153,11 +153,11 @@ typedef struct _EpochObjectTable
 		
 		/*This saves a tiny bit of memory to use bitfields here.*/
 		unsigned int CanStop : 1; /*Allowed to stop this without starting a shutdown?*/
-		unsigned int NoWait : 1; /*Should we just start this thing and cut it loose, and not wait for it?*/
 		unsigned int HaltCmdOnly : 1; /*Run just the stop command when we halt, not the start command?*/
 		unsigned int IsService : 1; /*If true, we assume it's going to fork itself and one-up it's PID.*/
 		unsigned int RawDescription : 1; /*This inhibits insertion of "Starting", "Stopping", etc in front of descriptions.*/
 		unsigned int AutoRestart : 1;
+		unsigned int EmulNoWait : 1; /*Emulates the deprecated NOWAIT option by appending an ampersand to the end of ObjectStartCommand.*/
 	} Opts;
 	
 	struct _RLTree *ObjectRunlevels; /*Dynamically allocated, needless to say.*/

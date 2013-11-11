@@ -184,7 +184,6 @@ void ParseMemBus(void)
 		
 		switch (DidWork)
 		{
-			case NOTIFICATION: /*If we have NOWAIT set for this object, we will receive NOTIFICATION in response, and that can be confusing.*/
 			case SUCCESS:
 				MCode = MEMBUS_CODE_ACKNOWLEDGED;
 				break;
