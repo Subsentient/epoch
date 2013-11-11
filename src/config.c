@@ -888,12 +888,18 @@ rStatus InitConfig(void)
 	{
 		if (ObjWorker->Opts.EmulNoWait)
 		{
-			unsigned long TInc = strlen(ObjWorker->ObjectStartCommand) - 1;
+			unsigned long TInc = 0;
+			
+			if (*ObjWorker->ObjectStartCommand == '\0')
+			{ /*Don't bother if it's empty.*/
+				continue;
+			}
 			
 			/*Check if we already have an ampersand at the end.*/
 			
 			/*Go back behind any whitespace at the end.*/
-			for (; ObjWorker->ObjectStartCommand[TInc] == ' ' || ObjWorker->ObjectStartCommand[TInc] == '\t'; --TInc);
+			for (TInc = strlen(ObjWorker->ObjectStartCommand) - 1; ObjWorker->ObjectStartCommand[TInc] == ' ' ||
+				ObjWorker->ObjectStartCommand[TInc] == '\t'; --TInc);
 			
 			if (ObjWorker->ObjectStartCommand[TInc] != '&')
 			{
