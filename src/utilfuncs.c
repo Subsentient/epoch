@@ -265,14 +265,13 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 	DIR *ProcDir = NULL;
 	struct dirent *DirPtr = NULL;
 	char FileName[MAX_LINE_SIZE];
-	char *FileBuf = NULL;
-	unsigned long Inc = 0, Inc2 = 0, NumSpaces = 0;
+	char FileBuf[MAX_LINE_SIZE];
+	unsigned long Inc = 0, Streamsize = 0;
 	FILE *Descriptor = NULL;
 	
-	
-	for (; InObj->ObjectStartCommand[Inc] != '\0'; ++Inc)
+	if (*InObj->ObjectStartCommand == '\0')
 	{
-		if (InObj->ObjectStartCommand[Inc] == ' ') ++NumSpaces;
+		return 0;
 	}
 	
 	if (!(ProcDir = opendir("/proc/")))
@@ -283,7 +282,7 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 	while ((DirPtr = readdir(ProcDir)))
 	{
 		if (AllNumeric(DirPtr->d_name) && atoi(DirPtr->d_name) >= InObj->ObjectPID &&
-			atoi(DirPtr->d_name) <= InObj->ObjectPID + 10) /*Search 10 PIDs forward.*/
+			atol(DirPtr->d_name) <= InObj->ObjectPID + 10) /*Search 10 PIDs forward.*/
 		{
 			char TChar;
 			
@@ -295,21 +294,20 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 				return 0;
 			}
 			
-			FileBuf = malloc(MAX_LINE_SIZE);
-			
 			for (Inc = 0; (TChar = getc(Descriptor)) != EOF && Inc < MAX_LINE_SIZE - 1; ++Inc)
 			{
 				FileBuf[Inc] = TChar;
 			}
 			FileBuf[Inc] = '\0';
 			
+			Streamsize = Inc;
+			
 			fclose(Descriptor);
 			
-			for (Inc = 0, Inc2 = NumSpaces; Inc2 != 0; ++Inc)
+			for (Inc = 0; Inc < Streamsize; ++Inc)
 			{ /*We need to replace the NUL characters with spaces.*/
 				if (FileBuf[Inc] == '\0')
 				{
-					--Inc2;
 					FileBuf[Inc] = ' ';
 				}
 			}
@@ -318,23 +316,17 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 			{
 				unsigned long RealPID;
 				
-				free(FileBuf);
-				FileBuf = NULL;
-				snprintf(FileName, sizeof FileName, "%s", DirPtr->d_name);
-				closedir(ProcDir);
-				
-				RealPID = atoi(FileName);
+				RealPID = atol(DirPtr->d_name);
 				
 				if (UpdatePID)
 				{
 					InObj->ObjectPID = RealPID;
 				}
 				
+				closedir(ProcDir);
 				return RealPID;
 				
 			}
-			
-			free(FileBuf);
 		}
 	}
 	closedir(ProcDir);
