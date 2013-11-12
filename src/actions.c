@@ -83,8 +83,9 @@ static void *PrimaryLoop(void *ContinuePrimaryLoop)
 	ObjTable *Worker = NULL;
 	struct tm TimeStruct;
 	time_t TimeCore;
+	short ScanStepper = 0;
 	
-	while (*(volatile Bool*)ContinuePrimaryLoop)
+	for (; *(volatile Bool*)ContinuePrimaryLoop; ++ScanStepper)
 	{
 		usleep(250000); /*Quarter of a second.*/
 		
@@ -165,7 +166,18 @@ static void *PrimaryLoop(void *ContinuePrimaryLoop)
 					
 					WriteLogLine(TmpBuf, true);
 				}
+				
+				/*Rescan PIDs every minute to keep them up-to-date.*/
+				if (ScanStepper == 240)
+				{
+					AdvancedPIDFind(Worker, true);
+				}
 			}
+		}
+		
+		if (ScanStepper == 240)
+		{
+			ScanStepper = 0;
 		}
 		
 		/*Lots of brilliant code here, but I typed it in invisible pixels.*/

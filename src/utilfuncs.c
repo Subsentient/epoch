@@ -281,8 +281,7 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 	
 	while ((DirPtr = readdir(ProcDir)))
 	{
-		if (AllNumeric(DirPtr->d_name) && atoi(DirPtr->d_name) >= InObj->ObjectPID &&
-			atol(DirPtr->d_name) <= InObj->ObjectPID + 10) /*Search 10 PIDs forward.*/
+		if (AllNumeric(DirPtr->d_name) && atol(DirPtr->d_name) >= InObj->ObjectPID)
 		{
 			char TChar;
 			
