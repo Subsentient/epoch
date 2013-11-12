@@ -76,7 +76,8 @@
 /*These are what we use to set message types.*/
 #define MEMBUS_NOMSG 25
 #define MEMBUS_MSG 100
-#define MEMBUS_NEWCONNECTION 50
+#define MEMBUS_CHECKALIVE_NOMSG 34
+#define MEMBUS_CHECKALIVE_MSG 43
 
 /*These are status for operations.*/
 #define MEMBUS_CODE_ACKNOWLEDGED "OK"
@@ -259,6 +260,7 @@ extern rStatus MemBus_Write(const char *InStream, Bool ServerSide);
 extern Bool MemBus_Read(char *OutStream, Bool ServerSide);
 extern void ParseMemBus(void);
 extern rStatus ShutdownMemBus(Bool ServerSide);
+extern void HandleMemBusPings(void);
 
 /*console.c*/
 extern void PrintBootBanner(void);

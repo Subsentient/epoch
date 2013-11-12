@@ -27,6 +27,9 @@ static volatile Bool BusRunning = false;
 rStatus InitMemBus(Bool ServerSide)
 { /*Fire up the memory bus.*/
 	int MemDescriptor;
+	char CheckCode = 0;
+	unsigned long Inc = 0;
+	
 	
 	if (BusRunning) return SUCCESS;
 	
@@ -49,18 +52,28 @@ rStatus InitMemBus(Bool ServerSide)
 		memset((void*)MemData, 0, MEMBUS_SIZE); /*Zero it out just to be neat. Probably don't really need this.*/
 		
 		*MemData = MEMBUS_NOMSG; /*Set to no message by default.*/
-		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NEWCONNECTION;
-	}
-	else if (*(MemData + (MEMBUS_SIZE/2)) != MEMBUS_NEWCONNECTION)
-	{ /*Snowball's chance in hell that this will not always work.*/
-		SpitError("InitMemBus(): Bus is not running.");
-		return FAILURE;
 	}
 	else
-	{
-		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NOMSG;
+	{ /*Client side stuff.*/
+		CheckCode = *MemData = (*MemData == MEMBUS_MSG ? MEMBUS_CHECKALIVE_MSG : MEMBUS_CHECKALIVE_NOMSG); /*Ask server-side if they're alive.*/
+		
+		for (; *MemData == CheckCode; ++Inc)
+		{ /*Wait ten seconds for server-side to respond.*/
+			if (Inc == 1000)
+			{ /*Ten seconds.*/
+				SmallError("Cannot connect to Epoch over MemBus, timeout expired. Aborting MemBus initialization.");
+				
+				BusRunning = false;
+				
+				return FAILURE;
+			}
+			
+			usleep(10000);
+		}
+		
+		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NOMSG; /*Initialize client side.*/
 	}
-	
+	/*Either the server side is alive, or we ARE the server side.*/
 	BusRunning = true;
 	
 	return SUCCESS;
@@ -127,6 +140,21 @@ Bool MemBus_Read(char *OutStream, Bool ServerSide)
 	*BusStatus = MEMBUS_NOMSG; /*Set back to NOMSG once we got the message.*/
 
 	return true;
+}
+
+void HandleMemBusPings(void)
+{
+	switch (*MemData)
+	{
+		case MEMBUS_CHECKALIVE_MSG:
+			*MemData = MEMBUS_MSG;
+			break;
+		case MEMBUS_CHECKALIVE_NOMSG:
+			*MemData = MEMBUS_NOMSG;
+			break;
+		default:
+			return;
+	}
 }
 
 void ParseMemBus(void)
@@ -685,21 +713,17 @@ void ParseMemBus(void)
 }
 
 rStatus ShutdownMemBus(Bool ServerSide)
-{
-	if (!BusRunning) return SUCCESS;
-	
-	if (!ServerSide)
-	{ /*We write to our own code.*/
-		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NEWCONNECTION;
+{	
+	if (!BusRunning || !MemData)
+	{
 		return SUCCESS;
 	}
-	else
-	{
-		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NOMSG; /*We do this so client applications don't think they are still up.*/
-	}
 	
-	if (!MemData)
-	{
+	*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NOMSG;
+	
+	if (!ServerSide)
+	{ /*That's all the client side needs to do.*/
+		BusRunning = false;
 		return SUCCESS;
 	}
 	

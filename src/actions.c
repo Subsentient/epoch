@@ -88,6 +88,8 @@ static void *PrimaryLoop(void *ContinuePrimaryLoop)
 	{
 		usleep(250000); /*Quarter of a second.*/
 		
+		HandleMemBusPings(); /*Tell clients we are alive if they ask.*/
+		
 		ParseMemBus(); /*Check membus for new data.*/
 		
 		if (HaltParams.HaltMode != -1)
