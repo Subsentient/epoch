@@ -988,6 +988,8 @@ rStatus InitConfig(void)
 		SpitWarning(ErrBuf);
 	}
 	
+	PriorityAlias_Shutdown(); /*We don't need to keep this in memory.*/
+	
 	switch (ScanConfigIntegrity())
 	{
 		case SUCCESS:
@@ -1684,8 +1686,6 @@ void ShutdownConfig(void)
 		free(Worker);
 	}
 	
-	PriorityAlias_Shutdown(); /*a lot of work for a small linked list.*/
-	
 	ObjectTable = NULL;
 }
 
@@ -1695,7 +1695,6 @@ rStatus ReloadConfig(void)
 	ObjTable *TRoot = malloc(sizeof(ObjTable)), *SWorker = TRoot, *Temp = NULL;
 	struct _RLTree *RLTemp1 = NULL, *RLTemp2 = NULL;
 	Bool GlobalTriple[3], ConfigOK = true;
-	struct _PriorityAliasTree *PriRoot = NULL, *PWorker[2] = { NULL, NULL };
 	
 	WriteLogLine("CONFIG: Reloading configuration.\n", true);
 	WriteLogLine("CONFIG: Backing up current object table.", true);
@@ -1723,21 +1722,6 @@ rStatus ReloadConfig(void)
 			RLTemp2 = RLTemp2->Next;
 		}
 	}
-	
-	if ((PWorker[0] = PriorityAliasTree) != NULL)
-	{
-		PWorker[1] = PriRoot = malloc(sizeof(struct _PriorityAliasTree));
-		
-		for (; PWorker[0]->Next; PWorker[0] = PWorker[0]->Next)
-		{
-			*PWorker[1] = *PWorker[0];
-			PWorker[1]->Next = malloc(sizeof(struct _PriorityAliasTree));
-			PWorker[1]->Next->Next = NULL;
-			PWorker[1]->Next->Prev = PWorker[1];
-			
-			PWorker[1] = PWorker[1]->Next;
-		}
-	}
 
 	WriteLogLine("CONFIG: Shutting down primary object table.", true);
 	
@@ -1759,9 +1743,6 @@ rStatus ReloadConfig(void)
 					"Restoring old configuration to memory.\n"
 					"Please check epoch.conf for syntax errors.");
 		ObjectTable = TRoot; /*Point ObjectTable to our new, identical copy of the old tree.*/
-		
-		PriorityAliasTree = PriRoot;
-		
 		ConfigOK = false;
 	}
 	
@@ -1787,15 +1768,6 @@ rStatus ReloadConfig(void)
 		free(SWorker);
 	}
 	free(SWorker);
-	
-	while (PriRoot != NULL)
-	{
-		PWorker[0] = PriRoot;
-		PriRoot = PriRoot->Next;
-		
-		free(PWorker[0]);
-	}
-		
 	
 	WriteLogLine("CONFIG: " CONSOLE_COLOR_GREEN "Configuration reload successful." CONSOLE_ENDCOLOR, true);
 	puts(CONSOLE_COLOR_GREEN "Epoch: Configuration reloaded." CONSOLE_ENDCOLOR);
