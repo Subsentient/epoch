@@ -21,12 +21,14 @@
 
 /*Prototypes.*/
 static void MountVirtuals(void);
-static void *PrimaryLoop(void *ContinuePrimaryLoop);
+static void *PrimaryLoop(void *UselessArg);
 
 /*Globals.*/
 volatile struct _HaltParams HaltParams = { -1, 0, 0, 0, 0, 0 };
 Bool AutoMountOpts[5] = { false, false, false, false, false };
 static volatile Bool ContinuePrimaryLoop = true;
+static pthread_t PrimaryLoopThread; /*This isn't really changed much once we launch our thread,
+* so we don't need to make it volatile.*/
 
 /*Functions.*/
 
@@ -77,7 +79,7 @@ static void MountVirtuals(void)
 	}
 }
 
-static void *PrimaryLoop(void *ContinuePrimaryLoop)
+static void *PrimaryLoop(void *UselessArg)
 { /*Loop that provides essentially everything we cycle through.*/
 	unsigned long CurMin = 0, CurSec = 0;
 	ObjTable *Worker = NULL;
@@ -85,7 +87,9 @@ static void *PrimaryLoop(void *ContinuePrimaryLoop)
 	time_t TimeCore;
 	short ScanStepper = 0;
 	
-	for (; *(volatile Bool*)ContinuePrimaryLoop; ++ScanStepper)
+	(void)UselessArg;
+	
+	for (; ContinuePrimaryLoop; ++ScanStepper)
 	{
 		usleep(250000); /*Quarter of a second.*/
 		
@@ -183,6 +187,10 @@ static void *PrimaryLoop(void *ContinuePrimaryLoop)
 		/*Lots of brilliant code here, but I typed it in invisible pixels.*/
 	}
 	
+	ContinuePrimaryLoop = true;
+	/*We do this so LaunchShutdown(), when called via SigHandler(),
+	will know that we exited gracefully and not kill us.*/
+	
 	return NULL;
 }
 
@@ -214,8 +222,11 @@ void EmergencyShell(void)
 
 void LaunchBootup(void)
 { /*Handles what would happen if we were PID 1.*/
-	pthread_t LoopThread;
 	Bool Insane = false;
+	
+	/*I am going to grumble about the type of pthread_t being implementation defined.*/
+	/*Grumble.*/
+	memset(&PrimaryLoopThread, 0, sizeof(pthread_t));
 	
 	setsid();
 	
@@ -332,8 +343,8 @@ void LaunchBootup(void)
 	/*Start the primary loop's thread. It's responsible for parsimg membus,
 	 * handling scheduled shutdowns and service auto-restarts, and more.
 	 * We pass it a Bool so we can shut it down when the time comes.*/
-	pthread_create(&LoopThread, NULL, &PrimaryLoop, (void*)&ContinuePrimaryLoop);
-	pthread_detach(LoopThread); /*A lazier way than using attrs.*/
+	pthread_create(&PrimaryLoopThread, NULL, &PrimaryLoop, NULL);
+	pthread_detach(PrimaryLoopThread); /*A lazier way than using attrs.*/
 	
 	while (!Insane) /*We're still pretty insane.*/
 	{ /*Now wait forever.*/
@@ -378,6 +389,19 @@ void LaunchShutdown(signed long Signal)
 	EnableLogging = false; /*Prevent any additional log entries.*/
 	
 	ContinuePrimaryLoop = false; /*Bring down the primary loop.*/
+	
+	if (!pthread_equal(pthread_self(), PrimaryLoopThread))
+	{ /*We need to kill the primary loop if we aren't it.*/
+		
+		/*Give it a moment to come down peacefully.*/
+		usleep(300000);
+		
+		if (!ContinuePrimaryLoop) /*Loop hasn't set the flag to 'true' again to let us know it's cooperating?*/
+		{
+			/*Too late.*/
+			pthread_kill(PrimaryLoopThread, SIGKILL);
+		}
+	}
 	
 	if (!ShutdownMemBus(true))
 	{ /*Shutdown membus first, so no other signals will reach us.*/

@@ -144,6 +144,8 @@ Bool MemBus_Read(char *OutStream, Bool ServerSide)
 
 void HandleMemBusPings(void)
 {
+	if (!BusRunning) return;
+	
 	switch (*MemData)
 	{
 		case MEMBUS_CHECKALIVE_MSG:
