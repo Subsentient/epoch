@@ -391,10 +391,20 @@ void LaunchShutdown(signed long Signal)
 	ContinuePrimaryLoop = false; /*Bring down the primary loop.*/
 	
 	if (!pthread_equal(pthread_self(), PrimaryLoopThread))
-	{ /*We need to kill the primary loop if we aren't it.*/
+	{ /*We need to kill the primary loop if we aren't it.
+		This happens when we are rebooted via CTRL-ALT-DEL.*/
+		short Inc = 0;
 		
 		/*Give it a moment to come down peacefully.*/
-		usleep(300000);
+		for (; !ContinuePrimaryLoop && Inc < 40; ++Inc) /*40/4 = 10 secs*/
+		{
+			usleep(250000);/*.25 seconds.*/
+			
+			if (Inc == 8) /*Warn us what we're waiting for after two seconds.*/
+			{
+				printf("Waiting for primary loop to exit...\n");
+			}
+		}
 		
 		if (!ContinuePrimaryLoop) /*Loop hasn't set the flag to 'true' again to let us know it's cooperating?*/
 		{
