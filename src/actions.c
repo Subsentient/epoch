@@ -168,7 +168,7 @@ static void *PrimaryLoop(void *ContinuePrimaryLoop)
 				}
 				
 				/*Rescan PIDs every minute to keep them up-to-date.*/
-				if (ScanStepper == 240)
+				if (ScanStepper == 240 && Worker->Started)
 				{
 					AdvancedPIDFind(Worker, true);
 				}
