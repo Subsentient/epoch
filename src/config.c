@@ -15,6 +15,16 @@
 /*We want the only interface for this to be LookupObjectInTable().*/
 ObjTable *ObjectTable = NULL;
 
+/*Used to allow for things like 'ObjectStartPriority Services', where Services == 3, for example.*/
+struct _PriorityAliasTree
+{ /*Start/Stop priority alias support for grouping.*/
+	char Alias[MAX_DESCRIPT_SIZE];
+	unsigned long Target;
+	
+	struct _PriorityAliasTree *Next;
+	struct _PriorityAliasTree *Prev;
+} *PriorityAliasTree = NULL;
+
 /*Holds the system hostname.*/
 char Hostname[MAX_LINE_SIZE] = { '\0' };
 
@@ -25,6 +35,9 @@ static char *WhitespaceArg(const char *InStream);
 static rStatus GetLineDelim(const char *InStream, char *OutStream);
 static rStatus ScanConfigIntegrity(void);
 static void ConfigProblem(short Type, const char *Attribute, const char *AttribVal, unsigned long LineNum);
+static unsigned long PriorityAlias_Lookup(const char *Alias);
+static void PriorityAlias_Add(const char *Alias, unsigned long Target);
+static void PriorityAlias_Shutdown(void);
 
 /*Used for error handling in InitConfig() by ConfigProblem().*/
 enum { CONFIG_EMISSINGVAL = 1, CONFIG_EBADVAL, CONFIG_ETRUNCATED, CONFIG_EAFTER, CONFIG_EBEFORE, CONFIG_ELARGENUM };
@@ -283,6 +296,50 @@ rStatus InitConfig(void)
 			}
 			
 			continue;
+		}
+		else if (!strncmp(Worker, (CurrentAttribute = "DefinePriority"), strlen("DefinePriority")))
+		{
+			char Alias[MAX_DESCRIPT_SIZE] = { '\0' };
+			unsigned long Target = 0, Inc = 0;
+			const char *TWorker = DelimCurr;
+			
+			if (CurObj != NULL)
+			{ /*We can't allow this in object-local options, because then this may not be properly defined.*/
+				ConfigProblem(CONFIG_EAFTER, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				
+				continue;
+			}
+			
+			for (; *TWorker != ' ' && *TWorker != '\t' &&
+				*TWorker != '\0' && Inc < MAX_DESCRIPT_SIZE -1; ++Inc, ++TWorker)
+			{ /*Copy in the identifier.*/
+				Alias[Inc] = *TWorker;
+			}
+			Alias[Inc] = '\0';
+			
+			if (*TWorker == '\0')
+			{
+				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+				continue;
+			}
+			
+			TWorker = WhitespaceArg(TWorker); /*I abuse this delightful little function. It was meant for do-while loops.*/
+			
+			if (!AllNumeric(TWorker))
+			{
+				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+				continue;
+			}
+			
+			Target = atol(TWorker);
+			
+			PriorityAlias_Add(Alias, Target); /*Now add it to the linked list.*/
 		}
 		else if (!strncmp(Worker, (CurrentAttribute = "AlignStatusReports"), strlen("AlignStatusReports")))
 		{
@@ -738,8 +795,16 @@ rStatus InitConfig(void)
 			}
 			
 			if (!AllNumeric(DelimCurr)) /*Make sure we are getting a number, not Shakespeare.*/
-			{
-				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+			{ /*No number? We're probably looking at an alias.*/
+				unsigned long TmpTarget = 0;
+				
+				if (!(TmpTarget = PriorityAlias_Lookup(DelimCurr)))
+				{
+					ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+					continue;
+				}
+				
+				CurObj->ObjectStartPriority = TmpTarget;
 				continue;
 			}
 			
@@ -769,7 +834,15 @@ rStatus InitConfig(void)
 			
 			if (!AllNumeric(DelimCurr))
 			{
-				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+				unsigned long TmpTarget = 0;
+				
+				if (!(TmpTarget = PriorityAlias_Lookup(DelimCurr)))
+				{
+					ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+					continue;
+				}
+				
+				CurObj->ObjectStopPriority = TmpTarget;
 				continue;
 			}
 			
@@ -1509,6 +1582,70 @@ void ObjRL_ShutdownRunlevels(ObjTable *InObj)
 	InObj->ObjectRunlevels = NULL;
 }
 
+static void PriorityAlias_Add(const char *Alias, unsigned long Target)
+{ /*This code should be simple enough. Just routine linked list stuff.*/
+	struct _PriorityAliasTree *Worker = PriorityAliasTree;
+	
+	if (!PriorityAliasTree)
+	{
+		PriorityAliasTree = malloc(sizeof(struct _PriorityAliasTree));
+		PriorityAliasTree->Next = NULL;
+		PriorityAliasTree->Prev = NULL;
+		Worker = PriorityAliasTree;
+	}
+	else
+	{ /*If we are the first node, it's not possible for the object to already exist.*/
+		for (; Worker->Next; Worker = Worker->Next)
+		{
+			if (!strcmp(Worker->Alias, Alias))
+			{
+				return;
+			}
+		}
+	}
+	
+	Worker->Next = malloc(sizeof(struct _PriorityAliasTree));
+	Worker->Next->Next = NULL;
+	Worker->Next->Prev = Worker;
+	
+	strncpy(Worker->Alias, Alias, strlen(Alias) + 1);
+	Worker->Target = Target;
+}
+
+static void PriorityAlias_Shutdown(void)
+{
+	struct _PriorityAliasTree *Worker = PriorityAliasTree, *TmpFree = NULL;
+	
+	if (!PriorityAliasTree) return;
+	
+	while (Worker != NULL)
+	{
+		TmpFree = Worker;
+		Worker = Worker->Next;
+		
+		free(TmpFree);
+	}
+	
+	PriorityAliasTree = NULL;
+}
+
+static unsigned long PriorityAlias_Lookup(const char *Alias)
+{ /*Return 0 if we cannot find anything.*/
+	struct _PriorityAliasTree *Worker = PriorityAliasTree;
+	
+	if (!Worker) return 0;
+	
+	for (; Worker->Next; Worker = Worker->Next)
+	{
+		if (!strcmp(Worker->Alias, Alias))
+		{
+			return Worker->Target;
+		}
+	}
+	
+	return 0;
+}
+	
 ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority, unsigned long ObjectPriority)
 { /*The primary lookup function to be used when executing commands.*/
 	ObjTable *Worker = ObjectTable;
@@ -1547,15 +1684,18 @@ void ShutdownConfig(void)
 		free(Worker);
 	}
 	
+	PriorityAlias_Shutdown(); /*a lot of work for a small linked list.*/
+	
 	ObjectTable = NULL;
 }
 
 rStatus ReloadConfig(void)
 { /*This function is somewhat hard to read, but it does the job well.*/
 	ObjTable *Worker = ObjectTable;
-	ObjTable *TRoot = malloc(sizeof(ObjTable)), *SWorker = TRoot, *Temp;
-	struct _RLTree *RLTemp1, *RLTemp2;
+	ObjTable *TRoot = malloc(sizeof(ObjTable)), *SWorker = TRoot, *Temp = NULL;
+	struct _RLTree *RLTemp1 = NULL, *RLTemp2 = NULL;
 	Bool GlobalTriple[3], ConfigOK = true;
+	struct _PriorityAliasTree *PriRoot = NULL, *PWorker[2] = { NULL, NULL };
 	
 	WriteLogLine("CONFIG: Reloading configuration.\n", true);
 	WriteLogLine("CONFIG: Backing up current object table.", true);
@@ -1583,6 +1723,21 @@ rStatus ReloadConfig(void)
 			RLTemp2 = RLTemp2->Next;
 		}
 	}
+	
+	if ((PWorker[0] = PriorityAliasTree) != NULL)
+	{
+		PWorker[1] = PriRoot = malloc(sizeof(struct _PriorityAliasTree));
+		
+		for (; PWorker[0]->Next; PWorker[0] = PWorker[0]->Next)
+		{
+			*PWorker[1] = *PWorker[0];
+			PWorker[1]->Next = malloc(sizeof(struct _PriorityAliasTree));
+			PWorker[1]->Next->Next = NULL;
+			PWorker[1]->Next->Prev = PWorker[1];
+			
+			PWorker[1] = PWorker[1]->Next;
+		}
+	}
 
 	WriteLogLine("CONFIG: Shutting down primary object table.", true);
 	
@@ -1604,6 +1759,9 @@ rStatus ReloadConfig(void)
 					"Restoring old configuration to memory.\n"
 					"Please check epoch.conf for syntax errors.");
 		ObjectTable = TRoot; /*Point ObjectTable to our new, identical copy of the old tree.*/
+		
+		PriorityAliasTree = PriRoot;
+		
 		ConfigOK = false;
 	}
 	
@@ -1629,6 +1787,15 @@ rStatus ReloadConfig(void)
 		free(SWorker);
 	}
 	free(SWorker);
+	
+	while (PriRoot != NULL)
+	{
+		PWorker[0] = PriRoot;
+		PriRoot = PriRoot->Next;
+		
+		free(PWorker[0]);
+	}
+		
 	
 	WriteLogLine("CONFIG: " CONSOLE_COLOR_GREEN "Configuration reload successful." CONSOLE_ENDCOLOR, true);
 	puts(CONSOLE_COLOR_GREEN "Epoch: Configuration reloaded." CONSOLE_ENDCOLOR);
