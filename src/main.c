@@ -172,8 +172,8 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		  "Enter disable or enable followed by an object ID to disable or enable\nthat object."
 		),
 		
-		( "[start/stop] objectid:\n-----\n"
-		  "Enter start or stop followed by an object ID to start or stop that object."
+		( "[start/stop/restart] objectid:\n-----\n"
+		  "Enter start, stop, or restart followed by an object ID to control that object."
 		),
 		
 		( "objrl objectid [del/add/check] runlevel:\n-----\n"
@@ -247,7 +247,7 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		printf("%s %s\n\n", RootCommand, HelpMsgs[ENDIS]);
 		return;
 	}
-	else if (!strcmp(InCmd, "start") || !strcmp(InCmd, "stop"))
+	else if (!strcmp(InCmd, "start") || !strcmp(InCmd, "stop") || !strcmp(InCmd, "restart"))
 	{
 		printf("%s %s\n\n", RootCommand, HelpMsgs[STAP]);
 		return;
@@ -393,7 +393,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			if (!InitMemBus(false))
 			{
-				SpitError("main(): Failed to connect to membus.");
+				
 				return FAILURE;
 			}
 			
@@ -422,7 +422,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 
 			if (!InitMemBus(false))
 			{
-				SpitError("main(): Failed to connect to membus.");
+				
 				return FAILURE;
 			}
 
@@ -475,7 +475,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			if (!InitMemBus(false))
 			{
-				SpitError("main(): Failed to connect to membus.");
+				
 				return FAILURE;
 			}
 			
@@ -517,7 +517,6 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			if (!InitMemBus(false))
 			{
-				SpitError("HandleEpochCommand(): Failed to connect to membus.");
 				return FAILURE;
 			}
 			
@@ -561,7 +560,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			if (!InitMemBus(false))
 			{
-				SpitError("main(): Failed to connect to membus.");
+				
 				return FAILURE;
 			}
 			
@@ -576,24 +575,49 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			ShutdownMemBus(false);
 			return RV;
 		}
-		else if (ArgIs("start") || ArgIs("stop"))
+		else if (ArgIs("start") || ArgIs("stop") || ArgIs("restart"))
 		{
 			rStatus RV = SUCCESS;
-			Bool Starting = ArgIs("start");
+			short StartMode = 0;
+			enum { START = 1, STOP, RESTART };
 			char TOut[MAX_LINE_SIZE];
-			
+			const char *ActionString = NULL;
+
 			if (!InitMemBus(false))
 			{
-				SpitError("main(): Failed to connect to membus.");
+				
 				return FAILURE;
 			}
 			
-			CArg = argv[2];
-			snprintf(TOut, sizeof TOut, (Starting ? "Starting %s" : "Stopping %s"), CArg);
+			if (ArgIs("start"))
+			{
+				ActionString = "Starting";
+				StartMode = START;
+			}
+			else if (ArgIs("stop"))
+			{
+				ActionString = "Stopping";
+				StartMode = STOP;
+			}
+			else
+			{
+				ActionString = "Restarting";
+				StartMode = RESTART;
+			}
+			
+			snprintf(TOut, sizeof TOut, "%s %s", ActionString, argv[2]);
 			printf("%s", TOut);
 			fflush(NULL);
 			
-			RV = ObjControl(CArg, (Starting ? MEMBUS_CODE_OBJSTART : MEMBUS_CODE_OBJSTOP));
+			if (StartMode < RESTART)
+			{
+				RV = ObjControl(argv[2], (StartMode == START ? MEMBUS_CODE_OBJSTART : MEMBUS_CODE_OBJSTOP));
+			}
+			else
+			{
+				RV = (ObjControl(argv[2], MEMBUS_CODE_OBJSTOP) && ObjControl(argv[2], MEMBUS_CODE_OBJSTART));
+			}
+			
 			PerformStatusReport(TOut, RV, false);
 			
 			ShutdownMemBus(false);
@@ -693,7 +717,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			if (!InitMemBus(false))
 			{
-				SpitError("main(): Failed to connect to membus.");
+				
 				return FAILURE;
 			}
 			
@@ -746,7 +770,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			if (!InitMemBus(false))
 			{
-				SpitError("main(): Failed to connect to membus.");
+				
 				return FAILURE;
 			}
 			
@@ -947,7 +971,7 @@ int main(int argc, char **argv)
 		/*Start membus.*/
 		if (argc == 1 && !InitMemBus(false))
 		{ /*Don't initialize the membus if we could be doing "-f".*/
-			SpitError("main(): Failed to connect to membus.");
+			
 			return 1;
 		}
 		
