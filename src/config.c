@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <signal.h>
 #include <ctype.h>
 #include "epoch.h"
 
@@ -672,6 +673,65 @@ rStatus InitConfig(void)
 				{
 					CurObj->Opts.AutoRestart = true;
 				}
+				else if (!strncmp(CurArg, "TERMSIGNAL", strlen("TERMSIGNAL")))
+				{
+					const char *TWorker = CurArg + strlen("TERMSIGNAL");
+					
+					if (*TWorker != '=' || *(TWorker + 1) == '\0')
+					{
+						ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, CurArg, LineNum);
+						continue;
+					}
+					
+					++TWorker;
+					
+					if (AllNumeric(TWorker))
+					{
+						if (atoi(TWorker) > 255)
+						{
+							ConfigProblem(CONFIG_ELARGENUM, CurArg, NULL, LineNum);
+						}
+
+						CurObj->TermSignal = atoi(TWorker);
+					}
+					else if (!strcmp("SIGTERM", TWorker))
+					{
+						CurObj->TermSignal = SIGTERM;
+					}
+					else if (!strcmp("SIGKILL", TWorker))
+					{
+						CurObj->TermSignal = SIGKILL;
+					}
+					else if (!strcmp("SIGHUP", TWorker))
+					{
+						CurObj->TermSignal = SIGKILL;
+					}
+					else if (!strcmp("SIGINT", TWorker))
+					{
+						CurObj->TermSignal = SIGINT;
+					}
+					else if (!strcmp("SIGABRT", TWorker))
+					{
+						CurObj->TermSignal = SIGABRT;
+					}
+					else if (!strcmp("SIGQUIT", TWorker))
+					{
+						CurObj->TermSignal = SIGQUIT;
+					}
+					else if (!strcmp("SIGUSR1", TWorker))
+					{
+						CurObj->TermSignal = SIGUSR1;
+					}
+					else if (!strcmp("SIGUSR2", TWorker))
+					{
+						CurObj->TermSignal = SIGUSR2;
+					}
+					else
+					{
+						ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, TWorker, LineNum);
+						continue;
+					}
+				}
 				else
 				{
 					ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, CurArg, LineNum);
@@ -1311,6 +1371,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->Opts.StopMode = STOP_NONE;
 	Worker->Opts.CanStop = true;
 	Worker->ObjectPID = 0;
+	Worker->TermSignal = SIGTERM; /*This can be changed via config.*/
 	Worker->ObjectRunlevels = NULL;
 	Worker->Enabled = 2; /*We can indeed store this in a bool you know. There's no 1 bit datatype.*/
 	Worker->Opts.HaltCmdOnly = false;

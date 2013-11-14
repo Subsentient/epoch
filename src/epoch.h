@@ -145,6 +145,7 @@ typedef struct _EpochObjectTable
 	unsigned long ObjectStartPriority;
 	unsigned long ObjectStopPriority;
 	unsigned long ObjectPID; /*The process ID, used for shutting down.*/
+	unsigned char TermSignal; /*The signal we send to an object if it's stop mode is PID or PIDFILE.*/
 	Bool Enabled;
 	Bool Started;
 	
