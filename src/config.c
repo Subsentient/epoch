@@ -1620,7 +1620,7 @@ Bool ObjRL_ValidRunlevel(const char *InRL)
 	const ObjTable *Worker = ObjectTable;
 	Bool ValidRL = false;
 	
-	for (; Worker->Next; ++Worker)
+	for (; Worker->Next; Worker = Worker->Next)
 	{
 		if (!Worker->Opts.HaltCmdOnly && ObjRL_CheckRunlevel(InRL, Worker))
 		{
