@@ -1442,6 +1442,7 @@ static rStatus ScanConfigIntegrity(void)
 	ObjTable *Worker = ObjectTable, *TOffender;
 	char TmpBuf[1024];
 	rStatus RetState = SUCCESS;
+	static Bool WasRunBefore = false;
 	
 	if (ObjectTable == NULL)
 	{ /*This can happen if configuration is filled with trash and nothing valid.*/
@@ -1449,18 +1450,63 @@ static rStatus ScanConfigIntegrity(void)
 		return FAILURE;
 	}
 	
-	if (*CurRunlevel == 0)
-	{ /*This also allows us to skip the DefaultRunlevel attribute
-		* if we specify a default on the kernel command line.*/
-		SpitError("No default runlevel specified!");
-		return FAILURE;
-	}
+	if (*CurRunlevel == 0 || !ObjRL_ValidRunlevel(CurRunlevel))
+	{	
+		if (*CurRunlevel == 0)
+		{
+			SpitError("No default runlevel specified!");
+		}
+		else
+		{
 	
-	if (!ObjRL_ValidRunlevel(CurRunlevel))
-	{
-		snprintf(TmpBuf, 1024, "Specified default runlevel %s is not valid; no objects use it.", CurRunlevel);
-		SpitError(TmpBuf);
-		RetState = FAILURE;
+			snprintf(TmpBuf, sizeof TmpBuf, "%sThe runlevel \"%s\" does not exist.",
+					WasRunBefore ? "A problem has occured in configuration.\n" : "Error booting to default runlevel.\n",
+					CurRunlevel);
+
+			SpitError(TmpBuf);
+			
+			if (WasRunBefore)
+			{
+				puts("Switch to an existing runlevel and then try to reload the configuration again.");
+			}
+		}
+		
+		if (!WasRunBefore)
+		{ /*We can ask for a new runlevel if we are just booting, otherwise the other is restored by ReloadConfig().*/
+			char NewRL[MAX_DESCRIPT_SIZE];
+			Bool BadRL = true;
+
+			do
+			{
+				printf("Please enter a valid runlevel to continue\n"
+						"or strike enter to go to an emergency shell.\n\n--> ");
+				
+				fgets(NewRL, MAX_DESCRIPT_SIZE, stdin);
+				
+				if (NewRL[0] == '\n')
+				{
+					puts("Starting emergency shell as per your request.");
+					EmergencyShell();
+				}
+				
+				NewRL[strlen(NewRL) - 1] = '\0'; /*nuke the newline at the end.*/
+				
+				if (ObjRL_ValidRunlevel(NewRL))
+				{
+					puts("Runlevel accepted.\n");
+					BadRL = false;
+	
+					snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", NewRL);
+				}
+				
+				if (BadRL) SmallError("The runlevel you entered was not found. Please try again.\n");
+			} while (BadRL);
+		}
+		else
+		{
+			return FAILURE;
+		}
+			
 	}
 	
 	for (; Worker->Next != NULL; Worker = Worker->Next)
@@ -1527,6 +1573,8 @@ static rStatus ScanConfigIntegrity(void)
 			}			
 		}
 	}
+	
+	WasRunBefore = true;
 	
 	return RetState;
 }
@@ -1868,9 +1916,13 @@ rStatus ReloadConfig(void)
 	struct _RLTree *RLTemp1 = NULL, *RLTemp2 = NULL;
 	Bool GlobalTriple[3], ConfigOK = true;
 	struct _RunlevelInheritance *RLIRoot = NULL, *RLIWorker[2] = { NULL };
+	char RunlevelBackup[MAX_DESCRIPT_SIZE];
 	
 	WriteLogLine("CONFIG: Reloading configuration.\n", true);
 	WriteLogLine("CONFIG: Backing up current configuration.", true);
+	
+	/*Backup the current runlevel.*/
+	snprintf(RunlevelBackup, MAX_DESCRIPT_SIZE, "%s", CurRunlevel);
 	
 	for (; Worker->Next != NULL; Worker = Worker->Next, SWorker = SWorker->Next)
 	{
@@ -1937,6 +1989,9 @@ rStatus ReloadConfig(void)
 		/*Restore runlevel inheritance state.*/
 		RLInheritance_Shutdown();
 		RunlevelInheritance = RLIRoot;
+		
+		/*Restore current runlevel*/
+		snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", RunlevelBackup);
 		
 		ConfigOK = false;
 	}
