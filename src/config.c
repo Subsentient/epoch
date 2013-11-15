@@ -1867,9 +1867,10 @@ rStatus ReloadConfig(void)
 	ObjTable *TRoot = malloc(sizeof(ObjTable)), *SWorker = TRoot, *Temp = NULL;
 	struct _RLTree *RLTemp1 = NULL, *RLTemp2 = NULL;
 	Bool GlobalTriple[3], ConfigOK = true;
+	struct _RunlevelInheritance *RLIRoot = NULL, *RLIWorker[2] = { NULL };
 	
 	WriteLogLine("CONFIG: Reloading configuration.\n", true);
-	WriteLogLine("CONFIG: Backing up current object table.", true);
+	WriteLogLine("CONFIG: Backing up current configuration.", true);
 	
 	for (; Worker->Next != NULL; Worker = Worker->Next, SWorker = SWorker->Next)
 	{
@@ -1895,7 +1896,24 @@ rStatus ReloadConfig(void)
 		}
 	}
 
-	WriteLogLine("CONFIG: Shutting down primary object table.", true);
+	/*Back up the runlevel inheritance table.*/
+	if (RunlevelInheritance != NULL)
+	{
+		RLIRoot = RLIWorker[1] = malloc(sizeof(struct _RunlevelInheritance));
+		memset(RLIWorker[1], 0, sizeof(struct _RunlevelInheritance));
+		
+		for (RLIWorker[0] = RunlevelInheritance; RLIWorker[0]->Next; RLIWorker[0] = RLIWorker[0]->Next)
+		{
+			*RLIWorker[1] = *RLIWorker[0];
+			
+			RLIWorker[1]->Next = malloc(sizeof(struct _RunlevelInheritance));
+			memset(RLIWorker[1]->Next, 0, sizeof(struct _RunlevelInheritance));
+			
+			RLIWorker[1]->Next->Prev = RLIWorker[1];
+		}
+	}
+	
+	WriteLogLine("CONFIG: Shutting down configuration.", true);
 	
 	/*Actually do the reload of the config.*/
 	ShutdownConfig();
@@ -1905,16 +1923,21 @@ rStatus ReloadConfig(void)
 	GlobalTriple[1] = DisableCAD;
 	GlobalTriple[2] = AlignStatusReports;
 	
-	WriteLogLine("CONFIG: Initializing new object table.", true);
+	WriteLogLine("CONFIG: Initializing new configuration.", true);
 	
 	if (!InitConfig())
 	{
 		WriteLogLine("CONFIG: " CONSOLE_COLOR_RED "FAILED TO RELOAD CONFIGURATION." CONSOLE_ENDCOLOR 
-					" Restoring previous object table from backup.", true);
+					" Restoring previous configuration from backup.", true);
 		SpitError("ReloadConfig(): Failed to reload configuration.\n"
 					"Restoring old configuration to memory.\n"
 					"Please check epoch.conf for syntax errors.");
 		ObjectTable = TRoot; /*Point ObjectTable to our new, identical copy of the old tree.*/
+		
+		/*Restore runlevel inheritance state.*/
+		RLInheritance_Shutdown();
+		RunlevelInheritance = RLIRoot;
+		
 		ConfigOK = false;
 	}
 	
@@ -1925,7 +1948,7 @@ rStatus ReloadConfig(void)
 	
 	if (!ConfigOK) return ConfigOK;
 	
-	WriteLogLine("CONFIG: Restoring object statuses and deleting backup table.", true);
+	WriteLogLine("CONFIG: Restoring object statuses and deleting backup configuration.", true);
 	
 	for (SWorker = TRoot; SWorker->Next != NULL; SWorker = Temp)
 	{ /*Add back the Started states, so we don't forget to stop services, etc.*/
@@ -1940,6 +1963,13 @@ rStatus ReloadConfig(void)
 		free(SWorker);
 	}
 	free(SWorker);
+	
+	/*Release the runlevel inheritance table.*/
+	for (; RLIRoot != NULL; RLIRoot = RLIWorker[0])
+	{
+		RLIWorker[0] = RLIRoot->Next;
+		free(RLIRoot);
+	}
 	
 	WriteLogLine("CONFIG: " CONSOLE_COLOR_GREEN "Configuration reload successful." CONSOLE_ENDCOLOR, true);
 	puts(CONSOLE_COLOR_GREEN "Epoch: Configuration reloaded." CONSOLE_ENDCOLOR);
