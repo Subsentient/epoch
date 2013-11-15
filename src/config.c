@@ -17,7 +17,7 @@
 ObjTable *ObjectTable = NULL;
 
 /*Used to allow for things like 'ObjectStartPriority Services', where Services == 3, for example.*/
-struct _PriorityAliasTree
+static struct _PriorityAliasTree
 { /*Start/Stop priority alias support for grouping.*/
 	char Alias[MAX_DESCRIPT_SIZE];
 	unsigned long Target;
@@ -25,6 +25,17 @@ struct _PriorityAliasTree
 	struct _PriorityAliasTree *Next;
 	struct _PriorityAliasTree *Prev;
 } *PriorityAliasTree = NULL;
+
+/*Used to allow runlevels to be inherited by other runlevels.*/
+static struct _RunlevelInheritance
+{ /*I __REVILE__ this solution.
+Epoch is just a linked list of linked lists anymore.*/
+	char Inheriter[MAX_DESCRIPT_SIZE];
+	char Inherited[MAX_DESCRIPT_SIZE];
+	
+	struct _RunlevelInheritance *Next;
+	struct _RunlevelInheritance *Prev;
+} *RunlevelInheritance = NULL;
 
 /*Holds the system hostname.*/
 char Hostname[MAX_LINE_SIZE] = { '\0' };
@@ -39,6 +50,9 @@ static void ConfigProblem(short Type, const char *Attribute, const char *AttribV
 static unsigned long PriorityAlias_Lookup(const char *Alias);
 static void PriorityAlias_Add(const char *Alias, unsigned long Target);
 static void PriorityAlias_Shutdown(void);
+static void RLInheritance_Add(const char *Inheriter, const char *Inherited);
+static Bool RLInheritance_Check(const char *Inheriter, const char *Inherited);
+static void RLInheritance_Shutdown(void);
 
 /*Used for error handling in InitConfig() by ConfigProblem().*/
 enum { CONFIG_EMISSINGVAL = 1, CONFIG_EBADVAL, CONFIG_ETRUNCATED, CONFIG_EAFTER, CONFIG_EBEFORE, CONFIG_ELARGENUM };
@@ -298,10 +312,48 @@ rStatus InitConfig(void)
 			
 			continue;
 		}
+		else if (!strncmp(Worker, (CurrentAttribute = "RunlevelInherits"), strlen("RunlevelInherits")))
+		{
+			char Inheriter[MAX_DESCRIPT_SIZE], Inherited[MAX_DESCRIPT_SIZE];
+			const char *TWorker = DelimCurr;
+			unsigned long TInc = 0;
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EAFTER, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			for (; *TWorker != ' ' && *TWorker != '\t' && *TWorker != '\0' && TInc < MAX_DESCRIPT_SIZE - 1; ++TInc, ++TWorker)
+			{
+				Inheriter[TInc] = *TWorker;
+			}
+			Inheriter[TInc] = '\0';
+			
+			if (*TWorker == '\0')
+			{
+				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+				continue;
+			}
+			
+			TWorker = WhitespaceArg(TWorker);
+			
+			if (strstr(TWorker, " ") || strstr(TWorker, "\t"))
+			{
+				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+				continue;
+			}
+			
+			snprintf(Inherited, MAX_DESCRIPT_SIZE, "%s", TWorker);
+			
+			RLInheritance_Add(Inheriter, Inherited);
+			
+			continue;
+		}
 		else if (!strncmp(Worker, (CurrentAttribute = "DefinePriority"), strlen("DefinePriority")))
 		{
 			char Alias[MAX_DESCRIPT_SIZE] = { '\0' };
-			unsigned long Target = 0, Inc = 0;
+			unsigned long Target = 0, TInc = 0;
 			const char *TWorker = DelimCurr;
 			
 			if (CurObj != NULL)
@@ -318,11 +370,11 @@ rStatus InitConfig(void)
 			}
 			
 			for (; *TWorker != ' ' && *TWorker != '\t' &&
-				*TWorker != '\0' && Inc < MAX_DESCRIPT_SIZE -1; ++Inc, ++TWorker)
+				*TWorker != '\0' && TInc < MAX_DESCRIPT_SIZE -1; ++TInc, ++TWorker)
 			{ /*Copy in the identifier.*/
-				Alias[Inc] = *TWorker;
+				Alias[TInc] = *TWorker;
 			}
-			Alias[Inc] = '\0';
+			Alias[TInc] = '\0';
 			
 			if (*TWorker == '\0')
 			{
@@ -341,6 +393,8 @@ rStatus InitConfig(void)
 			Target = atol(TWorker);
 			
 			PriorityAlias_Add(Alias, Target); /*Now add it to the linked list.*/
+			
+			continue;
 		}
 		else if (!strncmp(Worker, (CurrentAttribute = "AlignStatusReports"), strlen("AlignStatusReports")))
 		{
@@ -1530,7 +1584,7 @@ unsigned long GetHighestPriority(Bool WantStartPriority)
 }
 
 /*Functions for runlevel management.*/
-Bool ObjRL_CheckRunlevel(const char *InRL, const ObjTable *InObj)
+Bool ObjRL_CheckRunlevel(const char *InRL, const ObjTable *InObj, Bool CountInherited)
 {
 	struct _RLTree *Worker = InObj->ObjectRunlevels;
 	
@@ -1541,7 +1595,8 @@ Bool ObjRL_CheckRunlevel(const char *InRL, const ObjTable *InObj)
 	
 	for (; Worker->Next != NULL; Worker = Worker->Next)
 	{
-		if (!strcmp(Worker->RL, InRL))
+		if (!strcmp(Worker->RL, InRL) ||
+			(CountInherited && RLInheritance_Check(InRL, Worker->RL)) )
 		{
 			return true;
 		}
@@ -1622,7 +1677,7 @@ Bool ObjRL_ValidRunlevel(const char *InRL)
 	
 	for (; Worker->Next; Worker = Worker->Next)
 	{
-		if (!Worker->Opts.HaltCmdOnly && ObjRL_CheckRunlevel(InRL, Worker))
+		if (!Worker->Opts.HaltCmdOnly && ObjRL_CheckRunlevel(InRL, Worker, true))
 		{
 			ValidRL = true;
 			break;
@@ -1708,7 +1763,61 @@ static unsigned long PriorityAlias_Lookup(const char *Alias)
 	
 	return 0;
 }
+
+static void RLInheritance_Add(const char *Inheriter, const char *Inherited)
+{
+	struct _RunlevelInheritance *Worker = RunlevelInheritance;
 	
+	if (!Worker)
+	{
+		RunlevelInheritance = malloc(sizeof(struct _RunlevelInheritance));
+		memset(RunlevelInheritance, 0, sizeof(struct _RunlevelInheritance));
+		
+		Worker = RunlevelInheritance;
+	}
+	
+	while (Worker->Next) Worker = Worker->Next;
+	
+	Worker->Next = malloc(sizeof(struct _RunlevelInheritance));
+	memset(Worker->Next, 0, sizeof(struct _RunlevelInheritance));
+	
+	Worker->Next->Prev = Worker;
+	
+	strncpy(Worker->Inheriter, Inheriter, strlen(Inheriter) + 1);
+	strncpy(Worker->Inherited, Inherited, strlen(Inherited) + 1);
+	
+}
+
+static Bool RLInheritance_Check(const char *Inheriter, const char *Inherited)
+{ /*Check if Inheriter inherits inherited.*/
+	struct _RunlevelInheritance *Worker = RunlevelInheritance;
+	
+	if (!Worker) return false;
+	
+	for (; Worker->Next != NULL; Worker = Worker->Next)
+	{
+		if (!strcmp(Inheriter, Worker->Inheriter) && !strcmp(Inherited, Worker->Inherited))
+		{
+			return true;
+		}
+	}
+	
+	return false;
+}
+
+static void RLInheritance_Shutdown(void)
+{
+	struct _RunlevelInheritance *Worker = RunlevelInheritance, *TDel = NULL;
+	
+	for (; Worker != NULL; Worker = TDel)
+	{
+		TDel = Worker->Next;
+		free(Worker);
+	}
+	
+	RunlevelInheritance = NULL;
+}
+
 ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority, unsigned long ObjectPriority)
 { /*The primary lookup function to be used when executing commands.*/
 	ObjTable *Worker = ObjectTable;
@@ -1721,7 +1830,7 @@ ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority
 	for (; Worker->Next != NULL; Worker = Worker->Next)
 	{
 		if ((ObjectRunlevel == NULL || ((WantStartPriority || !Worker->Opts.HaltCmdOnly) &&
-			ObjRL_CheckRunlevel(ObjectRunlevel, Worker))) && 
+			ObjRL_CheckRunlevel(ObjectRunlevel, Worker, true))) && 
 			/*As you can see by below, I obfuscate with efficiency!*/
 			(WantStartPriority ? Worker->ObjectStartPriority : Worker->ObjectStopPriority) == ObjectPriority)
 		{
@@ -1746,6 +1855,8 @@ void ShutdownConfig(void)
 		Temp = Worker->Next;
 		free(Worker);
 	}
+	
+	RLInheritance_Shutdown();
 	
 	ObjectTable = NULL;
 }

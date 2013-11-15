@@ -424,7 +424,7 @@ void ParseMemBus(void)
 			if (BusDataIs(MEMBUS_CODE_OBJRLS_CHECK))
 			{
 				snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s %d", MEMBUS_CODE_OBJRLS_CHECK, TID, TRL,
-						ObjRL_CheckRunlevel(TRL, CurObj));
+						ObjRL_CheckRunlevel(TRL, CurObj, true));
 			}
 			else if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD) || BusDataIs(MEMBUS_CODE_OBJRLS_DEL))
 			{
@@ -433,7 +433,7 @@ void ParseMemBus(void)
 				
 				if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD))
 				{
-					if (!ObjRL_CheckRunlevel(TRL, CurObj))
+					if (!ObjRL_CheckRunlevel(TRL, CurObj, true))
 					{
 						ObjRL_AddRunlevel(TRL, CurObj);
 					}

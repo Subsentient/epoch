@@ -232,7 +232,7 @@ extern ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartP
 extern unsigned long GetHighestPriority(Bool WantStartPriority);
 extern rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char *Value);
 extern void ObjRL_AddRunlevel(const char *InRL, ObjTable *InObj);
-extern Bool ObjRL_CheckRunlevel(const char *InRL, const ObjTable *InObj);
+extern Bool ObjRL_CheckRunlevel(const char *InRL, const ObjTable *InObj, Bool CountInherited);
 extern Bool ObjRL_DelRunlevel(const char *InRL, ObjTable *InObj);
 extern Bool ObjRL_ValidRunlevel(const char *InRL);
 extern void ObjRL_ShutdownRunlevels(ObjTable *InObj);
