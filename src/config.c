@@ -563,7 +563,7 @@ rStatus InitConfig(void)
 			{
 				FILE *TDesc;
 				unsigned long Inc = 0;
-				char TChar;
+				short TChar;
 				const char *TW = DelimCurr;
 				char THostname[MAX_LINE_SIZE];
 				
@@ -580,7 +580,7 @@ rStatus InitConfig(void)
 				
 				for (Inc = 0; (TChar = getc(TDesc)) != EOF && Inc < MAX_LINE_SIZE - 1; ++Inc)
 				{
-					THostname[Inc] = TChar;
+					THostname[Inc] = (char)TChar;
 				}
 				THostname[Inc] = '\0';
 				

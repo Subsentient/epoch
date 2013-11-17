@@ -283,7 +283,7 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 	{
 		if (AllNumeric(DirPtr->d_name) && atol(DirPtr->d_name) >= InObj->ObjectPID)
 		{
-			char TChar;
+			short TChar;
 			
 			snprintf(FileName, sizeof FileName, "/proc/%s/cmdline", DirPtr->d_name);
 			
@@ -295,7 +295,7 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 			
 			for (Inc = 0; (TChar = getc(Descriptor)) != EOF && Inc < MAX_LINE_SIZE - 1; ++Inc)
 			{
-				FileBuf[Inc] = TChar;
+				FileBuf[Inc] = (char)TChar;
 			}
 			FileBuf[Inc] = '\0';
 			
@@ -338,8 +338,9 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 unsigned long ReadPIDFile(const ObjTable *InObj)
 {
 	FILE *PIDFileDescriptor = fopen(InObj->ObjectPIDFile, "r");
-	char TChar, PIDBuf[MAX_LINE_SIZE], *TW = NULL, *TW2 = NULL;
+	char PIDBuf[MAX_LINE_SIZE], *TW = NULL, *TW2 = NULL;
 	unsigned long InPID = 0, Inc = 0;
+	short TChar;
 	
 	if (!PIDFileDescriptor)
 	{
@@ -348,7 +349,7 @@ unsigned long ReadPIDFile(const ObjTable *InObj)
 	
 	for (; (TChar = getc(PIDFileDescriptor)) != EOF && Inc < (MAX_LINE_SIZE - 1); ++Inc)
 	{
-		PIDBuf[Inc] = TChar;
+		PIDBuf[Inc] = (char)TChar;
 	}
 	PIDBuf[Inc] = '\0';
 	

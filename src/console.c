@@ -27,8 +27,9 @@ void PrintBootBanner(void)
 	
 	if (!strncmp(BootBanner.BannerText, "FILE", strlen("FILE")))
 	{ /*Now we read the file and copy it into the new array.*/
-		char *Worker, *TW, TChar;
+		char *Worker, *TW;
 		FILE *TempDescriptor;
+		short TChar;
 		unsigned long Inc = 0;
 		
 		BootBanner.BannerText[Inc] = '\0';	
@@ -53,7 +54,7 @@ void PrintBootBanner(void)
 		
 		for (; (TChar = getc(TempDescriptor)) != EOF && Inc < MAX_LINE_SIZE - 1; ++Inc)
 		{ /*It's a loop copy. Get over it.*/
-			BootBanner.BannerText[Inc] = TChar;
+			BootBanner.BannerText[Inc] = (char)TChar;
 		}
 		BootBanner.BannerText[Inc] = '\0';
 		
