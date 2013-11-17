@@ -105,13 +105,18 @@ Bool ObjectProcessRunning(const ObjTable *InObj)
 	* but I was scared of using kill() for this purpose. I thought that
 	* some processes would notice it and whine. Lucky me that it turns out
 	* signal 0 is not real.*/
-	pid_t InPID;
+	pid_t InPID = 0;
 	
 
 	if (InObj->Opts.StopMode != STOP_PIDFILE || !(InPID = ReadPIDFile(InObj)))
 	{ /*We got a PID file requested and present? Get PID from that, otherwise 
 		* get the PID from memory.*/
 		InPID = InObj->ObjectPID;
+	}
+	
+	if (InPID == 0) /*This means the object has no PID.*/
+	{
+		return false;
 	}
 	
 	if (kill(InPID, 0) == 0)
