@@ -292,6 +292,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				ExitStatus = SUCCESS;
 				break;
 			case STOP_PID:
+			{
 				if (PrintStatus)
 				{
 					printf("%s", PrintOutStream);
@@ -300,7 +301,22 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				
 				if (kill(CurObj->ObjectPID, SIGTERM) == 0)
 				{ /*Just send SIGTERM.*/
-					ExitStatus = SUCCESS;
+					unsigned char TInc = 0;
+							
+					/*Give it ten seconds to terminate on it's own.*/
+					for (; TInc < 200 && kill(CurObj->ObjectPID, 0) == 0; ++TInc)
+					{ /*Two hundred is ten seconds here.*/
+						usleep(50000);
+					}
+					
+					if (TInc < 200)
+					{
+						ExitStatus = SUCCESS;
+					}
+					else
+					{
+						ExitStatus = FAILURE;
+					}
 				}
 				else
 				{
@@ -315,6 +331,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				}
 				
 				break;
+			}
 			case STOP_PIDFILE:
 			{
 				unsigned long TruePID = 0;
@@ -338,13 +355,29 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				
 				if (kill(TruePID, SIGTERM) == 0)
 				{
-					ExitStatus = SUCCESS;
+					unsigned char TInc = 0;				
+					/*Give it ten seconds to terminate on it's own.*/
+					for (; TInc < 200 && kill(TruePID, 0) == 0; ++TInc)
+					{ /*Two hundred is ten seconds here.*/
+						usleep(50000);
+					}
+					
+					if (TInc < 200)
+					{
+						ExitStatus = SUCCESS;
+					}
+					else
+					{
+						ExitStatus = FAILURE;
+					}
 				}
 				else
 				{
 					ExitStatus = FAILURE;
 				}
+				
 				CurObj->Started = (ExitStatus ? false : true);
+				
 				if (PrintStatus)
 				{
 					PerformStatusReport(PrintOutStream, ExitStatus, true);
