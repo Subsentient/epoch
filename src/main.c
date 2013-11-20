@@ -867,6 +867,11 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 						printf(CONSOLE_COLOR_GREEN "Object %s is enabled for runlevel %s.\n" CONSOLE_ENDCOLOR,
 								ObjectID, RL);
 					}
+					else if (*CNumber == '2')
+					{
+						printf(CONSOLE_COLOR_CYAN "Object %s is inherited by the runlevel %s.\n" CONSOLE_ENDCOLOR,
+								ObjectID, RL);
+					}
 					else
 					{
 						SpitError("Internal error, bad status number received from membus. Please report to Epoch.");

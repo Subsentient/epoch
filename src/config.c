@@ -1635,22 +1635,34 @@ unsigned long GetHighestPriority(Bool WantStartPriority)
 Bool ObjRL_CheckRunlevel(const char *InRL, const ObjTable *InObj, Bool CountInherited)
 {
 	struct _RLTree *Worker = InObj->ObjectRunlevels;
+	Bool RetVal = false;
 	
 	if (Worker == NULL)
 	{
 		return false;
 	}
 	
-	for (; Worker->Next != NULL; Worker = Worker->Next)
+	if (CountInherited)
 	{
-		if (!strcmp(Worker->RL, InRL) ||
-			(CountInherited && RLInheritance_Check(InRL, Worker->RL)) )
+		for (; Worker->Next; Worker = Worker->Next)
+		{
+			if (RLInheritance_Check(InRL, Worker->RL))
+			{
+				RetVal = 2;
+				break;
+			}
+		}
+	}
+	
+	for (Worker = InObj->ObjectRunlevels; Worker->Next != NULL; Worker = Worker->Next)
+	{
+		if (!strcmp(Worker->RL, InRL))
 		{
 			return true;
 		}
 	}
 	
-	return false;
+	return RetVal;
 }
 	
 void ObjRL_AddRunlevel(const char *InRL, ObjTable *InObj)

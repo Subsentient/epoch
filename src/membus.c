@@ -433,7 +433,7 @@ void ParseMemBus(void)
 				
 				if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD))
 				{
-					if (!ObjRL_CheckRunlevel(TRL, CurObj, true))
+					if (!ObjRL_CheckRunlevel(TRL, CurObj, false))
 					{
 						ObjRL_AddRunlevel(TRL, CurObj);
 					}
