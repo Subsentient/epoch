@@ -306,6 +306,11 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					/*Give it ten seconds to terminate on it's own.*/
 					for (; TInc < 200 && kill(CurObj->ObjectPID, 0) == 0; ++TInc)
 					{ /*Two hundred is ten seconds here.*/
+						
+						/*If we are not in a thread, we need to wait for the process ourselves,
+						because nobody else will do it for us.*/
+						waitpid(CurObj->ObjectPID, NULL, WNOHANG);
+						
 						usleep(50000);
 					}
 					
@@ -359,6 +364,11 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					/*Give it ten seconds to terminate on it's own.*/
 					for (; TInc < 200 && kill(TruePID, 0) == 0; ++TInc)
 					{ /*Two hundred is ten seconds here.*/
+						
+						/*If we are not in a thread, we need to wait for the process ourselves,
+						because nobody else will do it for us.*/
+						waitpid(TruePID, NULL, WNOHANG);
+
 						usleep(50000);
 					}
 					
