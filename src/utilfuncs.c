@@ -365,9 +365,9 @@ unsigned long ReadPIDFile(const ObjTable *InObj)
 	for (TW2 = TW; *TW2 != '\0' && *TW2 != '\t' && *TW2 != '\n' && *TW2 != ' '; ++TW2); /*Delete any following the number.*/
 	*TW2 = '\0';
 	
-	if (AllNumeric(PIDBuf))
+	if (AllNumeric(TW))
 	{
-		InPID = atoi(PIDBuf);
+		InPID = atoi(TW);
 	}
 	else
 	{
