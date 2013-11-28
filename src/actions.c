@@ -295,6 +295,8 @@ void RecoverFromReexec(void)
 	
 	waitpid(ChildPID, NULL, 0);
 	
+	shmdt((void*)MemData);/*Detach the process.*/
+	
 	/*Reset environment.*/
 	setenv("USER", ENVVAR_USER, true);
 	setenv("PATH", ENVVAR_PATH, true);

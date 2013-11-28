@@ -24,10 +24,10 @@
 volatile char *MemData = NULL;
 volatile Bool BusRunning = false;
 volatile signed long MemBusKey = MEMKEY;
+volatile int MemDescriptor = 0;
 
 rStatus InitMemBus(Bool ServerSide)
 { /*Fire up the memory bus.*/
-	int MemDescriptor;
 	char CheckCode = 0;
 	unsigned long Inc = 0;
 	
@@ -812,9 +812,15 @@ rStatus ShutdownMemBus(Bool ServerSide)
 	
 	*MemData = MEMBUS_NOMSG;
 	
+	if (shmctl(MemDescriptor, IPC_RMID, NULL) == -1)
+	{
+		SpitWarning("ShutdownMemBus(): Unable to deallocate membus.");
+		return FAILURE;
+	}
+	
 	if (shmdt((void*)MemData) != 0)
 	{
-		SpitWarning("ShutdownMemBus(): Unable to shut down memory bus.");
+		SpitWarning("ShutdownMemBus(): Unable to detach membus.");
 		return FAILURE;
 	}
 	
