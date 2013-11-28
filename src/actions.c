@@ -295,7 +295,9 @@ void RecoverFromReexec(void)
 	
 	waitpid(ChildPID, NULL, 0);
 	
-	shmdt((void*)MemData);/*Detach the process.*/
+	shmdt((void*)MemData);
+	BusRunning = false;
+	MemBusKey = MEMKEY;
 	
 	/*Reset environment.*/
 	setenv("USER", ENVVAR_USER, true);
@@ -304,13 +306,7 @@ void RecoverFromReexec(void)
 	setenv("SHELL", ENVVAR_SHELL, true);
 	
 	/*If logging is enabled, we need to do this to write to disk.*/
-	LogInMemory = false;
-	
-	MemBusKey = MEMKEY;
-	
-	shmdt((void*)MemData); /*I don't care if it fails.*/
-	BusRunning = false;
-	
+	LogInMemory = false;	
 	
 	if (!InitMemBus(true))
 	{
