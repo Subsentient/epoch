@@ -280,6 +280,11 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				ExitStatus = ExecuteConfigObject(CurObj, IsStartingMode);
 				CurObj->Started = (ExitStatus ? false : true); /*Mark the process dead.*/
 				
+				if (ExitStatus)
+				{
+					CurObj->ObjectPID = 0;
+				}
+				
 				if (PrintStatus)
 				{
 					PerformStatusReport(PrintOutStream, ExitStatus, true);
@@ -290,6 +295,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 			case STOP_NONE:
 				CurObj->Started = false; /*Just say we did it even if nothing to do.*/
 				ExitStatus = SUCCESS;
+				CurObj->ObjectPID = 0;
 				break;
 			case STOP_PID:
 			{
@@ -329,6 +335,11 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				}
 				
 				CurObj->Started = (ExitStatus ? false : true);
+				
+				if (ExitStatus)
+				{
+					CurObj->ObjectPID = 0;
+				}
 				
 				if (PrintStatus)
 				{
@@ -387,6 +398,11 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				}
 				
 				CurObj->Started = (ExitStatus ? false : true);
+				
+				if (ExitStatus)
+				{
+					CurObj->ObjectPID = 0;
+				}
 				
 				if (PrintStatus)
 				{
