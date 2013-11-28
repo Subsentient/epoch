@@ -26,6 +26,7 @@ static Bool __CmdIs(const char *CArg, const char *InCmd);
 static void PrintEpochHelp(const char *RootCommand, const char *InCmd);
 static rStatus HandleEpochCommand(int argc, char **argv);
 static void SigHandler(int Signal);
+static void SetDefaultProcessTitle(int argc, char **argv);
 
 /*
  * Actual functions.
@@ -946,6 +947,19 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 	return SUCCESS;
 }
 
+static void SetDefaultProcessTitle(int argc, char **argv)
+{
+	unsigned long Inc = 1;
+	
+	for (; Inc < argc; ++Inc)
+	{
+		memset(argv[Inc], 0, strlen(argv[Inc]));
+		argv[Inc] = NULL;
+	}
+	
+	strncpy(argv[0], "init", strlen(argv[0]));
+}
+
 #ifndef NOMAINFUNC
 int main(int argc, char **argv)
 { /*Lotsa sloppy CLI processing here.*/
@@ -969,9 +983,9 @@ int main(int argc, char **argv)
 		const char *TRunlevel = NULL;
 		
 		/**Check if we are resuming from a reexec.**/
-		if (argc == 2 && !strcmp(argv[0], "/") && !strcmp(argv[1], "REEXEC"))
+		if (argc == 2 && !strcmp(argv[0], "!rxd") && !strcmp(argv[1], "REEXEC"))
 		{
-			strncpy(argv[0], "init", strlen(argv[0]));
+			SetDefaultProcessTitle(argc, argv);
 			RecoverFromReexec();	
 		}
 		
@@ -996,7 +1010,7 @@ int main(int argc, char **argv)
 			snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", TRunlevel);
 		}
 		
-		strncpy(argv[0], "init", strlen(argv[0]));
+		SetDefaultProcessTitle(argc, argv);
 		
 		/*Now that args are set, boot.*/		
 		LaunchBootup();

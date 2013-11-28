@@ -442,7 +442,7 @@ void ReexecuteEpoch(void)
 		/*Wait for the other side to bring up the membus.*/
 		while (shmget(MemBusKey, MEMBUS_SIZE, 0660) == - 1) usleep(100);
 		
-		execlp(EPOCH_BINARY_PATH, "/", "REEXEC", NULL); /*I'll *never* tell.*/
+		execlp(EPOCH_BINARY_PATH, "!rxd", "REEXEC", NULL); /*I'll *never* tell.*/
 	}
 		
 }
