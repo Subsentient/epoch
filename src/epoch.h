@@ -16,6 +16,12 @@
 #define MAX_LINE_SIZE 2048
 
 /*Configuration.*/
+
+/*EPOCH_INIT_PATH is not used for much. Mainly reexec.*/
+#ifndef EPOCH_BINARY_PATH
+#define EPOCH_BINARY_PATH "/sbin/epoch"
+#endif
+
 #ifndef CONFIGDIR /*This is available for good purpose.*/
 #define CONFIGDIR "/etc/epoch/"
 #endif
@@ -107,6 +113,8 @@
 #define MEMBUS_CODE_GETRL "GETRL"
 #define MEMBUS_CODE_KILLOBJ "KILLOBJ"
 #define MEMBUS_CODE_SENDPID "SENDPID"
+#define MEMBUS_CODE_RXD "RXD"
+#define MEMBUS_CODE_RXD_OPTS "ORXD"
 
 /**Types, enums, structs and whatnot**/
 
@@ -206,7 +214,6 @@ struct _CTask
 extern ObjTable *ObjectTable;
 extern struct _BootBanner BootBanner;
 extern char CurRunlevel[MAX_DESCRIPT_SIZE];
-extern int MemDescriptor;
 extern volatile char *MemData;
 extern Bool DisableCAD;
 extern char Hostname[MAX_LINE_SIZE];
@@ -220,6 +227,8 @@ extern char *MemLogBuffer;
 extern struct _CTask CurrentTask;
 extern volatile BootMode CurrentBootMode;
 extern Bool AlignStatusReports;
+extern volatile signed long MemBusKey;
+extern volatile Bool BusRunning;
 
 /**Function forward declarations.*/
 
@@ -246,6 +255,8 @@ extern rStatus SwitchRunlevels(const char *Runlevel);
 extern void LaunchBootup(void);
 extern void LaunchShutdown(signed long Signal);
 extern void EmergencyShell(void);
+extern void ReexecuteEpoch(void);
+extern void RecoverFromReexec(void);
 
 /*modes.c*/
 extern rStatus SendPowerControl(const char *MembusCode);
@@ -261,7 +272,9 @@ extern rStatus MemBus_Write(const char *InStream, Bool ServerSide);
 extern Bool MemBus_Read(char *OutStream, Bool ServerSide);
 extern void ParseMemBus(void);
 extern rStatus ShutdownMemBus(Bool ServerSide);
-extern void HandleMemBusPings(void);
+extern Bool HandleMemBusPings(void);
+extern unsigned long MemBus_BinWrite(const void *InStream_, unsigned long DataSize, Bool ServerSide);
+extern unsigned long MemBus_BinRead(void *OutStream_, unsigned long MaxOutSize, Bool ServerSide);
 
 /*console.c*/
 extern void PrintBootBanner(void);

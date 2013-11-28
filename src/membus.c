@@ -22,7 +22,8 @@
 
 /*Memory bus uhh, static globals.*/
 volatile char *MemData = NULL;
-static volatile Bool BusRunning = false;
+volatile Bool BusRunning = false;
+volatile signed long MemBusKey = MEMKEY;
 
 rStatus InitMemBus(Bool ServerSide)
 { /*Fire up the memory bus.*/
@@ -33,7 +34,7 @@ rStatus InitMemBus(Bool ServerSide)
 	
 	if (BusRunning) return SUCCESS;
 	
-	if ((MemDescriptor = shmget((key_t)MEMKEY, MEMBUS_SIZE, (ServerSide ? (IPC_CREAT | 0660) : 0660))) < 0)
+	if ((MemDescriptor = shmget((key_t)MemBusKey, MEMBUS_SIZE, (ServerSide ? (IPC_CREAT | 0660) : 0660))) < 0)
 	{
 		if (ServerSide) SpitError("InitMemBus(): Failed to allocate memory bus."); /*should probably use perror*/
 		else SpitError("InitMemBus(): Failed to connect to memory bus. Permissions?");
@@ -79,6 +80,77 @@ rStatus InitMemBus(Bool ServerSide)
 	return SUCCESS;
 }
 
+unsigned long MemBus_BinWrite(const void *InStream_, unsigned long DataSize, Bool ServerSide)
+{ /*Copies binary data of length DataSize to the membus.*/
+	const char *InStream = InStream_;
+	volatile char *BusData = NULL, *BusStatus = NULL;
+	unsigned long Inc = 0;
+	unsigned short WaitCount = 0;
+	
+	if (ServerSide)
+	{
+		BusStatus = &MemData[MEMBUS_SIZE/2];
+	}
+	else
+	{
+		BusStatus = MemData;
+	}
+	
+	BusData = BusStatus + 1;
+	
+	while (*BusStatus != MEMBUS_NOMSG) /*Wait ten secs for their last message to process.*/
+	{
+		usleep(1000); /*0.001 seconds.*/
+		++WaitCount;
+		
+		if (WaitCount == 10000)
+		{
+			return 0;
+		}
+	}
+	
+	for (; Inc < DataSize && Inc < MEMBUS_SIZE/2 - 1; ++Inc)
+	{
+		BusData[Inc] = InStream[Inc];
+	}
+	
+	*BusStatus = MEMBUS_MSG;
+	
+	return Inc; /*Return number of bytes written.*/
+}
+
+unsigned long MemBus_BinRead(void *OutStream_, unsigned long MaxOutSize, Bool ServerSide)
+{
+	volatile char *BusStatus = NULL, *BusData = NULL;
+	char *OutStream = OutStream_;
+	unsigned long Inc = 0;
+	
+	if (ServerSide)
+	{
+		BusStatus = MemData;
+	}
+	else
+	{
+		BusStatus = &MemData[MEMBUS_SIZE/2];
+	}
+	
+	BusData = BusStatus + 1;
+	
+	if (*BusStatus != MEMBUS_MSG)
+	{
+		return 0;
+	}
+	
+	for (; Inc < MaxOutSize && Inc < MEMBUS_SIZE/2 - 1; ++Inc)
+	{
+		OutStream[Inc] = BusData[Inc];
+	}
+	
+	*BusStatus = MEMBUS_NOMSG;
+	
+	return Inc;
+}
+	
 rStatus MemBus_Write(const char *InStream, Bool ServerSide)
 {
 	volatile char *BusStatus = NULL;
@@ -98,10 +170,10 @@ rStatus MemBus_Write(const char *InStream, Bool ServerSide)
 	
 	while (*BusStatus != MEMBUS_NOMSG) /*Wait for them to finish eating their last message.*/
 	{
-		usleep(100000); /*0.1 seconds.*/
+		usleep(1000); /*0.001 seconds.*/
 		++WaitCount;
 		
-		if (WaitCount == 100)
+		if (WaitCount == 10000)
 		{ /*Been 10 seconds! Does it take that long to copy a string?*/
 			return FAILURE;
 		}
@@ -142,21 +214,25 @@ Bool MemBus_Read(char *OutStream, Bool ServerSide)
 	return true;
 }
 
-void HandleMemBusPings(void)
+Bool HandleMemBusPings(void)
 {
-	if (!BusRunning) return;
+	if (!BusRunning) return false;
 	
 	switch (*MemData)
 	{
 		case MEMBUS_CHECKALIVE_MSG:
 			*MemData = MEMBUS_MSG;
+			return true;
 			break;
 		case MEMBUS_CHECKALIVE_NOMSG:
 			*MemData = MEMBUS_NOMSG;
+			return true;
 			break;
 		default:
-			return;
+			break;
 	}
+	
+	return false;
 }
 
 void ParseMemBus(void)
@@ -702,6 +778,11 @@ void ParseMemBus(void)
 			TmpObj->Started = false; /*Mark it as stopped now that it's dead.*/
 		}
 		MemBus_Write(TmpBuf, true);
+	}
+	else if (BusDataIs(MEMBUS_CODE_RXD))
+	{ /*Restart Epoch from disk, but saves object states and whatnot.
+		* Done mainly so we can unmount the filesystem after someone updates /sbin/epoch.*/
+		ReexecuteEpoch();
 	}
 	/*Something we don't understand. Send BADPARAM.*/
 	else

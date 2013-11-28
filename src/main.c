@@ -14,6 +14,7 @@
 #include <execinfo.h>
 #include <signal.h>
 #include <sys/reboot.h>
+#include <sys/shm.h>
 #include "epoch.h"
 
 #define ArgIs(z) !strcmp(CArg, z)
@@ -203,6 +204,13 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		  "to add or remove services, change runlevels, and more."
 		),
 		
+		( "reexec:\n-----\n"
+		
+		  "Enter reeexec to partially restart Epoch from disk.\n"
+		  "This is necessary for updating the Epoch binary to prevent\n"
+		  "a failure with unmounting the filesystem the binary is on."
+		),
+		
 		( "currentrunlevel:\n-----\n"
 		
 		  "Enter currentrunlevel to print the system's current runlevel."
@@ -221,7 +229,7 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		)
 	};
 	
-	enum { HCMD, ENDIS, STAP, OBJRL, STATUS, SETCAD, CONFRL, CURRL, GETPID, KILLOBJ, ENUM_MAX };
+	enum { HCMD, ENDIS, STAP, OBJRL, STATUS, SETCAD, CONFRL, REEXEC, CURRL, GETPID, KILLOBJ, ENUM_MAX };
 	
 	
 	printf("%s\nCompiled %s\n\n", VERSIONSTRING, __DATE__);
@@ -270,6 +278,11 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 	else if (!strcmp(InCmd, "configreload"))
 	{
 		printf("%s %s\n\n", RootCommand, HelpMsgs[CONFRL]);
+		return;
+	}
+	else if (!strcmp(InCmd, "reexec"))
+	{
+		printf("%s %s\n\n", RootCommand, HelpMsgs[REEXEC]);
 		return;
 	}
 	else if (!strcmp(InCmd, "currentrunlevel"))
@@ -401,6 +414,18 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			ShutdownMemBus(false);
 			return (int)RVal;
+		}
+		else if (ArgIs("reexec"))
+		{
+			if (!InitMemBus(false))
+			{
+				return FAILURE;
+			}
+			
+			MemBus_Write(MEMBUS_CODE_RXD, false); /*We don't shut down the MemBus here. No need.*/
+			shmdt((void*)MemData);
+			puts("Re-executing Epoch.");
+			return SUCCESS;
 		}
 	}
 	
@@ -943,7 +968,14 @@ int main(int argc, char **argv)
 	{ /*Just us, as init. That means, begin bootup.*/
 		const char *TRunlevel = NULL;
 		
-		if (argc > 1)
+		/**Check if we are resuming from a reexec.**/
+		if (argc == 2 && !strcmp(argv[0], "/") && !strcmp(argv[1], "REEXEC"))
+		{
+			strncpy(argv[0], "init", strlen(argv[0]));
+			RecoverFromReexec();	
+		}
+		
+		else if (argc > 1)
 		{
 			short ArgCount = (short)argc, Inc = 1;
 			const char *Arguments[] = { "shell" }; /*I'm sick of repeating myself with literals.*/
@@ -963,6 +995,8 @@ int main(int argc, char **argv)
 		{ /*Sets the default runlevel we use on bootup.*/
 			snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", TRunlevel);
 		}
+		
+		strncpy(argv[0], "init", strlen(argv[0]));
 		
 		/*Now that args are set, boot.*/		
 		LaunchBootup();
