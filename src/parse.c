@@ -278,11 +278,11 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				}
 				
 				ExitStatus = ExecuteConfigObject(CurObj, IsStartingMode);
-				CurObj->Started = (ExitStatus ? false : true); /*Mark the process dead.*/
 				
 				if (ExitStatus)
 				{
 					CurObj->ObjectPID = 0;
+					CurObj->Started = false;
 				}
 				
 				if (PrintStatus)
@@ -303,6 +303,16 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				{
 					printf("%s", PrintOutStream);
 					fflush(NULL);
+				}
+				
+				if (!CurObj->ObjectPID)
+				{
+					ExitStatus = FAILURE;
+					if (PrintStatus)
+					{
+						PerformStatusReport(PrintOutStream, ExitStatus, true);
+					}
+					break;
 				}
 				
 				if (kill(CurObj->ObjectPID, SIGTERM) == 0)
@@ -334,11 +344,10 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					ExitStatus = FAILURE;
 				}
 				
-				CurObj->Started = (ExitStatus ? false : true);
-				
 				if (ExitStatus)
 				{
 					CurObj->ObjectPID = 0;
+					CurObj->Started = false;
 				}
 				
 				if (PrintStatus)
@@ -359,16 +368,16 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				}
 				
 				if (!(TruePID = ReadPIDFile(CurObj)))
-				{
+				{ /*This might be good with goto, but... no.*/
+					ExitStatus = FAILURE;
 					if (PrintStatus)
 					{
-						PerformStatusReport(PrintOutStream, FAILURE, true);
-						break;
+						PerformStatusReport(PrintOutStream, ExitStatus, true);
 					}
+					break;
 				}
 				
 				/*Now we can actually kill the process ID.*/
-				
 				if (kill(TruePID, SIGTERM) == 0)
 				{
 					unsigned char TInc = 0;				
@@ -397,10 +406,9 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					ExitStatus = FAILURE;
 				}
 				
-				CurObj->Started = (ExitStatus ? false : true);
-				
 				if (ExitStatus)
 				{
+					CurObj->Started = false;
 					CurObj->ObjectPID = 0;
 				}
 				

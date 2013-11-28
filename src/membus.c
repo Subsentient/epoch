@@ -767,8 +767,10 @@ void ParseMemBus(void)
 			return;
 		}
 		
+
 		/*Attempt to send SIGKILL to the PID.*/
-		if (kill((TmpObj->Opts.StopMode == STOP_PIDFILE ? ReadPIDFile(TmpObj) : TmpObj->ObjectPID), SIGKILL) != 0)
+		if (!TmpObj->ObjectPID || 
+			kill((TmpObj->Opts.StopMode == STOP_PIDFILE ? ReadPIDFile(TmpObj) : TmpObj->ObjectPID), SIGKILL) != 0)
 		{
 			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
 		}
@@ -776,6 +778,7 @@ void ParseMemBus(void)
 		{
 			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, BusData);
 			TmpObj->Started = false; /*Mark it as stopped now that it's dead.*/
+			TmpObj->ObjectPID = 0; /*Erase the PID.*/
 		}
 		MemBus_Write(TmpBuf, true);
 	}
