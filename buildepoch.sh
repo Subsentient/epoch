@@ -62,88 +62,61 @@ if [ "$#" != "0" ]; then
 		if [ "$1" == "--help" ]; then
 			ShowHelp
 			exit 0
-		fi
 		
-		if [ "$1" == "--nommu" ]; then
+		elif [ "$1" == "--nommu" ]; then
 			CFLAGS=$CFLAGS" -DNOMMU"
-		fi
-		
-		if [ "$1" == "--configdir" ];then
+	
+		elif [ "$1" == "--configdir" ];then
 			shift
 			CFLAGS=$CFLAGS" -DCONFIGDIR=\"$1\""
-			shift
-		fi
-		
-		if [ "$1" == "--membus-size" ]; then
-		
+	
+		elif [ "$1" == "--membus-size" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DMEMBUS_SIZE=$1"
 			MEMBUS_SIZE_SET="1"
-			shift
-		fi
 		
-		if [ "$1" == "--binarypath" ]; then
+		elif [ "$1" == "--binarypath" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DEPOCH_BINARY_PATH=\"$!\""
-			shift
-		fi
-		
-		if [ "$1" == "--logdir" ]; then
+	
+		elif [ "$1" == "--logdir" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DLOGDIR=\"$1\""
-			shift
-		fi
 		
-		if [ "$1" == "--env-home" ]; then
+		elif [ "$1" == "--env-home" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DENVVAR_HOME=\"$1\""
-			shift
-		fi
-
-		if [ "$1" == "--env-user" ]; then
+	
+		elif [ "$1" == "--env-user" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DENVVAR_USER=\"$1\""
-			shift
-		fi
-
-		if [ "$1" == "--env-shell" ]; then
+	
+		elif [ "$1" == "--env-shell" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DENVVAR_SHELL=\"$1\""
-			shift
-		fi
-
-		if [ "$1" == "--env-path" ]; then
+	
+		elif [ "$1" == "--env-path" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DENVVAR_PATH=\"$1\""
-			shift
-		fi
-
-		if [ "$1" == "--allow-weird-shells" ]; then
+	
+		elif [ "$1" == "--allow-weird-shells" ]; then
 			CFLAGS=$CFLAGS" -DWEIRDSHELLPERMITTED"
-		fi
-
-		if [ "$1" == "--outpath" ]; then
+	
+		elif [ "$1" == "--outpath" ]; then
 			shift
 			outdir="$1"
-			shift
-		fi
-		
-		if [ "$1" == "--cflags" ]; then
+
+		elif [ "$1" == "--cflags" ]; then
 			shift
 			CFLAGS="$1"
-			shift
-		fi
-		
-		if [ "$1" == "--cc" ]; then
+	
+		elif [ "$1" == "--cc" ]; then
 			shift
 			CC="$1"
-			shift
-		fi
-		
-		if [ "$1" == "--ldflags" ]; then
+	
+		elif [ "$1" == "--ldflags" ]; then
 			shift
 			LDFLAGS="$1"
-			shift
 		fi
 		
 		shift
