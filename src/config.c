@@ -43,7 +43,6 @@ char Hostname[MAX_LINE_SIZE] = { '\0' };
 /*Function forward declarations for all the statics.*/
 static ObjTable *AddObjectToTable(const char *ObjectID);
 static char *NextLine(const char *InStream);
-static char *WhitespaceArg(const char *InStream);
 static rStatus GetLineDelim(const char *InStream, char *OutStream);
 static rStatus ScanConfigIntegrity(void);
 static void ConfigProblem(short Type, const char *Attribute, const char *AttribVal, unsigned long LineNum);
@@ -75,7 +74,8 @@ static char *NextLine(const char *InStream)
 	return (char*)InStream;
 }
 
-static char *WhitespaceArg(const char *InStream)
+/*This function was so useful I gave it external linkage.*/
+char *WhitespaceArg(const char *InStream)
 {  /*This is used for parsing lines that need to be divided by spaces.*/
 	while (*InStream != ' ' && *InStream != '\t' &&
 			*InStream != '\n' && *InStream != '\0') ++InStream;
@@ -284,6 +284,29 @@ rStatus InitConfig(void)
 			}
 
 			continue;
+		}
+		else if (!strncmp(Worker, (CurrentAttribute = "ShellEnabled"), strlen("ShellEnabled")))
+		{
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+
+				continue;
+			}
+			
+			if (!strcmp(DelimCurr, "true"))
+			{
+				ShellEnabled = true;
+			}
+			else if (!strcmp(DelimCurr, "false"))
+			{
+				ShellEnabled = false;
+			}
+			else
+			{
+				ShellEnabled = USE_SHELL_BY_DEFAULT;
+				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+			}
 		}
 		else if (!strncmp(Worker, (CurrentAttribute = "EnableLogging"), strlen("EnableLogging")))
 		{
@@ -726,6 +749,19 @@ rStatus InitConfig(void)
 				else if (!strcmp(CurArg, "AUTORESTART"))
 				{
 					CurObj->Opts.AutoRestart = true;
+				}
+				else if (!strcmp(CurArg, "FORCESHELL"))
+				{
+					if (!ShellEnabled)
+					{
+						snprintf(ErrBuf, sizeof ErrBuf, "Object %s has FORCESHELL set, but ShellEnabled is false.\n"
+														"Ignoring.\nepoch.conf line %lu", CurObj->ObjectID, LineNum);
+						SpitWarning(ErrBuf);
+					}
+					else
+					{
+						CurObj->Opts.ForceShell = true;
+					}
 				}
 				else if (!strncmp(CurArg, "TERMSIGNAL", strlen("TERMSIGNAL")))
 				{
@@ -1458,6 +1494,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->Opts.IsService = false;
 	Worker->Opts.AutoRestart = false;
 	Worker->Opts.EmulNoWait = false;
+	Worker->Opts.ForceShell = false;
 	
 	return Worker;
 }

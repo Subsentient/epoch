@@ -22,6 +22,7 @@ volatile unsigned long RunningChildCount = 0; /*How many child processes are run
 									* I promised myself I wouldn't use this code.*/
 struct _CTask CurrentTask = { NULL, 0 }; /*We save this for each linear task, so we can kill the process if it becomes unresponsive.*/
 volatile BootMode CurrentBootMode = BOOT_NEUTRAL;
+Bool ShellEnabled = USE_SHELL_BY_DEFAULT; /*If we use shells.*/
 
 /**Function forward declarations.**/
 
@@ -50,7 +51,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	const char *ShellPath = "sh"; /*We try not to use absolute paths here, because some distros don't have normal layouts,
 											*And I'm sure they would rather see a warning than have it just botch up.*/
 	rStatus ExitStatus = FAILURE; /*We failed unless we succeeded.*/
-	Bool ShellDissolves;
+	Bool ShellDissolves, ForceShell = InObj->Opts.ForceShell;
 	int RawExitStatus, Inc = 0;
 	sigset_t SigMaker[2];
 	
@@ -62,49 +63,56 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	
 	/*Check how we should handle PIDs for each shell. In order to get the PID, exit status,
 	* and support shell commands, we need to jump through a bunch of hoops.*/
-	if (FileUsable("/bin/bash"))
+	if (ShellEnabled)
 	{
-		ShellDissolves = true;
-		ShellPath = "bash";
-	}
-	else if (FileUsable("/bin/dash"))
-	{
-		ShellPath = "dash";
-		ShellDissolves = true;
-	}
-	else if (FileUsable("/bin/zsh"))
-	{
-		ShellPath = "zsh";
-		ShellDissolves = true;
-	}
-	else if (FileUsable("/bin/csh"))
-	{
-		ShellPath = "csh";
-		ShellDissolves = true;
-	}
-	else if (FileUsable("/bin/busybox"))
-	{ /*This is one of those weird shells that still does the old practice of creating a child for -c.
-		* We can deal with the likes of them. Small chance that for shells like this, another PID could jump in front
-		* and we could end up storing the wrong one. Very small, but possible.*/
-		ShellPath = "busybox";
-		ShellDissolves = false;
-	}
-#ifndef WEIRDSHELLPERMITTED
-	else /*Found no other shells. Assume fossil, spit warning.*/
-	{
-		static Bool DidWarn = false; /*Don't spam this warning.*/
-		
-		ShellDissolves = false;
-		if (!DidWarn)
-		{	 
-			DidWarn = true;
-			SpitWarning("No known shell found. Using /bin/sh.\n"
-			"Best if you install one of these: bash, dash, csh, zsh, or busybox.\n"
-			"This matters because PID detection is affected by the way shells handle sh -c.");
+		if (!FileUsable(ENVVAR_SHELL))
+		{
+			SpitWarning("Cannot find and/or read shell binary \"" ENVVAR_SHELL "\". Disabling shell support.");
+			ShellEnabled = false;
 		}
-	}
+		else if (FileUsable("/bin/bash"))
+		{
+			ShellDissolves = true;
+			ShellPath = "bash";
+		}
+		else if (FileUsable("/bin/dash"))
+		{
+			ShellPath = "dash";
+			ShellDissolves = true;
+		}
+		else if (FileUsable("/bin/zsh"))
+		{
+			ShellPath = "zsh";
+			ShellDissolves = true;
+		}
+		else if (FileUsable("/bin/csh"))
+		{
+			ShellPath = "csh";
+			ShellDissolves = true;
+		}
+		else if (FileUsable("/bin/busybox"))
+		{ /*This is one of those weird shells that still does the old practice of creating a child for -c.
+			* We can deal with the likes of them. Small chance that for shells like this, another PID could jump in front
+			* and we could end up storing the wrong one. Very small, but possible.*/
+			ShellPath = "busybox";
+			ShellDissolves = false;
+		}
+#ifndef WEIRDSHELLPERMITTED
+		else /*Found no other shells. Assume fossil, spit warning.*/
+		{
+			static Bool DidWarn = false; /*Don't spam this warning.*/
+			
+			ShellDissolves = false;
+			if (!DidWarn)
+			{	 
+				DidWarn = true;
+				SpitWarning("No known shell found. Using /bin/sh.\n"
+				"Best if you install one of these: bash, dash, csh, zsh, or busybox.\n"
+				"This matters because PID detection is affected by the way shells handle sh -c.");
+			}
+		}
 #endif
-	
+	}
 	/**Here be where we execute commands.---------------**/
 	
 	/*We need to block all signals until we have executed the process.*/
@@ -158,7 +166,45 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 		/*Change our session id.*/
 		setsid();
 		
-		execlp(ShellPath, "sh", "-c", CurCmd, NULL); /*I bet you think that this is going to return the PID of sh. No.*/
+		if (ShellEnabled && (strpbrk(CurCmd, "&^$#@!()*%{}`~+=-|\\<>?;:'[]\"\t") != NULL || ForceShell))
+		{
+			execlp(ShellPath, "sh", "-c", CurCmd, NULL); /*I bet you think that this is going to return the PID of sh. No.*/
+		}
+		else
+		{ /*don't worry about the heap stuff, exec() takes care of it you know.*/
+			char **ArgV = NULL;
+			unsigned long NumSpaces = 1, Inc = 0, cOffset = 0, Inc2 = 0;
+			char NCmd[MAX_LINE_SIZE], *Worker = NCmd;
+			
+			strncpy(NCmd, CurCmd, strlen(CurCmd) + 1);
+			
+			while ((Worker = WhitespaceArg(Worker))) ++NumSpaces;
+			
+			for (Worker = NCmd; Worker[strlen(Worker) - 1] == ' '; --NumSpaces)
+			{
+				Worker[strlen(Worker) - 1] = '\0';
+			}
+			
+			ArgV = malloc(sizeof(char*) * NumSpaces + 1);
+			
+			for (Inc = 0; Inc < NumSpaces; ++Inc)
+			{
+				ArgV[Inc] = malloc(strlen(NCmd) + 1);
+				
+				for (Inc2 = 0; Worker[Inc2 + cOffset] != ' ' && Worker[Inc2 + cOffset] != '\0'; ++Inc2)
+				{
+					ArgV[Inc][Inc2] = Worker[Inc2 + cOffset];
+				}
+				ArgV[Inc][Inc2] = '\0';
+				
+				cOffset += Inc2 + 1;
+			}
+			
+			ArgV[NumSpaces] = NULL;
+			
+			execvp(ArgV[0], ArgV);
+			
+		}
 		/*We still around to talk about it? We were supposed to be imaged with the new command!*/
 		
 		snprintf(TmpBuf, 1024, "Failed to execute %s: execlp() failure.", InObj->ObjectID);

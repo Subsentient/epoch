@@ -22,6 +22,10 @@
 #define EPOCH_BINARY_PATH "/sbin/epoch"
 #endif
 
+#ifndef USE_SHELL_BY_DEFAULT
+#define USE_SHELL_BY_DEFAULT true
+#endif
+
 #ifndef CONFIGDIR /*This is available for good purpose.*/
 #define CONFIGDIR "/etc/epoch/"
 #endif
@@ -170,6 +174,7 @@ typedef struct _EpochObjectTable
 		unsigned int RawDescription : 1; /*This inhibits insertion of "Starting", "Stopping", etc in front of descriptions.*/
 		unsigned int AutoRestart : 1;
 		unsigned int EmulNoWait : 1; /*Emulates the deprecated NOWAIT option by appending an ampersand to the end of ObjectStartCommand.*/
+		unsigned int ForceShell : 1; /*Forces us to start /bin/sh to run an object, even if it looks like we don't need to.*/
 	} Opts;
 	
 	struct _RLTree *ObjectRunlevels; /*Dynamically allocated, needless to say.*/
@@ -231,6 +236,7 @@ extern volatile BootMode CurrentBootMode;
 extern Bool AlignStatusReports;
 extern volatile signed long MemBusKey;
 extern volatile Bool BusRunning;
+extern Bool ShellEnabled;
 
 /**Function forward declarations.*/
 
@@ -247,6 +253,7 @@ extern Bool ObjRL_CheckRunlevel(const char *InRL, const ObjTable *InObj, Bool Co
 extern Bool ObjRL_DelRunlevel(const char *InRL, ObjTable *InObj);
 extern Bool ObjRL_ValidRunlevel(const char *InRL);
 extern void ObjRL_ShutdownRunlevels(ObjTable *InObj);
+extern char *WhitespaceArg(const char *InStream);
 
 /*parse.c*/
 extern rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintStatus);

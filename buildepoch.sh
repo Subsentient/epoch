@@ -39,12 +39,17 @@ ShowHelp()
 	echo -e $Green"--outpath dir"$EndGreen":\n\tThe location that the compiled binary"
 	echo -e "\tand symlinks will be placed upon completion."
 	echo -e "\tSimilar to make install DESTDIR=\"\"."
+	echo -e $Green"--disable-shell-by-default"$EndGreen":\n\tIf this flag is set, Epoch will be built"
+	echo -e "\tto not launch objects with /bin/sh by default, and will instead try to use an"
+	echo -e "\targument list. You can still configure Epoch to use a shell via the ShellEnabled"
+	echo -e "\tconfiguration attribute."
 	echo -e $Green"--cflags value"$EndGreen":\n\tSets \$CFLAGS to the desired value."
 	echo -e $Green"--ldflags value"$EndGreen":\n\tSets \$LDFLAGS to the desired value."
 	echo -e $Green"--cc value"$EndGreen":\n\tSets \$CC to be the compiler for Epoch."
 }
 
 MEMBUS_SIZE_SET="0"
+NEED_EMPTY_CFLAGS="0"
 outdir="../built"
 
 if [ "$CC" == "" ]; then
@@ -100,10 +105,14 @@ if [ "$#" != "0" ]; then
 		elif [ "$1" == "--outpath" ]; then
 			shift
 			outdir="$1"
-
+			
+		elif [ "$1" == "--disable-shell-by-default" ]; then
+			CFLAGS=$CFLAGS" -DUSE_SHELL_BY_DEFAULT=false"
+			
 		elif [ "$1" == "--cflags" ]; then
 			shift
 			CFLAGS=$CFLAGS" $1"
+			NEED_EMPTY_CFLAGS="1"
 	
 		elif [ "$1" == "--cc" ]; then
 			shift
@@ -118,8 +127,8 @@ if [ "$#" != "0" ]; then
 	done
 fi
 
-if [ "$CFLAGS" == "" ]; then
-	CFLAGS="-std=gnu89 -pedantic -Wall -g -O0"
+if [ "$NEED_EMPTY_CFLAGS" == "0" ]; then
+	CFLAGS=$CFLAGS" -std=gnu89 -pedantic -Wall -g -O0"
 fi
 
 if [ "$LDFLAGS" == "" ]; then
