@@ -51,11 +51,6 @@ if [ "$CC" == "" ]; then
 	CC="cc"
 fi
 
-if [ "$CFLAGS" == "" ]; then
-	CFLAGS="-std=gnu89 -pedantic -Wall -g -O0 -rdynamic -fstack-protector"
-fi
-
-
 if [ "$#" != "0" ]; then
 	while [ -n "$1" ]
 	do
@@ -77,7 +72,7 @@ if [ "$#" != "0" ]; then
 		
 		elif [ "$1" == "--binarypath" ]; then
 			shift
-			CFLAGS=$CFLAGS" -DEPOCH_BINARY_PATH=\"$!\""
+			CFLAGS=$CFLAGS" -DEPOCH_BINARY_PATH=\"$1\""
 	
 		elif [ "$1" == "--logdir" ]; then
 			shift
@@ -108,7 +103,7 @@ if [ "$#" != "0" ]; then
 
 		elif [ "$1" == "--cflags" ]; then
 			shift
-			CFLAGS="$1"
+			CFLAGS=$CFLAGS" $1"
 	
 		elif [ "$1" == "--cc" ]; then
 			shift
@@ -123,6 +118,13 @@ if [ "$#" != "0" ]; then
 	done
 fi
 
+if [ "$CFLAGS" == "" ]; then
+	CFLAGS="-std=gnu89 -pedantic -Wall -g -O0"
+fi
+
+if [ "$LDFLAGS" == "" ]; then
+	LDFLAGS="-rdynamic"
+fi
 
 if [ "$MEMBUS_SIZE_SET" == "0" ]; then
 	CFLAGS=$CFLAGS" -DMEMBUS_SIZE=$(getconf PAGESIZE)"
