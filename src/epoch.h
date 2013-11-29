@@ -75,7 +75,7 @@
 #define MEMKEY (('E' + 'P' + 'O' + 'C' + 'H') + ('W'+'h'+'i'+'t'+'e' + 'R'+'a'+'t')) * 7 /*Cool, right?*/
 
 #ifndef MEMBUS_SIZE
-#define MEMBUS_SIZE 1024
+#define MEMBUS_SIZE 2048
 #endif
 /*The codes that are sent over the bus.*/
 
