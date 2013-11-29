@@ -649,6 +649,69 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			ShutdownMemBus(false);
 			return RV;
 		}
+		else if (ArgIs("reload"))
+		{
+			rStatus RV = SUCCESS;
+			char InBuf[MEMBUS_SIZE/2 - 1], OutBuf[MEMBUS_SIZE/2 - 1];
+			char PossibleResponses[4][MEMBUS_SIZE/2 - 1];
+			char StatusBuf[MAX_LINE_SIZE];
+			Bool Botched = false;
+			
+			if (!InitMemBus(false))
+			{
+				return FAILURE;
+			}
+			
+			snprintf(OutBuf, sizeof OutBuf, "%s %s", MEMBUS_CODE_OBJRELOAD, argv[2]);
+			
+			snprintf(PossibleResponses[0], MEMBUS_SIZE/2 - 1, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, OutBuf);
+			snprintf(PossibleResponses[1], MEMBUS_SIZE/2 - 1, "%s %s", MEMBUS_CODE_WARNING, OutBuf);
+			snprintf(PossibleResponses[2], MEMBUS_SIZE/2 - 1, "%s %s", MEMBUS_CODE_FAILURE, OutBuf);
+			snprintf(PossibleResponses[3], MEMBUS_SIZE/2 - 1, "%s %s", MEMBUS_CODE_BADPARAM, OutBuf);
+			
+			snprintf(StatusBuf, MAX_LINE_SIZE, "Reloading %s", argv[2]);
+			printf("%s", StatusBuf);
+			
+			MemBus_Write(OutBuf, false);
+			
+			while (!MemBus_Read(InBuf, false)) usleep(1000);
+			
+			if (!strcmp(InBuf, PossibleResponses[0]))
+			{
+				RV = SUCCESS;
+			}
+			else if (!strcmp(InBuf, PossibleResponses[1]))
+			{
+				RV = WARNING;
+			}
+			else if (!strcmp(InBuf, PossibleResponses[2]))
+			{
+				RV = FAILURE;
+			}
+			else if (!strcmp(InBuf, PossibleResponses[3]))
+			{
+				PerformStatusReport(StatusBuf, (RV = FAILURE), false);
+				SpitError("We are being told that we sent a bad parameter over membus.\n"
+							"This is probably a bug. Please report to Epoch!");
+				Botched = true;
+			}
+			else
+			{
+				PerformStatusReport(StatusBuf, (RV = FAILURE), false);
+				SpitError("Bad parameter received over membus! This is probably a bug.\n"
+							"Please report to Epoch!");
+				Botched = true;
+			}
+			
+			if (!Botched)
+			{
+				PerformStatusReport(StatusBuf, RV, false);
+			}
+			
+			ShutdownMemBus(false);
+			
+			return RV;
+		}
 		else if (ArgIs("getpid"))
 		{
 			rStatus RV = SUCCESS;

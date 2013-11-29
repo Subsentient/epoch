@@ -841,6 +841,30 @@ rStatus InitConfig(void)
 			
 			continue;
 		}
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectReloadCommand"), strlen("ObjectReloadCommand")))
+		{
+			if (!CurObj)
+			{
+				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			snprintf(CurObj->ObjectReloadCommand, MAX_LINE_SIZE, "%s", DelimCurr);
+			
+			if (strlen(DelimCurr) + 1 >= MAX_LINE_SIZE)
+			{
+				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			continue;
+		}
 		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStopCommand"), strlen("ObjectStopCommand")))
 		{ /*If it's "PID", then we know that we need to kill the process ID only. If it's "NONE", well, self explanitory.*/
 			if (!CurObj)
@@ -1419,6 +1443,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->ObjectDescription[0] = '\0';
 	Worker->ObjectStartCommand[0] = '\0';
 	Worker->ObjectStopCommand[0] = '\0';
+	Worker->ObjectReloadCommand[0] = '\0';
 	Worker->ObjectPIDFile[0] = '\0';
 	Worker->ObjectStartPriority = 0;
 	Worker->ObjectStopPriority = 0;

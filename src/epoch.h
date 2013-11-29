@@ -104,6 +104,7 @@
 #define MEMBUS_CODE_OBJSTOP "OBJSTOP"
 #define MEMBUS_CODE_OBJENABLE "OBJENABLE"
 #define MEMBUS_CODE_OBJDISABLE "OBJDISABLE"
+#define MEMBUS_CODE_OBJRELOAD "OBJRELOAD"
 #define MEMBUS_CODE_OBJRLS "OBJRLS" /*Generic way to detect if we are using one of the OBJRLS commands below.*/
 #define MEMBUS_CODE_OBJRLS_CHECK "OBJRLS_CHECK"
 #define MEMBUS_CODE_OBJRLS_ADD "OBJRLS_ADD"
@@ -149,6 +150,7 @@ typedef struct _EpochObjectTable
 	char ObjectDescription[MAX_DESCRIPT_SIZE]; /*The description of the object.*/
 	char ObjectStartCommand[MAX_LINE_SIZE]; /*The command to be executed.*/
 	char ObjectStopCommand[MAX_LINE_SIZE]; /*How to shut it down.*/
+	char ObjectReloadCommand[MAX_LINE_SIZE]; /*Used to reload an object without starting/stopping. Most services don't have this.*/
 	char ObjectPIDFile[MAX_LINE_SIZE];
 	unsigned long ObjectStartPriority;
 	unsigned long ObjectStopPriority;
@@ -250,6 +252,7 @@ extern void ObjRL_ShutdownRunlevels(ObjTable *InObj);
 extern rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintStatus);
 extern rStatus RunAllObjects(Bool IsStartingMode);
 extern rStatus SwitchRunlevels(const char *Runlevel);
+extern rStatus ProcessReloadCommand(ObjTable *CurObj, Bool PrintStatus);
 
 /*actions.c*/
 extern void LaunchBootup(void);

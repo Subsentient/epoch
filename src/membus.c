@@ -744,10 +744,11 @@ void ParseMemBus(void)
 				(TmpObj->Opts.StopMode == STOP_PIDFILE ? ReadPIDFile(TmpObj) : TmpObj->ObjectPID));
 		MemBus_Write(TmpBuf, true);
 	}
-	else if (BusDataIs(MEMBUS_CODE_KILLOBJ))
+	else if (BusDataIs(MEMBUS_CODE_KILLOBJ) || BusDataIs(MEMBUS_CODE_OBJRELOAD))
 	{
 		char TmpBuf[MEMBUS_SIZE/2 - 1];
-		unsigned long LOffset = strlen(MEMBUS_CODE_KILLOBJ " ");
+		unsigned long LOffset = (BusDataIs(MEMBUS_CODE_KILLOBJ) ? strlen(MEMBUS_CODE_KILLOBJ " ")
+								: strlen(MEMBUS_CODE_OBJRELOAD " "));
 		const char *TWorker = BusData + LOffset;
 		ObjTable *TmpObj = NULL;
 		
@@ -767,20 +768,62 @@ void ParseMemBus(void)
 			return;
 		}
 		
-
-		/*Attempt to send SIGKILL to the PID.*/
-		if (!TmpObj->ObjectPID || 
-			kill((TmpObj->Opts.StopMode == STOP_PIDFILE ? ReadPIDFile(TmpObj) : TmpObj->ObjectPID), SIGKILL) != 0)
+		if (BusDataIs(MEMBUS_CODE_KILLOBJ))
 		{
-			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+			/*Attempt to send SIGKILL to the PID.*/
+			if (!TmpObj->ObjectPID || 
+				kill((TmpObj->Opts.StopMode == STOP_PIDFILE ? ReadPIDFile(TmpObj) : TmpObj->ObjectPID), SIGKILL) != 0)
+			{
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+			}
+			else
+			{
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, BusData);
+				TmpObj->Started = false; /*Mark it as stopped now that it's dead.*/
+				TmpObj->ObjectPID = 0; /*Erase the PID.*/
+			}
+			MemBus_Write(TmpBuf, true);
 		}
 		else
 		{
-			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, BusData);
-			TmpObj->Started = false; /*Mark it as stopped now that it's dead.*/
-			TmpObj->ObjectPID = 0; /*Erase the PID.*/
+			rStatus RV = SUCCESS;
+			const char *MCode = MEMBUS_CODE_ACKNOWLEDGED, *RMsg = NULL;
+			char LogOut[MAX_LINE_SIZE];
+			
+			if (TmpObj->ObjectReloadCommand[0] == 0)
+			{
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+				MemBus_Write(TmpBuf, true);
+				return;
+			}
+			
+			RV = ProcessReloadCommand(TmpObj, false);
+			
+			switch (RV)
+			{
+				case SUCCESS:
+					MCode = MEMBUS_CODE_ACKNOWLEDGED;
+					RMsg = "succeeded";
+					break;
+				case WARNING:
+					MCode = MEMBUS_CODE_WARNING;
+					RMsg = "succeeded with a warning";
+					break;
+				case FAILURE:
+					MCode = MEMBUS_CODE_FAILURE;
+					RMsg = "failed";
+					break;
+				default:
+					break;
+			}
+			
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MCode, BusData);
+			
+			MemBus_Write(TmpBuf, true);
+			
+			snprintf(LogOut, MAX_LINE_SIZE, "Reload of object %s %s.", TWorker, RMsg);
+			WriteLogLine(LogOut, true);
 		}
-		MemBus_Write(TmpBuf, true);
 	}
 	else if (BusDataIs(MEMBUS_CODE_RXD))
 	{ /*Restart Epoch from disk, but saves object states and whatnot.

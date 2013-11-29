@@ -25,7 +25,7 @@ volatile BootMode CurrentBootMode = BOOT_NEUTRAL;
 
 /**Function forward declarations.**/
 
-static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode);
+static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd);
 
 /**Actual functions.**/
 
@@ -44,10 +44,10 @@ static Bool FileUsable(const char *FileName)
 	}
 }	
 
-static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
+static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 { /*Not making static because this is probably going to be useful for other stuff.*/
 	pid_t LaunchPID;
-	const char *CurCmd, *ShellPath = "sh"; /*We try not to use absolute paths here, because some distros don't have normal layouts,
+	const char *ShellPath = "sh"; /*We try not to use absolute paths here, because some distros don't have normal layouts,
 											*And I'm sure they would rather see a warning than have it just botch up.*/
 	rStatus ExitStatus = FAILURE; /*We failed unless we succeeded.*/
 	Bool ShellDissolves;
@@ -59,8 +59,6 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 #else
 #define ForkFunc() vfork()
 #endif
-	
-	CurCmd = (IsStartingMode ? InObj->ObjectStartCommand : InObj->ObjectStopCommand);
 	
 	/*Check how we should handle PIDs for each shell. In order to get the PID, exit status,
 	* and support shell commands, we need to jump through a bunch of hoops.*/
@@ -182,7 +180,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, Bool IsStartingMode)
 	{
 		++InObj->ObjectPID; /*This probably won't always work, but 99.9999999% of the time, yes, it will.*/
 	}
-	if (InObj->Opts.IsService)
+	if (CurCmd == InObj->ObjectStartCommand && InObj->Opts.IsService)
 	{ /*If we specify that this is a service, one up the PID again.*/
 		++InObj->ObjectPID;
 	}
@@ -253,7 +251,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		
 		fflush(NULL); /*Things tend to get clogged up when we don't flush.*/
 			
-		ExitStatus = ExecuteConfigObject(CurObj, IsStartingMode);
+		ExitStatus = ExecuteConfigObject(CurObj, CurObj->ObjectStartCommand);
 		
 		CurObj->Started = (ExitStatus ? true : false); /*Mark the process dead or alive.*/
 		
@@ -277,7 +275,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					fflush(NULL);
 				}
 				
-				ExitStatus = ExecuteConfigObject(CurObj, IsStartingMode);
+				ExitStatus = ExecuteConfigObject(CurObj, CurObj->ObjectStopCommand);
 				
 				if (ExitStatus)
 				{
@@ -469,6 +467,32 @@ rStatus RunAllObjects(Bool IsStartingMode)
 	CurrentBootMode = BOOT_NEUTRAL;
 	
 	return SUCCESS;
+}
+
+rStatus ProcessReloadCommand(ObjTable *CurObj, Bool PrintStatus)
+{
+	rStatus RetVal = FAILURE;
+	char StatusReportBuf[MAX_DESCRIPT_SIZE];
+	
+	if (!CurObj->ObjectReloadCommand[0])
+	{
+		return FAILURE;
+	}
+	
+	if (PrintStatus)
+	{
+		snprintf(StatusReportBuf, MAX_DESCRIPT_SIZE, "Reloading %s", CurObj->ObjectReloadCommand);
+		printf("%s", StatusReportBuf);
+	}
+	
+	RetVal = ExecuteConfigObject(CurObj, CurObj->ObjectReloadCommand);
+	
+	if (PrintStatus)
+	{
+		PerformStatusReport(StatusReportBuf, RetVal, true);
+	}
+	
+	return RetVal;
 }
 
 rStatus SwitchRunlevels(const char *Runlevel)
