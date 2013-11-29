@@ -38,7 +38,10 @@ ShowHelp()
 	echo -e $Green"--env-path value"$EndGreen":\n\tDesired environment variable for \$PATH"
 	echo -e $Green"--outpath dir"$EndGreen":\n\tThe location that the compiled binary"
 	echo -e "\tand symlinks will be placed upon completion."
-	echo -e "\tSimilar to make install DESTDIR=\"\".\n"
+	echo -e "\tSimilar to make install DESTDIR=\"\"."
+	echo -e $Green"--cflags value"$EndGreen":\n\tSets \$CFLAGS to the desired value."
+	echo -e $Green"--ldflags value"$EndGreen":\n\tSets \$LDFLAGS to the desired value."
+	echo -e $Green"--cc value"$EndGreen":\n\tSets \$CC to be the compiler for Epoch."
 }
 
 MEMBUS_SIZE_SET="0"
