@@ -223,113 +223,95 @@ void EmergencyShell(void)
 }
 
 void RecoverFromReexec(void)
-{ /*This is called when we are reexecuted from ReexecuteEpoch() to receive data
-	* from our child we started before we called execlp(). It will send back our tree
-	* over membus along with other options, and we need to reassemble it.*/
-	char MCode[MAX_DESCRIPT_SIZE] = MEMBUS_CODE_RXD, RecvData[MEMBUS_SIZE/2 - 1] = { '\0' };
-	ObjTable *CurObj = NULL;
-	unsigned long Inc = 0, MCodeLength = strlen(MCode) + 1;
-	void *const HaltParamData[7] = { (void*)&HaltParams.HaltMode, (void*)&HaltParams.TargetYear,
-										(void*)&HaltParams.TargetMonth, (void*)&HaltParams.TargetDay,
-										(void*)&HaltParams.TargetHour, (void*)&HaltParams.TargetMin,
-										(void*)&HaltParams.TargetSec };
-									
-	const char *const SuccessMSG = CONSOLE_COLOR_GREEN "Successfully re-executed Epoch." CONSOLE_ENDCOLOR;
+{ /*This is called when we are reexecuted from ReexecuteEpoch() to receive data*/
 	pid_t ChildPID = 0;
+	ObjTable *CurObj = NULL;
+	char InBuf[MEMBUS_SIZE/2 - 1] = { '\0' };
+	char *MCode = MEMBUS_CODE_RXD;
+	unsigned long MCodeLength = strlen(MCode) + 1;
 	
-	++MemBusKey; /*We are using one above to keep clients from interfering.*/
+	MemBusKey = MEMKEY + 1;
 	
-	if (!InitConfig() || !ObjectTable)
+	if (!InitConfig())
 	{
-		SpitError("Unable to reload configuration from disk during reexec!");
+		EmulWall("Epoch: "CONSOLE_COLOR_RED "ERROR: " CONSOLE_ENDCOLOR
+		"Cannot reload configuration for re-exec!", false);
 		EmergencyShell();
 	}
-		
+
 	if (!InitMemBus(false))
 	{
-		SpitError("Unable to connect to child via membus to complete reexec!");
+		EmulWall("Epoch: "CONSOLE_COLOR_RED "ERROR: " CONSOLE_ENDCOLOR
+				"Re-executed process cannot connect to modified membus.", false);
 		EmergencyShell();
 	}
 	
-	MemBus_Write(MEMBUS_CODE_RXD, false); /*Tell the child we are ready to receive the remote data.*/
+	while (!MemBus_BinRead(InBuf, sizeof InBuf, false)) usleep(100);
 	
-	/*Retrieve the PID.*/
-	while (!MemBus_BinRead(RecvData, sizeof(pid_t), false)) usleep(100);
+	memcpy(&ChildPID, InBuf + MCodeLength, sizeof(pid_t));
 	
-	memcpy(&ChildPID, RecvData, sizeof(pid_t));
+	while (!MemBus_BinRead(InBuf, sizeof InBuf, false)) usleep(100);
 	
-	while (!MemBus_BinRead(RecvData, sizeof RecvData, false)) usleep(100);
-	
-	while (!strncmp(RecvData, MCode, strlen(MCode)))
+	while (!strcmp(InBuf, MCode))
 	{
-		if ((CurObj = LookupObjectInTable(RecvData + MCodeLength)))
+		if ((CurObj = LookupObjectInTable(InBuf + MCodeLength)) != NULL)
 		{
+			unsigned long TLength = strlen(CurObj->ObjectID) + 1;
 			
-			memcpy(&CurObj->ObjectPID, RecvData + strlen(RecvData) + 1, sizeof(long));
-			
-			CurObj->Started = *(Bool*)(RecvData + strlen(RecvData) + 1 + sizeof(long));
+			memcpy(&CurObj->ObjectPID, (InBuf + MCodeLength + TLength), sizeof(long));
+			memcpy(&CurObj->Started, (InBuf + MCodeLength + TLength + sizeof(long)), sizeof(Bool));
 		}
 		
-		while (!MemBus_BinRead(RecvData, sizeof RecvData, false)) usleep(100);
+		while (!MemBus_BinRead(InBuf, sizeof InBuf, false)) usleep(100);
 	}
-			
-	strncpy(MCode, RecvData, strlen(RecvData) + 1);
+	
+	MCode = MEMBUS_CODE_RXD_OPTS;
 	MCodeLength = strlen(MCode) + 1;
 	
-	 
-	/*HaltParams*/
-	for (Inc = 0; Inc < 7; ++Inc)
-	{
-		 /*This isn't always the correct type, but it's irrelevant because they are the same size.*/
-		
-		memcpy((void*)&HaltParamData[Inc], RecvData + MCodeLength, sizeof(long));
-		
-		while (!MemBus_BinRead(RecvData, sizeof RecvData, false)) usleep(100);
-	}
+	/*Retrieve the HaltParams structure.*/
+	memcpy((void*)&HaltParams, InBuf + MCodeLength, sizeof HaltParams);
 	
-	/*CurRunlevel*/
-	strncpy(CurRunlevel, RecvData + MCodeLength, strlen(RecvData + MCodeLength));
+	/*Retrieve our trinity of important options.*/
+	while (!MemBus_BinRead(InBuf, sizeof InBuf, false)) usleep(100);
+	EnableLogging = (Bool)*(InBuf + MCodeLength);
+	AlignStatusReports = (Bool)*(InBuf + MCodeLength + 1);
+	ShellEnabled = (Bool)*(InBuf + MCodeLength + 2);
 	
-	/*EnableLogging and AlignStatusReports*/
-	while (!MemBus_BinRead(RecvData, sizeof RecvData, false)) usleep(100);
-	EnableLogging = *(Bool*)(RecvData + MCodeLength);
-	AlignStatusReports = *(Bool*)(RecvData + MCodeLength + sizeof(Bool));
+	/*Retrieve the current runlevel.*/
+	while (!MemBus_BinRead(InBuf, sizeof InBuf, false)) usleep(100);
+	snprintf(CurRunlevel, sizeof CurRunlevel, "%s", InBuf + MCodeLength);
 	
-	MemBus_Write(MEMBUS_CODE_RXD, false);
+	MemBus_Write(MCode, false); /*Tell the child they can quit.*/
 	
-	waitpid(ChildPID, NULL, 0);
+	/*Wait for the child to terminate.*/
+	waitpid(ChildPID, NULL, 0); /*We don't really have to, but I think we should.*/
 	
-	shmdt((void*)MemData);
-	BusRunning = false;
+	/**
+	 * EVERYTHING BEYOND HERE IS USED TO RESUME NORMAL OPERATION!
+	 * **/
+	
+	/*Bring down the old, custom membus and bring up the classic.*/
+	ShutdownMemBus(false);
 	MemBusKey = MEMKEY;
-	
-	/*Reset environment.*/
-	setenv("USER", ENVVAR_USER, true);
-	setenv("PATH", ENVVAR_PATH, true);
-	setenv("HOME", ENVVAR_HOME, true);
-	setenv("SHELL", ENVVAR_SHELL, true);
-	
-	/*If logging is enabled, we need to do this to write to disk.*/
-	LogInMemory = false;	
 	
 	if (!InitMemBus(true))
 	{
-		SpitError("Unable to initialize membus after reexec's config transfer!");
-		EmergencyShell();
+		SpitWarning("Cannot restart normal membus after re-exec. System is otherwise operational.");
 	}
 	
+	/*Restart the PrimaryLoop thread.*/
 	memset(&PrimaryLoopThread, 0, sizeof(pthread_t));
 	
-	/*Restart the primary loop.*/
-	pthread_create(&PrimaryLoopThread, NULL, &PrimaryLoop, NULL);
+	pthread_create(&PrimaryLoopThread, NULL, PrimaryLoop, NULL);
 	pthread_detach(PrimaryLoopThread);
-
-	WriteLogLine(SuccessMSG, true);
-	puts(SuccessMSG);
-	fflush(NULL);
 	
+	LogInMemory = false; /*Nothing in here, but we need this to start our logging.*/
+	WriteLogLine(CONSOLE_COLOR_GREEN "Re-executed Epoch.\nNow using " VERSIONSTRING
+				"\nCompiled " __DATE__ " " __TIME__ "." CONSOLE_ENDCOLOR, true);
+	
+	/*Now start our eternal 'derp' loop.*/
 	while (1)
-	{ /*Now sleep forever as usual.*/
+	{
 		if (!RunningChildCount)
 		{
 			waitpid(-1, NULL, WNOHANG);
@@ -337,118 +319,142 @@ void RecoverFromReexec(void)
 		
 		usleep(50000);
 	}
-	
 }
 
 void ReexecuteEpoch(void)
 { /*Used when Epoch needs to be restarted after we already booted.*/
 	pid_t PID = 0;
-	const char * const StartMSG = CONSOLE_COLOR_YELLOW "Re-executing Epoch..." CONSOLE_ENDCOLOR;
+	FILE *TestDescriptor = fopen(EPOCH_BINARY_PATH, "rb");
+	char OutBuf[MEMBUS_SIZE/2 - 1] = { '\0' };
+	ObjTable *Worker = ObjectTable;
+	const char *MCode = MEMBUS_CODE_RXD;
+	unsigned long MCodeLength = strlen(MCode) + 1;
 	
-	WriteLogLine(StartMSG, true);
-	puts(StartMSG);
+	if (!TestDescriptor)
+	{
+		EmulWall("Epoch: " CONSOLE_COLOR_RED "ERROR: " CONSOLE_ENDCOLOR
+				"Unable to read \"" EPOCH_BINARY_PATH "\"! Cannot reexec!", false);
+		return;
+	}
+	else
+	{
+		fclose(TestDescriptor);
+	}
 	
-	/*Stop the process harvesting loop.*/
-	++RunningChildCount;
-	
-	ShutdownMemBus(true); /*Bring down our existing copy, since it's the fork that will be the server.*/
-	
-	/*Incrememt the membus key to prevent clients from interfering with the restart.*/
-	++MemBusKey;
+	ShutdownMemBus(true); /*We are now going to use a different MemBus key.*/
+	MemBusKey = MEMKEY + 1; /*This prevents clients from interfering.*/
+	++RunningChildCount; /*Stop the tiny loop that reaps system wide dead processes.*/
 	
 	if ((PID = fork()) == -1)
 	{
-		SpitError("ReexecuteEpoch(): Unable to fork()!");
-		EmergencyShell();
+		EmulWall("Epoch: " CONSOLE_COLOR_RED "ERROR: " CONSOLE_ENDCOLOR
+				"Unable to fork! Aborting reexecution.", false);
+				
+		MemBusKey = MEMKEY;
+		InitMemBus(true); /*Bring back the membus.*/
+		
+		return;
 	}
 	
-	if (PID == 0)
+	/*Handle us if we are the original process first.*/
+	if (PID > 0)
 	{
-		ObjTable *Worker = ObjectTable;
-		unsigned long Inc = 0;
-		char MemBusResponse[MEMBUS_SIZE/2 - 1] = { '\0' }, OutBuf[MEMBUS_SIZE/2 - 1] = { '\0' };
-		const void *HaltParamData[7] = { (void*)&HaltParams.HaltMode, (void*)&HaltParams.TargetYear,
-										(void*)&HaltParams.TargetMonth, (void*)&HaltParams.TargetDay,
-										(void*)&HaltParams.TargetHour, (void*)&HaltParams.TargetMin,
-										(void*)&HaltParams.TargetSec };
-		const char *MCode = MEMBUS_CODE_RXD;
-		unsigned long MCodeLength = strlen(MCode) + 1;
+		WriteLogLine(CONSOLE_COLOR_YELLOW "Re-executing Epoch..." CONSOLE_ENDCOLOR, true);
 		
-		if (!InitMemBus(true))
+		while (shmget(MEMKEY + 1, MEMBUS_SIZE, 0660) == -1) usleep(100);
+		
+		sleep(1); /*Wait a second for the child to wipe the membus, so we don't have a nasty,
+		* nasty, nasty, nasty, unbelievably nasty heisenbug arise with membus pings not showing up.*/
+		
+		/**Execute the new binary.**/ /*We pass the custom args to tell us we are re-executing.*/
+		execlp(EPOCH_BINARY_PATH, "!rxd", "REEXEC", NULL);
+		
+		/*Not supposed to be here.*/
+		EmulWall(CONSOLE_COLOR_RED "ERROR: " CONSOLE_ENDCOLOR
+				"Failed to execute \"" EPOCH_BINARY_PATH "\"! Cannot reexec!", false);
+				
+		WriteLogLine(CONSOLE_COLOR_RED "Reexecution failed." CONSOLE_ENDCOLOR, true);
+		kill(PID, SIGKILL); /*Kill the failed child.*/
+		
+		if (shmget(MEMKEY + 1, MEMBUS_SIZE, 0660) != -1)
 		{
-			EmulWall("ERROR: Epoch child unable to connect to modified membus for reexec!", false);
-			EmergencyShell();
-			
-		}
-
-		while (!HandleMemBusPings()) usleep(100); /*The client verifies a connection this way.*/
-
-		while (!MemBus_Read(MemBusResponse, true)) usleep(100); /*We don't care about the value.*/
-		
-		/*First thing we send is the PID.*/
-		PID = getpid();
-
-		MemBus_BinWrite(&PID, sizeof(pid_t), true);
-		
-		for (; Worker->Next != NULL; Worker = Worker->Next)
-		{
-			snprintf(OutBuf, sizeof OutBuf, "%s %s", MCode, Worker->ObjectID);
-
-			memcpy(&OutBuf[strlen(OutBuf) + 1], &Worker->ObjectPID, sizeof(long));
-			*(Bool*)&OutBuf[strlen(OutBuf) + 1 + sizeof(long)] = Worker->Started;
-			
-			if (!MemBus_BinWrite(OutBuf, sizeof OutBuf, true))
-			{
-				printf("REEXEC: " CONSOLE_COLOR_RED "Failed" CONSOLE_ENDCOLOR
-						" to send status of object %s!\n", Worker->ObjectID);
-				fflush(NULL);
-			}
-			
-		}
-			
-		MCode = MEMBUS_CODE_RXD_OPTS;
-		MCodeLength = strlen(MCode) + 1;
-
-		/*HaltParams*/
-		for (; Inc < 7; ++Inc)
-		{			
-			strncpy(OutBuf, MCode, MCodeLength);
-			memcpy(&OutBuf[MCodeLength], HaltParamData[Inc], sizeof(long));
-			
-			MemBus_BinWrite(OutBuf, sizeof OutBuf, true);
+			ShutdownMemBus(true);
 		}
 		
-
-		/*CurRunlevel*/
-		snprintf(OutBuf, sizeof OutBuf, "%s%s", MCode, CurRunlevel);
-		MemBus_Write(OutBuf, true);
+		MemBusKey = MEMKEY;
+		InitMemBus(true);
 		
-
-		/*EnableLogging and AlignStatusReports*/
-		strncpy(OutBuf, MCode, MCodeLength);
-		
-		memcpy(&OutBuf[MCodeLength], &EnableLogging, sizeof(Bool));
-		memcpy(&OutBuf[MCodeLength + sizeof(Bool)], &AlignStatusReports, sizeof(Bool));
-		
-		MemBus_BinWrite(OutBuf, MCodeLength + sizeof(Bool) * 2, true);
-		
-		while (!MemBus_Read(MemBusResponse, true)) usleep(100); /*we don't care about the value.*/
-		
-		/*We're done with this copy. The rest is up to the re-executed original.*/
-		ShutdownConfig();
-		ShutdownMemBus(true);
-
-		exit(0);
+		return;
 	}
-	/*The original process re-execs itself.*/
-	else
+	
+	/**The child is responsible for sending us our data.**/
+	if (!InitMemBus(true))
 	{
-		/*Wait for the other side to bring up the membus.*/
-		while (shmget(MemBusKey, MEMBUS_SIZE, 0660) == - 1) usleep(100);
-		
-		execlp(EPOCH_BINARY_PATH, "!rxd", "REEXEC", NULL); /*I'll *never* tell.*/
+		EmulWall("Epoch: " CONSOLE_COLOR_RED "ERROR: " CONSOLE_ENDCOLOR
+				"Re-exec: Child unable to start modified membus. Child terminating.", false);
+		exit(1);
 	}
+	
+	while (!HandleMemBusPings())
+	{ /*Wait for the re-executed parent process to connect to receive it's config.*/
+		static unsigned long Counter = 0;
+	
+		usleep(1000); /*0.001 seconds.*/
 		
+		if (Counter == 0) ++Counter;
+		else if (Counter >= 10000) /*Sleep ten seconds.*/
+		{
+			/*Quietly exit.*/
+			SpitError("Host process not responding for reexec data exchange. Child exiting.");
+			ShutdownMemBus(true);
+			
+			exit(1);
+		}
+	}
+	
+	/*Send our PID. This doubles as a greeting.*/
+	PID = getpid();
+	MemBus_BinWrite(&PID, sizeof(pid_t), true);
+	
+	strncpy(OutBuf, MCode, MCodeLength); /*We only need to do this once per MCode change, since we never wipe OutBuf.*/
+	
+	/*PIDs and started states.
+	 * It doesn't matter if they are done eating the PID,
+	 * MemBus_*Write() blocks until they're done with the first message.*/
+	for (; Worker->Next; Worker = Worker->Next)
+	{
+		unsigned long TLength = 0;
+		strncpy(OutBuf + MCodeLength, Worker->ObjectID, (TLength = strlen(Worker->ObjectID) + 1));
+		
+		memcpy(OutBuf + MCodeLength + TLength, &Worker->ObjectPID, sizeof(long));
+		memcpy(OutBuf + sizeof(long) + TLength + MCodeLength, &Worker->Started, sizeof(Bool));
+		
+		MemBus_BinWrite(OutBuf, sizeof OutBuf, true);
+	}
+	
+	/*We change to a new code to mark the end of our loop.*/
+	strncpy(OutBuf, (MCode = MEMBUS_CODE_RXD_OPTS), (MCodeLength = strlen(MEMBUS_CODE_RXD_OPTS) + 1));
+	
+	/*HaltParams, we're lazy and just write the whole structure.*/
+	memcpy(OutBuf + MCodeLength, (void*)&HaltParams, sizeof HaltParams);
+	
+	MemBus_BinWrite(OutBuf, sizeof HaltParams + MCodeLength, true);
+	
+	/*Misc. global options. We don't include all because only some are used after initial boot.*/
+	*(OutBuf + MCodeLength) = (char)EnableLogging;
+	*(OutBuf + MCodeLength + 1) = (char)AlignStatusReports;
+	*(OutBuf + MCodeLength + 2) = (char)ShellEnabled;
+	MemBus_BinWrite(OutBuf, MCodeLength + 3, true);
+	
+	/*The current runlevel is very important.*/
+	strncpy(OutBuf + MCodeLength, CurRunlevel, strlen(CurRunlevel) + 1);
+	MemBus_Write(OutBuf, true);
+	
+	while (!MemBus_Read(OutBuf, true)) usleep(100); /*Wait for the main process to say we can quit.*/
+	ShutdownMemBus(true); /*Nothing is deleted until the new process releases the lock, don't worry.*/
+	ShutdownConfig();
+	
+	exit(0);
 }
 
 void LaunchBootup(void)
