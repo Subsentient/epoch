@@ -229,7 +229,7 @@ void RecoverFromReexec(void)
 	char MCode[MAX_DESCRIPT_SIZE] = MEMBUS_CODE_RXD, RecvData[MEMBUS_SIZE/2 - 1] = { '\0' };
 	ObjTable *CurObj = NULL;
 	unsigned long Inc = 0, MCodeLength = strlen(MCode) + 1;
-	const void *const HaltParamData[7] = { (void*)&HaltParams.HaltMode, (void*)&HaltParams.TargetYear,
+	void *const HaltParamData[7] = { (void*)&HaltParams.HaltMode, (void*)&HaltParams.TargetYear,
 										(void*)&HaltParams.TargetMonth, (void*)&HaltParams.TargetDay,
 										(void*)&HaltParams.TargetHour, (void*)&HaltParams.TargetMin,
 										(void*)&HaltParams.TargetSec };
@@ -255,7 +255,8 @@ void RecoverFromReexec(void)
 	
 	/*Retrieve the PID.*/
 	while (!MemBus_BinRead(RecvData, sizeof(pid_t), false)) usleep(100);
-	ChildPID = *(pid_t*)RecvData;
+	
+	memcpy(&ChildPID, RecvData, sizeof(pid_t));
 	
 	while (!MemBus_BinRead(RecvData, sizeof RecvData, false)) usleep(100);
 	
@@ -263,7 +264,9 @@ void RecoverFromReexec(void)
 	{
 		if ((CurObj = LookupObjectInTable(RecvData + MCodeLength)))
 		{
-			CurObj->ObjectPID = *(unsigned long*)(RecvData + strlen(RecvData) + 1);
+			
+			memcpy(&CurObj->ObjectPID, RecvData + strlen(RecvData) + 1, sizeof(long));
+			
 			CurObj->Started = *(Bool*)(RecvData + strlen(RecvData) + 1 + sizeof(long));
 		}
 		
@@ -278,7 +281,8 @@ void RecoverFromReexec(void)
 	for (Inc = 0; Inc < 7; ++Inc)
 	{
 		 /*This isn't always the correct type, but it's irrelevant because they are the same size.*/
-		*(long*)(HaltParamData[Inc]) = *(long*)(RecvData + MCodeLength);
+		
+		memcpy((void*)&HaltParamData[Inc], RecvData + MCodeLength, sizeof(long));
 		
 		while (!MemBus_BinRead(RecvData, sizeof RecvData, false)) usleep(100);
 	}
@@ -383,12 +387,14 @@ void ReexecuteEpoch(void)
 		
 		/*First thing we send is the PID.*/
 		PID = getpid();
+
 		MemBus_BinWrite(&PID, sizeof(pid_t), true);
 		
 		for (; Worker->Next != NULL; Worker = Worker->Next)
 		{
 			snprintf(OutBuf, sizeof OutBuf, "%s %s", MCode, Worker->ObjectID);
-			*(unsigned long*)&OutBuf[strlen(OutBuf) + 1] = Worker->ObjectPID;
+
+			memcpy(&OutBuf[strlen(OutBuf) + 1], &Worker->ObjectPID, sizeof(long));
 			*(Bool*)&OutBuf[strlen(OutBuf) + 1 + sizeof(long)] = Worker->Started;
 			
 			if (!MemBus_BinWrite(OutBuf, sizeof OutBuf, true))

@@ -51,7 +51,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	const char *ShellPath = "sh"; /*We try not to use absolute paths here, because some distros don't have normal layouts,
 											*And I'm sure they would rather see a warning than have it just botch up.*/
 	rStatus ExitStatus = FAILURE; /*We failed unless we succeeded.*/
-	Bool ShellDissolves, ForceShell = InObj->Opts.ForceShell;
+	Bool ShellDissolves = true, ForceShell = InObj->Opts.ForceShell;
 	int RawExitStatus, Inc = 0;
 	sigset_t SigMaker[2];
 	
