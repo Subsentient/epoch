@@ -156,6 +156,11 @@ static void *PrimaryLoop(void *UselessArg)
 				{
 					char TmpBuf[MAX_LINE_SIZE];
 					
+					if (AdvancedPIDFind(Worker, true))
+					{ /* Try to update the PID rather than restart, since some things change their PIDs via forking etc.*/
+						continue;
+					}
+					
 					snprintf(TmpBuf, MAX_LINE_SIZE, "AUTORESTART: Object %s is not running. Restarting.", Worker->ObjectID);
 					WriteLogLine(TmpBuf, true);
 					
