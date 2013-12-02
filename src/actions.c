@@ -478,7 +478,7 @@ void LaunchBootup(void)
 	
 	setsid();
 	
-	printf("\n%s\nCompiled %s\n\n", VERSIONSTRING, __DATE__);
+	printf("\n%s\nCompiled %s\n\n", VERSIONSTRING, __DATE__ " " __TIME__);
 	
 	/*Set environment variables.*/
 	setenv("USER", ENVVAR_USER, true);
@@ -501,7 +501,7 @@ void LaunchBootup(void)
 
 	if (EnableLogging)
 	{
-		WriteLogLine(CONSOLE_COLOR_CYAN VERSIONSTRING " Booting up\n" "Compiled " __DATE__ CONSOLE_ENDCOLOR "\n", true);
+		WriteLogLine(CONSOLE_COLOR_CYAN VERSIONSTRING " Booting up\n" "Compiled " __DATE__ " " __TIME__ CONSOLE_ENDCOLOR "\n", true);
 	}
 	
 	MountVirtuals(); /*Mounts any virtual filesystems, upon request.*/

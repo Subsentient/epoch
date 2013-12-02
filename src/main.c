@@ -227,13 +227,18 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		
 		  "Sends SIGKILL to the object specified. If a PID file is specified, the PID\n"
 		  "will be retrieved from that."
+		),
+		
+		( "version:\n-----\n"
+		
+		  "Prints the current version of the Epoch Init System."
 		)
 	};
 	
-	enum { HCMD, ENDIS, STAP, OBJRL, STATUS, SETCAD, CONFRL, REEXEC, CURRL, GETPID, KILLOBJ, ENUM_MAX };
+	enum { HCMD, ENDIS, STAP, OBJRL, STATUS, SETCAD, CONFRL, REEXEC, CURRL, GETPID, KILLOBJ, VER, ENUM_MAX };
 	
 	
-	printf("%s\nCompiled %s\n\n", VERSIONSTRING, __DATE__);
+	printf("%s\nCompiled %s %s\n\n", VERSIONSTRING, __DATE__, __TIME__);
 	
 	if (InCmd == NULL)
 	{
@@ -299,6 +304,11 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 	else if (!strcmp(InCmd, "kill"))
 	{
 		printf("%s %s\n\n", RootCommand, HelpMsgs[KILLOBJ]);
+		return;
+	}
+	else if (!strcmp(InCmd, "version"))
+	{
+		printf("%s %s\n\n", RootCommand, HelpMsgs[VER]);
 		return;
 	}
 	else
@@ -399,6 +409,11 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 				PrintEpochHelp(argv[0], NULL);
 			}
 		
+			return SUCCESS;
+		}
+		else if (ArgIs("--version") || ArgIs("version") || ArgIs("-v"))
+		{
+			printf("%s\nCompiled %s %s\n", VERSIONSTRING, __DATE__, __TIME__);
 			return SUCCESS;
 		}
 		else if (ArgIs("poweroff") || ArgIs("reboot") || ArgIs("halt"))
