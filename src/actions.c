@@ -453,7 +453,7 @@ void ReexecuteEpoch(void)
 	
 	/*The current runlevel is very important.*/
 	strncpy(OutBuf + MCodeLength, CurRunlevel, strlen(CurRunlevel) + 1);
-	MemBus_Write(OutBuf, true);
+	MemBus_BinWrite(OutBuf, sizeof OutBuf, true);
 	
 	while (!MemBus_Read(OutBuf, true)) usleep(100); /*Wait for the main process to say we can quit.*/
 	ShutdownMemBus(true); /*Nothing is deleted until the new process releases the lock, don't worry.*/
