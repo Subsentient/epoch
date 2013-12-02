@@ -304,6 +304,12 @@ void RecoverFromReexec(void)
 		SpitWarning("Cannot restart normal membus after re-exec. System is otherwise operational.");
 	}
 	
+	/*Reset environment variables.*/
+	setenv("USER", ENVVAR_USER, true);
+	setenv("PATH", ENVVAR_PATH, true);
+	setenv("HOME", ENVVAR_HOME, true);
+	setenv("SHELL", ENVVAR_SHELL, true);
+	
 	/*Restart the PrimaryLoop thread.*/
 	memset(&PrimaryLoopThread, 0, sizeof(pthread_t));
 	
