@@ -316,7 +316,7 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 				}
 			}
 			
-			if (!strcmp(FileBuf, InObj->ObjectStartCommand))
+			if (!strncmp(FileBuf, InObj->ObjectStartCommand, strlen(InObj->ObjectStartCommand)))
 			{
 				unsigned long RealPID;
 				
