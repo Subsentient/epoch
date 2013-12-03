@@ -294,6 +294,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 	if (IsStartingMode)
 	{		
 		rStatus PrestartExitStatus = SUCCESS;
+		unsigned long Counter = 0;
 		
 		if (PrintStatus)
 		{
@@ -312,6 +313,22 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		if (!PrestartExitStatus && ExitStatus)
 		{
 			ExitStatus = WARNING;
+		}
+		
+		/*Wait for a PID file to appear if we specified one. This prevents autorestart hell.*/
+		if (CurObj->Opts.HasPIDFile)
+		{
+			while (!FileUsable(CurObj->ObjectPIDFile))
+			{ /*Wait ten seconds total but check every 0.0001 seconds.*/
+				usleep(100);
+				
+				++Counter;
+				
+				if (Counter >= 100000)
+				{
+					ExitStatus = WARNING;
+				}
+			}
 		}
 		
 		CurObj->Started = (ExitStatus ? true : false); /*Mark the process dead or alive.*/
