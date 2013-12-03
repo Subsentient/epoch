@@ -220,20 +220,23 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	CurrentTask.Node = NULL;
 	CurrentTask.PID = 0; /*Set back to zero for the next one.*/
 	
-	InObj->ObjectPID = LaunchPID; /*Save our PID.*/
-	
-	if (!ShellDissolves)
+	if (CurCmd != InObj->ObjectPrestartCommand)
 	{
-		++InObj->ObjectPID; /*This probably won't always work, but 99.9999999% of the time, yes, it will.*/
+		InObj->ObjectPID = LaunchPID; /*Save our PID.*/
+		
+		if (!ShellDissolves)
+		{
+			++InObj->ObjectPID; /*This probably won't always work, but 99.9999999% of the time, yes, it will.*/
+		}
+		if (CurCmd == InObj->ObjectStartCommand && InObj->Opts.IsService)
+		{ /*If we specify that this is a service, one up the PID again.*/
+			++InObj->ObjectPID;
+		}
+		
+		/*Check if the PID we found is accurate and update it if not. This method is very,
+		 * very accurate compared to the buggy morass above.*/
+		AdvancedPIDFind(InObj, true);
 	}
-	if (CurCmd == InObj->ObjectStartCommand && InObj->Opts.IsService)
-	{ /*If we specify that this is a service, one up the PID again.*/
-		++InObj->ObjectPID;
-	}
-	
-	/*Check if the PID we found is accurate and update it if not. This method is very,
-	 * very accurate compared to the buggy morass above.*/
-	AdvancedPIDFind(InObj, true);
 	
 	/**And back to normalcy after this.------------------**/
 	
@@ -290,14 +293,26 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 	
 	if (IsStartingMode)
 	{		
+		rStatus PrestartExitStatus = SUCCESS;
+		
 		if (PrintStatus)
 		{
 			printf("%s", PrintOutStream);
 		}
 		
 		fflush(NULL); /*Things tend to get clogged up when we don't flush.*/
-			
+		
+		if (*CurObj->ObjectPrestartCommand != '\0')
+		{
+			PrestartExitStatus = ExecuteConfigObject(CurObj, CurObj->ObjectPrestartCommand);
+		}
+		
 		ExitStatus = ExecuteConfigObject(CurObj, CurObj->ObjectStartCommand);
+		
+		if (!PrestartExitStatus && ExitStatus)
+		{
+			ExitStatus = WARNING;
+		}
 		
 		CurObj->Started = (ExitStatus ? true : false); /*Mark the process dead or alive.*/
 		

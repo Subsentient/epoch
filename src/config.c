@@ -877,6 +877,28 @@ rStatus InitConfig(void)
 			
 			continue;
 		}
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectPrestartCommand"), strlen("ObjectPrestartCommand")))
+		{
+			if (!CurObj)
+			{
+				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			snprintf(CurObj->ObjectPrestartCommand, MAX_LINE_SIZE, "%s", DelimCurr);
+			
+			if (strlen(DelimCurr) + 1 >= MAX_LINE_SIZE)
+			{
+				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+		}
 		else if (!strncmp(Worker, (CurrentAttribute = "ObjectReloadCommand"), strlen("ObjectReloadCommand")))
 		{
 			if (!CurObj)
@@ -1503,6 +1525,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->ObjectDescription[0] = '\0';
 	Worker->ObjectStartCommand[0] = '\0';
 	Worker->ObjectStopCommand[0] = '\0';
+	Worker->ObjectPrestartCommand[0] = '\0';
 	Worker->ObjectReloadCommand[0] = '\0';
 	Worker->ObjectPIDFile[0] = '\0';
 	Worker->ObjectStartPriority = 0;
@@ -1519,6 +1542,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->Opts.AutoRestart = false;
 	Worker->Opts.EmulNoWait = false;
 	Worker->Opts.ForceShell = false;
+	Worker->Opts.HasPIDFile = false;
 	
 	return Worker;
 }
