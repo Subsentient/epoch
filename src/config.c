@@ -1073,6 +1073,12 @@ rStatus InitConfig(void)
 			
 			snprintf(CurObj->ObjectPIDFile, MAX_LINE_SIZE, "%s", DelimCurr);
 			CurObj->Opts.HasPIDFile = true;
+			
+			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
+			{
+				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+			}
+			
 			continue;
 		}
 		else if (!strncmp(Worker, (CurrentAttribute = "ObjectRunlevels"), strlen("ObjectRunlevels")))
