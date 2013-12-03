@@ -234,6 +234,7 @@ void RecoverFromReexec(void)
 	char InBuf[MEMBUS_SIZE/2 - 1] = { '\0' };
 	char *MCode = MEMBUS_CODE_RXD;
 	unsigned long MCodeLength = strlen(MCode) + 1;
+	short HPS = 0;
 	
 	MemBusKey = MEMKEY + 1;
 	
@@ -274,7 +275,13 @@ void RecoverFromReexec(void)
 	MCodeLength = strlen(MCode) + 1;
 	
 	/*Retrieve the HaltParams structure.*/
-	memcpy((void*)&HaltParams, InBuf + MCodeLength, sizeof HaltParams);
+	memcpy((void*)&HaltParams.HaltMode, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
+	memcpy((void*)&HaltParams.TargetHour, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
+	memcpy((void*)&HaltParams.TargetMin, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
+	memcpy((void*)&HaltParams.TargetSec, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
+	memcpy((void*)&HaltParams.TargetMonth, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
+	memcpy((void*)&HaltParams.TargetDay, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
+	memcpy((void*)&HaltParams.TargetYear, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
 	
 	/*Retrieve our trinity of important options.*/
 	while (!MemBus_BinRead(InBuf, sizeof InBuf, false)) usleep(100);
@@ -340,6 +347,7 @@ void ReexecuteEpoch(void)
 	ObjTable *Worker = ObjectTable;
 	const char *MCode = MEMBUS_CODE_RXD;
 	unsigned long MCodeLength = strlen(MCode) + 1;
+	short HPS = 0;
 	
 	if (!TestDescriptor)
 	{
@@ -447,7 +455,13 @@ void ReexecuteEpoch(void)
 	strncpy(OutBuf, (MCode = MEMBUS_CODE_RXD_OPTS), (MCodeLength = strlen(MEMBUS_CODE_RXD_OPTS) + 1));
 	
 	/*HaltParams, we're lazy and just write the whole structure.*/
-	memcpy(OutBuf + MCodeLength, (void*)&HaltParams, sizeof HaltParams);
+	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.HaltMode, sizeof HaltParams);
+	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.TargetHour, sizeof HaltParams);
+	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.TargetMin, sizeof HaltParams);
+	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.TargetSec, sizeof HaltParams);
+	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.TargetMonth, sizeof HaltParams);
+	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.TargetDay, sizeof HaltParams);
+	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.TargetYear, sizeof HaltParams);
 	
 	MemBus_BinWrite(OutBuf, sizeof HaltParams + MCodeLength, true);
 	
