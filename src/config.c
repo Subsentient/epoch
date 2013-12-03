@@ -919,16 +919,22 @@ rStatus InitConfig(void)
 			{ /*They want us to kill a PID file on exit.*/
 				const char *Worker = DelimCurr;
 				
-				Worker += strlen("PIDFILE");
-				
-				while (*Worker == ' ' || *Worker == '\t')
-				{ /*Skip past all spaces and tabs.*/
-					++Worker;
-				}
-				
-				snprintf(CurObj->ObjectPIDFile, MAX_LINE_SIZE, "%s", Worker);
-				
 				CurObj->Opts.StopMode = STOP_PIDFILE;
+				
+				if (*(Worker += strlen("PIDFILE")) != '\0')
+				{ /*It used to be that this was the only way to specify a PID file.*/
+                                
+					while (*Worker == ' ' || *Worker == '\t')
+					{ /*Skip past all spaces and tabs.*/
+						++Worker;
+					}
+					
+					if (*Worker != '\0')
+					{
+						snprintf(CurObj->ObjectPIDFile, MAX_LINE_SIZE, "%s", Worker);
+						CurObj->Opts.HasPIDFile = true;
+					}
+				}
 			}
 			else if (!strncmp(DelimCurr, "PID", strlen("PID")))
 			{
@@ -1027,6 +1033,24 @@ rStatus InitConfig(void)
 				ConfigProblem(CONFIG_ELARGENUM, CurrentAttribute, NULL, LineNum);
 			}
 			
+			continue;
+		}
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectPIDFile"), strlen("ObjectPIDFile")))
+		{ /*This really needs to be specified if Opts.StopMode is STOP_PIDFILE, or we'll reset the object to STOP_PID.*/
+			if (!CurObj)
+			{
+				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			snprintf(CurObj->ObjectPIDFile, MAX_LINE_SIZE, "%s", DelimCurr);
+			CurObj->Opts.HasPIDFile = true;
 			continue;
 		}
 		else if (!strncmp(Worker, (CurrentAttribute = "ObjectRunlevels"), strlen("ObjectRunlevels")))
@@ -1598,6 +1622,15 @@ static rStatus ScanConfigIntegrity(void)
 					"Disabling.", Worker->ObjectID);
 			SpitWarning(TmpBuf);
 			Worker->Enabled = false;
+			RetState = WARNING;
+		}
+		
+		if (!Worker->Opts.HasPIDFile && Worker->Opts.StopMode == STOP_PIDFILE)
+		{
+			snprintf(TmpBuf, 1024, "Object \"%s\" is set to stop via PID File,\n"
+					"but no PID File attribute specified! Switching to STOP_PID.", Worker->ObjectID);
+			SpitWarning(TmpBuf);
+			Worker->Opts.StopMode = STOP_PID;
 			RetState = WARNING;
 		}
 		

@@ -741,7 +741,7 @@ void ParseMemBus(void)
 		}
 		
 		snprintf(TmpBuf, sizeof TmpBuf, "%s %s %lu", MEMBUS_CODE_SENDPID, TWorker,
-				(TmpObj->Opts.StopMode == STOP_PIDFILE ? ReadPIDFile(TmpObj) : TmpObj->ObjectPID));
+				(TmpObj->Opts.HasPIDFile ? ReadPIDFile(TmpObj) : TmpObj->ObjectPID));
 		MemBus_Write(TmpBuf, true);
 	}
 	else if (BusDataIs(MEMBUS_CODE_KILLOBJ) || BusDataIs(MEMBUS_CODE_OBJRELOAD))
@@ -772,7 +772,7 @@ void ParseMemBus(void)
 		{
 			/*Attempt to send SIGKILL to the PID.*/
 			if (!TmpObj->ObjectPID || 
-				kill((TmpObj->Opts.StopMode == STOP_PIDFILE ? ReadPIDFile(TmpObj) : TmpObj->ObjectPID), SIGKILL) != 0)
+				kill((TmpObj->Opts.HasPIDFile ? ReadPIDFile(TmpObj) : TmpObj->ObjectPID), SIGKILL) != 0)
 			{
 				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
 			}

@@ -108,7 +108,7 @@ Bool ObjectProcessRunning(const ObjTable *InObj)
 	pid_t InPID = 0;
 	
 
-	if (InObj->Opts.StopMode != STOP_PIDFILE || !(InPID = ReadPIDFile(InObj)))
+	if (!InObj->Opts.HasPIDFile || !(InPID = ReadPIDFile(InObj)))
 	{ /*We got a PID file requested and present? Get PID from that, otherwise 
 		* get the PID from memory.*/
 		InPID = InObj->ObjectPID;

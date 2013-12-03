@@ -175,6 +175,7 @@ typedef struct _EpochObjectTable
 		unsigned int AutoRestart : 1;
 		unsigned int EmulNoWait : 1; /*Emulates the deprecated NOWAIT option by appending an ampersand to the end of ObjectStartCommand.*/
 		unsigned int ForceShell : 1; /*Forces us to start /bin/sh to run an object, even if it looks like we don't need to.*/
+		unsigned int HasPIDFile : 1; /*If StopMode == STOP_PIDFILE, we also stop it just by sending a signal to the PID in the file.*/
 	} Opts;
 	
 	struct _RLTree *ObjectRunlevels; /*Dynamically allocated, needless to say.*/
