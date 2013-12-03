@@ -271,17 +271,28 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 	struct dirent *DirPtr = NULL;
 	char FileName[MAX_LINE_SIZE];
 	char FileBuf[MAX_LINE_SIZE];
-	unsigned long Inc = 0, Streamsize = 0;
+	char CmdLine[MAX_LINE_SIZE];
+	unsigned long Inc = 0, Streamsize = 0, Countdown = 0;
 	FILE *Descriptor = NULL;
 	
 	if (*InObj->ObjectStartCommand == '\0')
 	{
 		return 0;
-	}
+	}	
 	
 	if (!(ProcDir = opendir("/proc/")))
 	{
 		return 0;
+	}
+	
+	/*Remove forbidden characters.*/
+	snprintf(CmdLine, sizeof CmdLine, "%s", InObj->ObjectStartCommand);
+		
+	for (Countdown = strlen(CmdLine) - 1; Countdown > 0 &&
+		(CmdLine[Countdown] == ' ' || CmdLine[Countdown] == '\t' ||
+		CmdLine[Countdown] == '&' || CmdLine[Countdown] == ';'); --Countdown)
+	{
+		CmdLine[Countdown] = '\0';
 	}
 	
 	while ((DirPtr = readdir(ProcDir)))
@@ -316,7 +327,7 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 				}
 			}
 			
-			if (!strncmp(FileBuf, InObj->ObjectStartCommand, strlen(InObj->ObjectStartCommand)))
+			if (!strncmp(FileBuf, CmdLine, strlen(CmdLine)))
 			{
 				unsigned long RealPID;
 				
