@@ -220,7 +220,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	CurrentTask.Node = NULL;
 	CurrentTask.PID = 0; /*Set back to zero for the next one.*/
 	
-	if (CurCmd != InObj->ObjectPrestartCommand)
+	if (CurCmd == InObj->ObjectStartCommand)
 	{
 		InObj->ObjectPID = LaunchPID; /*Save our PID.*/
 		
@@ -228,7 +228,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 		{
 			++InObj->ObjectPID; /*This probably won't always work, but 99.9999999% of the time, yes, it will.*/
 		}
-		if (CurCmd == InObj->ObjectStartCommand && InObj->Opts.IsService)
+		if (InObj->Opts.IsService)
 		{ /*If we specify that this is a service, one up the PID again.*/
 			++InObj->ObjectPID;
 		}

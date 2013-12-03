@@ -156,7 +156,7 @@ static void *PrimaryLoop(void *UselessArg)
 				{
 					char TmpBuf[MAX_LINE_SIZE];
 					
-					if (AdvancedPIDFind(Worker, true))
+					if (!Worker->Opts.HasPIDFile && AdvancedPIDFind(Worker, true))
 					{ /* Try to update the PID rather than restart, since some things change their PIDs via forking etc.*/
 						continue;
 					}
@@ -179,7 +179,7 @@ static void *PrimaryLoop(void *UselessArg)
 				}
 				
 				/*Rescan PIDs every minute to keep them up-to-date.*/
-				if (ScanStepper == 240 && Worker->Started)
+				if (ScanStepper == 240 && Worker->Started && !Worker->Opts.HasPIDFile)
 				{
 					AdvancedPIDFind(Worker, true);
 				}
