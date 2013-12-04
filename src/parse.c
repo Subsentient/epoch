@@ -605,7 +605,7 @@ rStatus ProcessReloadCommand(ObjTable *CurObj, Bool PrintStatus)
 	
 	if (PrintStatus)
 	{
-		snprintf(StatusReportBuf, MAX_DESCRIPT_SIZE, "Reloading %s", CurObj->ObjectReloadCommand);
+		snprintf(StatusReportBuf, MAX_DESCRIPT_SIZE, "Reloading %s", CurObj->ObjectID);
 		printf("%s", StatusReportBuf);
 	}
 	
