@@ -213,8 +213,10 @@ typedef struct
 
 struct _CTask
 {
+	const char *TaskName;
 	ObjTable *Node;
 	unsigned long PID;
+	unsigned int Set : 1;
 };
 
 

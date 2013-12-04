@@ -20,7 +20,7 @@
 char CurRunlevel[MAX_DESCRIPT_SIZE] = { '\0' };
 volatile unsigned long RunningChildCount = 0; /*How many child processes are running?
 									* I promised myself I wouldn't use this code.*/
-struct _CTask CurrentTask = { NULL, 0 }; /*We save this for each linear task, so we can kill the process if it becomes unresponsive.*/
+struct _CTask CurrentTask = { NULL }; /*We save this for each linear task, so we can kill the process if it becomes unresponsive.*/
 volatile BootMode CurrentBootMode = BOOT_NEUTRAL;
 Bool ShellEnabled = USE_SHELL_BY_DEFAULT; /*If we use shells.*/
 
@@ -142,7 +142,9 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 								* and crash to the ground. I hope I'm wrong.*/
 
 			CurrentTask.Node = InObj;
+			CurrentTask.TaskName = InObj->ObjectID;
 			CurrentTask.PID = LaunchPID;
+			CurrentTask.Set = true;
 			
 			pthread_sigmask(SIG_UNBLOCK, &SigMaker[1], NULL); /*Unblock now that (v)fork() is complete.*/
 	}
@@ -217,7 +219,9 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	waitpid(LaunchPID, &RawExitStatus, 0); /*Wait for the process to exit.*/
 	--RunningChildCount; /*We're done, so say so.*/
 	
+	CurrentTask.Set = false;
 	CurrentTask.Node = NULL;
+	CurrentTask.TaskName = NULL;
 	CurrentTask.PID = 0; /*Set back to zero for the next one.*/
 	
 	if (CurCmd == InObj->ObjectStartCommand)
@@ -324,9 +328,10 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				
 				++Counter;
 				
-				if (Counter >= 100000)
+				if (Counter == 100000)
 				{
 					ExitStatus = WARNING;
+					break;
 				}
 			}
 		}
@@ -390,13 +395,18 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					}
 					break;
 				}
-				
+
 				if (kill(CurObj->ObjectPID, SIGTERM) == 0)
 				{ /*Just send SIGTERM.*/
 					unsigned char TInc = 0;
+					
+					CurrentTask.Node = (void*)&TInc;
+					CurrentTask.PID = 0;
+					CurrentTask.TaskName = CurObj->ObjectID;
+					CurrentTask.Set = true;
 							
 					/*Give it ten seconds to terminate on it's own.*/
-					for (; TInc < 200 && kill(CurObj->ObjectPID, 0) == 0; ++TInc)
+					for (; kill(CurObj->ObjectPID, 0) == 0; ++TInc)
 					{ /*Two hundred is ten seconds here.*/
 						
 						/*If we are not in a thread, we need to wait for the process ourselves,
@@ -404,6 +414,16 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 						waitpid(CurObj->ObjectPID, NULL, WNOHANG);
 						
 						usleep(50000);
+						
+						if (TInc > 200) /*This means we were killed via CTRL-ALT-DEL.*/
+						{
+							TInc = 0;
+							break;
+						}
+						else if (TInc == 200)
+						{ /*And this is actual failure.*/
+							break;
+						}
 					}
 					
 					if (TInc < 200)
@@ -414,6 +434,11 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					{
 						ExitStatus = FAILURE;
 					}
+					
+					CurrentTask.Set = false;
+					CurrentTask.Node = NULL;
+					CurrentTask.TaskName = NULL;
+					CurrentTask.PID = 0;
 				}
 				else
 				{
@@ -456,16 +481,32 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				/*Now we can actually kill the process ID.*/
 				if (kill(TruePID, SIGTERM) == 0)
 				{
-					unsigned char TInc = 0;				
+					unsigned char TInc = 0;			
+						
+					CurrentTask.Node = (void*)&TInc;
+					CurrentTask.PID = 0;
+					CurrentTask.TaskName = CurObj->ObjectID;
+					CurrentTask.Set = true;
+					
 					/*Give it ten seconds to terminate on it's own.*/
-					for (; TInc < 200 && kill(TruePID, 0) == 0; ++TInc)
+					for (; kill(TruePID, 0) == 0; ++TInc)
 					{ /*Two hundred is ten seconds here.*/
 						
 						/*If we are not in a thread, we need to wait for the process ourselves,
 						because nobody else will do it for us.*/
 						waitpid(TruePID, NULL, WNOHANG);
-
+						
 						usleep(50000);
+						
+						if (TInc > 200) /*This means we were killed via CTRL-ALT-DEL.*/
+						{
+							TInc = 0;
+							break;
+						}
+						else if (TInc == 200)
+						{ /*And this is actual failure.*/
+							break;
+						}
 					}
 					
 					if (TInc < 200)
@@ -476,6 +517,11 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					{
 						ExitStatus = FAILURE;
 					}
+					
+					CurrentTask.Set = false;
+					CurrentTask.Node = NULL;
+					CurrentTask.TaskName = NULL;
+					CurrentTask.PID = 0;
 				}
 				else
 				{

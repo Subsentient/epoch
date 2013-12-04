@@ -66,14 +66,15 @@ static void SigHandler(int Signal)
 			
 			if (getpid() == 1)
 			{
-				if (CurrentTask.Node != NULL && CurrentBootMode != BOOT_NEUTRAL
+				if (CurrentTask.Set && CurrentBootMode != BOOT_NEUTRAL
 					&& (LastKillAttempt == 0 || CurrentBootMode == BOOT_SHUTDOWN || time(NULL) > (LastKillAttempt + 5)))
 				{
 					char MsgBuf[MAX_LINE_SIZE];
+					rStatus KilledOK = SUCCESS;
 					
 					snprintf(MsgBuf, sizeof MsgBuf, 
 							"\n%sKilling task %s. %s",
-							CONSOLE_COLOR_YELLOW, CurrentTask.Node->ObjectID, CONSOLE_ENDCOLOR);
+							CONSOLE_COLOR_YELLOW, CurrentTask.TaskName, CONSOLE_ENDCOLOR);
 
 					if (CurrentBootMode == BOOT_BOOTUP)
 					{
@@ -85,15 +86,28 @@ static void SigHandler(int Signal)
 					
 					WriteLogLine(MsgBuf, true);
 					
-					if (kill(CurrentTask.PID, SIGKILL) != 0)
+					if (CurrentTask.PID == 0)
+					{
+						unsigned long *TPtr = (void*)CurrentTask.Node;
+						
+						*TPtr = 100001;
+						
+						KilledOK = SUCCESS;
+					}
+					else
+					{
+						KilledOK = !kill(CurrentTask.PID, SIGKILL);
+					}
+					
+					if (!KilledOK)
 					{
 						snprintf(MsgBuf, sizeof MsgBuf, "%sUnable to kill %s.%s",
-								CONSOLE_COLOR_RED, CurrentTask.Node->ObjectID, CONSOLE_ENDCOLOR);
+								CONSOLE_COLOR_RED, CurrentTask.TaskName, CONSOLE_ENDCOLOR);
 					}
 					else
 					{
 						snprintf(MsgBuf, sizeof MsgBuf, "%s%s was successfully killed.%s", CONSOLE_COLOR_GREEN,
-								CurrentTask.Node->ObjectID, CONSOLE_ENDCOLOR);
+								CurrentTask.TaskName, CONSOLE_ENDCOLOR);
 					}
 					puts(MsgBuf);
 					fflush(stdout);
