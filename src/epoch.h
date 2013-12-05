@@ -304,7 +304,7 @@ extern void SpitError(const char *INErr);
 extern void SmallError(const char *INErr);
 
 /*utilfuncs.c*/
-extern void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutMonth, char *OutDay, char *OutYear);
+extern void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutYear, char *OutMonth, char *OutDay);
 extern unsigned long DateDiff(unsigned long InHr, unsigned long InMin, unsigned long *OutMonth,
 						unsigned long *OutDay, unsigned long *OutYear);
 extern void MinsToDate(unsigned long MinInc, unsigned long *OutHr, unsigned long *OutMin,

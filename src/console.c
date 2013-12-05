@@ -263,7 +263,7 @@ void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 		
 		GetCurrentTime(HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2]);
 		
-		snprintf(TimeFormat, 64, "[%s:%s:%s | %s/%s/%s] ",
+		snprintf(TimeFormat, 64, "[%s:%s:%s | %s-%s-%s] ",
 				HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2]);
 		
 		while (StatusFormat[strlen(StatusFormat) - 1] == '\n')
@@ -286,7 +286,7 @@ void SpitError(const char *INErr)
 	
 	GetCurrentTime(HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2]);
 	
-	fprintf(stderr, "[%s:%s:%s | %s/%s/%s] " CONSOLE_COLOR_RED "Epoch: ERROR:\n" CONSOLE_ENDCOLOR "%s\n\n",
+	fprintf(stderr, "[%s:%s:%s | %s-%s-%s] " CONSOLE_COLOR_RED "Epoch: ERROR:\n" CONSOLE_ENDCOLOR "%s\n\n",
 			HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2], INErr);
 }
 
@@ -301,6 +301,6 @@ void SpitWarning(const char *INWarning)
 	
 	GetCurrentTime(HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2]);
 	
-	fprintf(stderr, "[%s:%s:%s | %s/%s/%s] " CONSOLE_COLOR_YELLOW "Epoch: WARNING:\n" CONSOLE_ENDCOLOR "%s\n\n",
+	fprintf(stderr, "[%s:%s:%s | %s-%s-%s] " CONSOLE_COLOR_YELLOW "Epoch: WARNING:\n" CONSOLE_ENDCOLOR "%s\n\n",
 			HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2], INWarning);
 }

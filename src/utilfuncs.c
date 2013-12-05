@@ -65,11 +65,11 @@ rStatus WriteLogLine(const char *InStream, Bool AddDate)
 		return FAILURE;
 	}
 	
-	GetCurrentTime(Hr, Min, Sec, Month, Day, Year);
+	GetCurrentTime(Hr, Min, Sec, Year, Month, Day);
 	
 	if (AddDate)
 	{
-		snprintf(OBuf, MAX_LINE_SIZE + 64, "[%s:%s:%s | %s/%s/%s] %s\n", Hr, Min, Sec, Month, Day, Year, InStream);
+		snprintf(OBuf, MAX_LINE_SIZE + 64, "[%s:%s:%s | %s-%s-%s] %s\n", Hr, Min, Sec, Year, Month, Day, InStream);
 	}
 	else
 	{
@@ -214,7 +214,7 @@ unsigned long DateDiff(unsigned long InHr, unsigned long InMin, unsigned long *O
 	return IncMin;
 }
 
-void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutMonth, char *OutDay, char *OutYear)
+void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutYear, char *OutMonth, char *OutDay)
 { /*You can put NULL for items that you don't want the value of.*/
 	struct tm TimeStruct;
 	long HMS_I[3];

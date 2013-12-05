@@ -286,7 +286,7 @@ void EmulWall(const char *InStream, Bool ShowUser)
 	
 	GetCurrentTime(HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2]);
 	
-	snprintf(OutBuf, 64, "\007\n%s[%s:%s:%s | %s/%s/%s]%s ", CONSOLE_COLOR_RED, HMS[0], HMS[1], HMS[2],
+	snprintf(OutBuf, 64, "\007\n%s[%s:%s:%s | %s-%s-%s]%s ", CONSOLE_COLOR_RED, HMS[0], HMS[1], HMS[2],
 		MDY[0], MDY[1], MDY[2], CONSOLE_ENDCOLOR);
 	
 	if (ShowUser)

@@ -48,7 +48,7 @@ static Bool FileUsable(const char *FileName)
 
 static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 { /*Not making static because this is probably going to be useful for other stuff.*/
-	pid_t LaunchPID = 0;
+	pid_t LaunchPID;
 	const char *ShellPath = "/bin/sh";
 	rStatus ExitStatus = FAILURE; /*We failed unless we succeeded.*/
 	Bool ForceShell = InObj->Opts.ForceShell;

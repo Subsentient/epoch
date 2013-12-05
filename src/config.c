@@ -308,28 +308,6 @@ rStatus InitConfig(void)
 				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 			}
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "ShellForks"), strlen("ShellForks")))
-		{
-			if (!GetLineDelim(Worker, DelimCurr))
-			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
-
-				continue;
-			}
-			
-			if (!strcmp(DelimCurr, "true"))
-			{
-				ShellDissolves = true;
-			}
-			else if (!strcmp(DelimCurr, "false"))
-			{
-				ShellDissolves = false;
-			}
-			else
-			{
-				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
-			}
-		}
 		else if (!strncmp(Worker, (CurrentAttribute = "EnableLogging"), strlen("EnableLogging")))
 		{
 			if (!GetLineDelim(Worker, DelimCurr))
