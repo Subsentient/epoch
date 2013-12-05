@@ -458,6 +458,11 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			puts("Re-executing Epoch."); fflush(NULL);
 			
+			ShutdownMemBus(false);
+			while (shmget(MEMKEY, MEMBUS_SIZE, 0660) != -1) usleep(100); /*Wait for it to quit...*/
+			while (shmget(MEMKEY, MEMBUS_SIZE, 0660) == -1) usleep(100); /*Then wait for it to start...*/
+			InitMemBus(false);
+
 			while (!MemBus_Read(InStream, false)) usleep(100);
 			
 			if (!strcmp(InStream, MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_RXD))

@@ -352,11 +352,23 @@ void ReexecuteEpoch(void)
 	unsigned long MCodeLength = strlen(MCode) + 1;
 	short HPS = 0;
 	
+	ShutdownMemBus(true); /*We are now going to use a different MemBus key.*/
+	MemBusKey = MEMKEY + 1; /*This prevents clients from interfering.*/
+	++RunningChildCount; /*Stop the tiny loop that reaps system wide dead processes.*/
+	
+	
 	if (!TestDescriptor)
 	{
 		EmulWall("Epoch: " CONSOLE_COLOR_RED "ERROR: " CONSOLE_ENDCOLOR
 				"Unable to read \"" EPOCH_BINARY_PATH "\"! Cannot reexec!", false);
-				
+	
+		MemBusKey = MEMKEY;
+		
+		if (!InitMemBus(true))
+		{
+			SpitError("ReexecuteEpoch(): Failed to restart membus after failed reexec!");
+		}
+		
 		MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_RXD, true);
 		return;
 	}
@@ -365,17 +377,17 @@ void ReexecuteEpoch(void)
 		fclose(TestDescriptor);
 	}
 	
-	ShutdownMemBus(true); /*We are now going to use a different MemBus key.*/
-	MemBusKey = MEMKEY + 1; /*This prevents clients from interfering.*/
-	++RunningChildCount; /*Stop the tiny loop that reaps system wide dead processes.*/
-	
 	if ((PID = fork()) == -1)
 	{
 		EmulWall("Epoch: " CONSOLE_COLOR_RED "ERROR: " CONSOLE_ENDCOLOR
 				"Unable to fork! Aborting reexecution.", false);
 				
 		MemBusKey = MEMKEY;
-		InitMemBus(true); /*Bring back the membus.*/
+		
+		if (!InitMemBus(true)) /*Bring back the membus.*/
+		{
+			SpitError("ReexecuteEpoch(): Failed to restart membus after failed reexec!");
+		}
 		
 		MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_RXD, true);
 		return;
@@ -404,7 +416,11 @@ void ReexecuteEpoch(void)
 		}
 		
 		MemBusKey = MEMKEY;
-		InitMemBus(true);
+		
+		if (!InitMemBus(true))
+		{
+			SpitError("ReexecuteEpoch(): Failed to restart membus after failed reexec!");
+		}
 		
 		MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_RXD, true);
 		return;
