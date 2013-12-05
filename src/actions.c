@@ -327,6 +327,9 @@ void RecoverFromReexec(void)
 	WriteLogLine(CONSOLE_COLOR_GREEN "Re-executed Epoch.\nNow using " VERSIONSTRING
 				"\nCompiled " __DATE__ " " __TIME__ "." CONSOLE_ENDCOLOR, true);
 	
+	/*Tell the client we are done.*/
+	MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_RXD, true);
+	
 	/*Now start our eternal 'derp' loop.*/
 	while (1)
 	{
@@ -353,6 +356,8 @@ void ReexecuteEpoch(void)
 	{
 		EmulWall("Epoch: " CONSOLE_COLOR_RED "ERROR: " CONSOLE_ENDCOLOR
 				"Unable to read \"" EPOCH_BINARY_PATH "\"! Cannot reexec!", false);
+				
+		MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_RXD, true);
 		return;
 	}
 	else
@@ -372,6 +377,7 @@ void ReexecuteEpoch(void)
 		MemBusKey = MEMKEY;
 		InitMemBus(true); /*Bring back the membus.*/
 		
+		MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_RXD, true);
 		return;
 	}
 	
@@ -381,9 +387,6 @@ void ReexecuteEpoch(void)
 		WriteLogLine(CONSOLE_COLOR_YELLOW "Re-executing Epoch..." CONSOLE_ENDCOLOR, true);
 		
 		while (shmget(MEMKEY + 1, MEMBUS_SIZE, 0660) == -1) usleep(100);
-		
-		sleep(1); /*Wait a second for the child to wipe the membus, so we don't have a nasty,
-		* nasty, nasty, nasty, unbelievably nasty heisenbug arise with membus pings not showing up.*/
 		
 		/**Execute the new binary.**/ /*We pass the custom args to tell us we are re-executing.*/
 		execlp(EPOCH_BINARY_PATH, "!rxd", "REEXEC", NULL);
@@ -403,6 +406,7 @@ void ReexecuteEpoch(void)
 		MemBusKey = MEMKEY;
 		InitMemBus(true);
 		
+		MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_RXD, true);
 		return;
 	}
 	
@@ -558,7 +562,7 @@ void LaunchBootup(void)
 		WriteLogLine("Epoch will not request control of CTRL-ALT-DEL events.", true);
 	}
 	
-	WriteLogLine(CONSOLE_COLOR_YELLOW "Starting all objects and services.\n" CONSOLE_ENDCOLOR, true);
+	WriteLogLine(CONSOLE_COLOR_YELLOW "Starting all objects.\n" CONSOLE_ENDCOLOR, true);
 	
 	if (!RunAllObjects(true))
 	{
@@ -584,7 +588,7 @@ void LaunchBootup(void)
 				fflush(Descriptor);
 				fclose(Descriptor);
 				
-				WriteLogLine(CONSOLE_COLOR_GREEN "Completed starting objects and services. Entering standby loop.\n" CONSOLE_ENDCOLOR, true);
+				WriteLogLine(CONSOLE_COLOR_GREEN "Bootup complete.\n" CONSOLE_ENDCOLOR, true);
 			}
 			free(MemLogBuffer);
 		}

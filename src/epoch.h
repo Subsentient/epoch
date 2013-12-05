@@ -22,8 +22,12 @@
 #define EPOCH_BINARY_PATH "/sbin/epoch"
 #endif
 
-#ifndef USE_SHELL_BY_DEFAULT
-#define USE_SHELL_BY_DEFAULT true
+#ifndef SHELLPATH
+#define SHELLPATH "/bin/sh"
+#endif
+
+#ifndef USE_SHELL
+#define USE_SHELL true
 #endif
 
 #ifndef CONFIGDIR /*This is available for good purpose.*/
@@ -47,7 +51,7 @@
 #endif
 
 #ifndef ENVVAR_SHELL
-#define ENVVAR_SHELL "/bin/sh"
+#define ENVVAR_SHELL SHELLPATH
 #endif
 
 #ifndef ENVVAR_PATH

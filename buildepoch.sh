@@ -26,23 +26,27 @@ ShowHelp()
 	echo -e $Green"--membus-size"$EndGreen":\n\tTo set a size for the membus' chunk of shared memory."
 	echo -e "\t2048 or greater is recommended. Default is the maximum page size."
 	echo -e $Green"--binarypath path"$EndGreen":\n\tThe direct path to the Epoch binary. Default is /sbin/epoch."
-	echo -e $Green"--allow-weird-shells"$EndGreen":\n\tSuppress warnings about a shell that"
-	echo -e "\tEpoch doesn't recognize being the default."
 	echo -e $Green"--env-home value"$EndGreen":\n\tDesired environment variable for \$HOME."
 	echo -e "\tThis will be usable in Epoch start/stop commands."
 	echo -e $Green"--env-user value"$EndGreen":\n\tDesired environment variable for \$USER."
 	echo -e "\tThis will be usable in Epoch start/stop commands."
 	echo -e $Green"--env-shell value"$EndGreen":\n\tDesired environment variable for \$SHELL."
 	echo -e "\tThis will be usable in Epoch start/stop commands."
-	echo -e "\tThis is also used internally, so make sure it's valid."
 	echo -e $Green"--env-path value"$EndGreen":\n\tDesired environment variable for \$PATH"
 	echo -e $Green"--outpath dir"$EndGreen":\n\tThe location that the compiled binary"
 	echo -e "\tand symlinks will be placed upon completion."
 	echo -e "\tSimilar to make install DESTDIR=\"\"."
-	echo -e $Green"--disable-shell-by-default"$EndGreen":\n\tIf this flag is set, Epoch will be built"
-	echo -e "\tto not launch objects with /bin/sh by default, and will instead try to use an"
-	echo -e "\targument list. You can still configure Epoch to use a shell via the ShellEnabled"
-	echo -e "\tconfiguration attribute."
+	echo -e $Green"--disable-shell"$EndGreen":\n\tIf this flag is set, Epoch will be built"
+	echo -e "\tto not launch objects with /bin/sh, and will instead try to use an"
+	echo -e "\targument list. This may be useful on embedded systems,"
+	echo -e "\tbut comes at a high price of removing support for any shell characters,"
+	echo -e "\tsuch as '&' and '&&'."
+	echo -e $Green"--shellpath"$EndGreen":\n\tThe shell that Epoch will use to assist in the launching of objects,"
+	echo -e "\tprovided that --disable-shell is not specified."
+	echo -e $Green"--shell-forks-with-dashc"$EndGreen":\n\tShells such as busybox create a new process"
+	echo -e "\twhen we use 'sh -c', but most including bash, dash, ksh, csh, tcsh,"
+	echo -e "\tand zsh do not. You are encouraged to make sure this is set for"
+	echo -e "\tbusybox etc, because this option is used to assist tracking PIDs."
 	echo -e $Green"--cflags value"$EndGreen":\n\tSets \$CFLAGS to the desired value."
 	echo -e $Green"--ldflags value"$EndGreen":\n\tSets \$LDFLAGS to the desired value."
 	echo -e $Green"--cc value"$EndGreen":\n\tSets \$CC to be the compiler for Epoch."
@@ -99,15 +103,19 @@ if [ "$#" != "0" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DENVVAR_PATH=\"$1\""
 	
-		elif [ "$1" == "--allow-weird-shells" ]; then
-			CFLAGS=$CFLAGS" -DWEIRDSHELLPERMITTED"
+		elif [ "$1" == "--shell-forks-with-dashc" ]; then
+			CFLAGS=$CFLAGS" -DSHELLDISSOLVES=false"
 	
 		elif [ "$1" == "--outpath" ]; then
 			shift
 			outdir="$1"
 			
-		elif [ "$1" == "--disable-shell-by-default" ]; then
-			CFLAGS=$CFLAGS" -DUSE_SHELL_BY_DEFAULT=false"
+		elif [ "$1" == "--disable-shell" ]; then
+			CFLAGS=$CFLAGS" -DUSE_SHELL=false"
+			
+		elif [ "$1" == "--shellpath" ]; then
+			shift
+			CFLAGS=$CFLAGS" -DSHELLPATH=\"$1\""
 			
 		elif [ "$1" == "--cflags" ]; then
 			shift

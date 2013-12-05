@@ -285,29 +285,6 @@ rStatus InitConfig(void)
 
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "ShellEnabled"), strlen("ShellEnabled")))
-		{
-			if (!GetLineDelim(Worker, DelimCurr))
-			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
-
-				continue;
-			}
-			
-			if (!strcmp(DelimCurr, "true"))
-			{
-				ShellEnabled = true;
-			}
-			else if (!strcmp(DelimCurr, "false"))
-			{
-				ShellEnabled = false;
-			}
-			else
-			{
-				ShellEnabled = USE_SHELL_BY_DEFAULT;
-				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
-			}
-		}
 		else if (!strncmp(Worker, (CurrentAttribute = "EnableLogging"), strlen("EnableLogging")))
 		{
 			if (!GetLineDelim(Worker, DelimCurr))

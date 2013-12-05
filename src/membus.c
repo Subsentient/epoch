@@ -56,11 +56,24 @@ rStatus InitMemBus(Bool ServerSide)
 	}
 	else
 	{ /*Client side stuff.*/
+		for (; *MemData != MEMBUS_NOMSG && *MemData != MEMBUS_MSG; ++Inc)
+		{ /*Wait for server-side to finish setting up it's half, if it was just starting up itself.*/
+			if (Inc == 100000) /*Ten secs.*/
+			{
+				SmallError("Cannot connect to Epoch over MemBus, stream corrupted. Aborting MemBus initialization.");
+				BusRunning = false;
+				
+				return FAILURE;
+			}
+			
+			usleep(100);
+		}
+		
 		CheckCode = *MemData = (*MemData == MEMBUS_MSG ? MEMBUS_CHECKALIVE_MSG : MEMBUS_CHECKALIVE_NOMSG); /*Ask server-side if they're alive.*/
 		
-		for (; *MemData == CheckCode; ++Inc)
+		for (Inc = 0; *MemData == CheckCode; ++Inc)
 		{ /*Wait ten seconds for server-side to respond.*/
-			if (Inc == 1000)
+			if (Inc == 100000)
 			{ /*Ten seconds.*/
 				SmallError("Cannot connect to Epoch over MemBus, timeout expired. Aborting MemBus initialization.");
 				
@@ -69,7 +82,7 @@ rStatus InitMemBus(Bool ServerSide)
 				return FAILURE;
 			}
 			
-			usleep(10000);
+			usleep(100);
 		}
 		
 		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NOMSG; /*Initialize client side.*/

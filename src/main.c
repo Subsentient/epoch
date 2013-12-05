@@ -447,14 +447,30 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		}
 		else if (ArgIs("reexec"))
 		{
+			char InStream[MAX_LINE_SIZE];
+			
 			if (!InitMemBus(false))
 			{
 				return FAILURE;
 			}
 			
 			MemBus_Write(MEMBUS_CODE_RXD, false); /*We don't shut down the MemBus here. No need.*/
-			shmdt((void*)MemData);
-			puts("Re-executing Epoch.");
+			
+			puts("Re-executing Epoch."); fflush(NULL);
+			
+			while (!MemBus_Read(InStream, false)) usleep(100);
+			
+			if (!strcmp(InStream, MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_RXD))
+			{
+				puts("Reexecution successful.");
+			}
+			else
+			{
+				puts(CONSOLE_COLOR_RED "FAILED TO REEXECUTE!" CONSOLE_ENDCOLOR);
+			}
+			
+			ShutdownMemBus(false);
+			
 			return SUCCESS;
 		}
 	}

@@ -22,7 +22,7 @@ volatile unsigned long RunningChildCount = 0; /*How many child processes are run
 									* I promised myself I wouldn't use this code.*/
 struct _CTask CurrentTask = { NULL }; /*We save this for each linear task, so we can kill the process if it becomes unresponsive.*/
 volatile BootMode CurrentBootMode = BOOT_NEUTRAL;
-Bool ShellEnabled = USE_SHELL_BY_DEFAULT; /*If we use shells.*/
+Bool ShellEnabled = USE_SHELL; /*If we use shells.*/
 
 /**Function forward declarations.**/
 
@@ -66,9 +66,9 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	* and support shell commands, we need to jump through a bunch of hoops.*/
 	if (ShellEnabled)
 	{
-		if (FileUsable(ENVVAR_SHELL))
+		if (FileUsable(SHELLPATH))
 		{ /*Try our specified shell first.*/
-			ShellPath = ENVVAR_SHELL;
+			ShellPath = SHELLPATH;
 		}
 		else if (FileUsable("/bin/bash"))
 		{
@@ -88,6 +88,16 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 		else if (FileUsable("/bin/csh"))
 		{
 			ShellPath = "/bin/csh";
+			ShellDissolves = true;
+		}
+		else if (FileUsable("/bin/tcsh"))
+		{
+			ShellPath = "/bin/tcsh";
+			ShellDissolves = true;
+		}
+		else if (FileUsable("/bin/ksh"))
+		{
+			ShellPath = "/bin/ksh";
 			ShellDissolves = true;
 		}
 		else if (FileUsable("/bin/busybox"))
@@ -125,7 +135,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 		}
 		
 		if (!DidWarn && strcmp(ShellPath, ENVVAR_SHELL) != 0)
-		{
+		{ /*Only happens if we are using a known shell, even if it's not ours.*/
 			char ErrBuf[MAX_LINE_SIZE];
 			
 			snprintf(ErrBuf, MAX_LINE_SIZE, "\"" ENVVAR_SHELL "\" cannot be read. Using \"%s\" instead.", ShellPath);
