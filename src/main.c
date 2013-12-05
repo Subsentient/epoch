@@ -454,7 +454,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 				return FAILURE;
 			}
 			
-			MemBus_Write(MEMBUS_CODE_RXD, false); /*We don't shut down the MemBus here. No need.*/
+			MemBus_Write(MEMBUS_CODE_RXD, false);
 			
 			puts("Re-executing Epoch."); fflush(NULL);
 			

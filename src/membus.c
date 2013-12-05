@@ -863,18 +863,15 @@ rStatus ShutdownMemBus(Bool ServerSide)
 	
 	*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NOMSG;
 	
-	if (!ServerSide)
-	{ /*That's all the client side needs to do.*/
-		BusRunning = false;
-		return SUCCESS;
-	}
-	
-	*MemData = MEMBUS_NOMSG;
-	
-	if (shmctl(MemDescriptor, IPC_RMID, NULL) == -1)
+	if (ServerSide)
 	{
-		SpitWarning("ShutdownMemBus(): Unable to deallocate membus.");
-		return FAILURE;
+		*MemData = MEMBUS_NOMSG;
+	
+		if (shmctl(MemDescriptor, IPC_RMID, NULL) == -1)
+		{
+			SpitWarning("ShutdownMemBus(): Unable to deallocate membus.");
+			return FAILURE;
+		}
 	}
 	
 	if (shmdt((void*)MemData) != 0)
