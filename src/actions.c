@@ -287,7 +287,6 @@ void RecoverFromReexec(void)
 	while (!MemBus_BinRead(InBuf, sizeof InBuf, false)) usleep(100);
 	EnableLogging = (Bool)*(InBuf + MCodeLength);
 	AlignStatusReports = (Bool)*(InBuf + MCodeLength + 1);
-	ShellEnabled = (Bool)*(InBuf + MCodeLength + 2);
 	
 	/*Retrieve the current runlevel.*/
 	while (!MemBus_BinRead(InBuf, sizeof InBuf, false)) usleep(100);
@@ -488,7 +487,6 @@ void ReexecuteEpoch(void)
 	/*Misc. global options. We don't include all because only some are used after initial boot.*/
 	*(OutBuf + MCodeLength) = (char)EnableLogging;
 	*(OutBuf + MCodeLength + 1) = (char)AlignStatusReports;
-	*(OutBuf + MCodeLength + 2) = (char)ShellEnabled;
 	MemBus_BinWrite(OutBuf, MCodeLength + 3, true);
 	
 	/*The current runlevel is very important.*/

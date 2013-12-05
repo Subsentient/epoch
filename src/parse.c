@@ -22,7 +22,6 @@ volatile unsigned long RunningChildCount = 0; /*How many child processes are run
 									* I promised myself I wouldn't use this code.*/
 struct _CTask CurrentTask = { NULL }; /*We save this for each linear task, so we can kill the process if it becomes unresponsive.*/
 volatile BootMode CurrentBootMode = BOOT_NEUTRAL;
-Bool ShellEnabled = USE_SHELL; /*If we use shells.*/
 
 /**Function forward declarations.**/
 
@@ -47,20 +46,22 @@ static Bool FileUsable(const char *FileName)
 
 static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 { /*Not making static because this is probably going to be useful for other stuff.*/
-	pid_t LaunchPID;
-	const char *ShellPath = "/bin/sh";
-	rStatus ExitStatus = FAILURE; /*We failed unless we succeeded.*/
-	Bool ForceShell = InObj->Opts.ForceShell;
-	int RawExitStatus, Inc = 0;
-	Bool ShellDissolves = SHELLDISSOLVES;
-	sigset_t SigMaker[2];
-	static Bool DidWarn = false;
-	
 #ifdef NOMMU
 #define ForkFunc() fork()
 #else
 #define ForkFunc() vfork()
 #endif
+
+	pid_t LaunchPID;
+	rStatus ExitStatus = FAILURE; /*We failed unless we succeeded.*/
+	int RawExitStatus, Inc = 0;
+	sigset_t SigMaker[2];	
+#ifndef NOSHELL
+	Bool ShellEnabled = true; /*If we use shells.*/
+	Bool ShellDissolves = SHELLDISSOLVES;
+	Bool ForceShell = InObj->Opts.ForceShell;
+	static Bool DidWarn = false;
+	const char *ShellPath = "/bin/sh";
 	
 	/*Check how we should handle PIDs for each shell. In order to get the PID, exit status,
 	* and support shell commands, we need to jump through a bunch of hoops.*/
@@ -146,6 +147,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 			DidWarn = true;
 		}
 	}
+#endif /*NOSHELL*/
 	/**Here be where we execute commands.---------------**/
 	
 	/*We need to block all signals until we have executed the process.*/
@@ -201,11 +203,13 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 		/*Change our session id.*/
 		setsid();
 		
+#ifndef NOSHELL
 		if (ShellEnabled && (strpbrk(CurCmd, "&^$#@!()*%{}`~+=-|\\<>?;:'[]\"\t") != NULL || ForceShell))
 		{
 			execlp(ShellPath, "sh", "-c", CurCmd, NULL); /*I bet you think that this is going to return the PID of sh. No.*/
 		}
 		else
+#endif
 		{ /*don't worry about the heap stuff, exec() takes care of it you know.*/
 			char **ArgV = NULL;
 			unsigned long NumSpaces = 1, Inc = 0, cOffset = 0, Inc2 = 0;
@@ -260,11 +264,12 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	if (CurCmd == InObj->ObjectStartCommand)
 	{
 		InObj->ObjectPID = LaunchPID; /*Save our PID.*/
-		
+#ifndef NOSHELL		
 		if (!ShellDissolves)
 		{
 			++InObj->ObjectPID; /*This probably won't always work, but 99.9999999% of the time, yes, it will.*/
 		}
+#endif
 		if (InObj->Opts.IsService)
 		{ /*If we specify that this is a service, one up the PID again.*/
 			++InObj->ObjectPID;

@@ -26,10 +26,6 @@
 #define SHELLPATH "/bin/sh"
 #endif
 
-#ifndef USE_SHELL
-#define USE_SHELL true
-#endif
-
 #ifndef CONFIGDIR /*This is available for good purpose.*/
 #define CONFIGDIR "/etc/epoch/"
 #endif
@@ -251,7 +247,6 @@ extern volatile BootMode CurrentBootMode;
 extern Bool AlignStatusReports;
 extern volatile signed long MemBusKey;
 extern volatile Bool BusRunning;
-extern Bool ShellEnabled;
 
 /**Function forward declarations.*/
 

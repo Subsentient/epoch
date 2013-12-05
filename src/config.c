@@ -729,16 +729,14 @@ rStatus InitConfig(void)
 				}
 				else if (!strcmp(CurArg, "FORCESHELL"))
 				{
-					if (!ShellEnabled)
-					{
-						snprintf(ErrBuf, sizeof ErrBuf, "Object %s has FORCESHELL set, but ShellEnabled is false.\n"
-														"Ignoring.\nepoch.conf line %lu", CurObj->ObjectID, LineNum);
-						SpitWarning(ErrBuf);
-					}
-					else
-					{
+					#ifndef NOSHELL
 						CurObj->Opts.ForceShell = true;
-					}
+					#else
+						snprintf(ErrBuf, sizeof ErrBuf, "Object %s has the option FORCESHELL set,\n"
+								"but Epoch was compiled without shell support.\n"
+								"Ignoring.", CurObj->ObjectID);
+						SpitWarning(ErrBuf);
+					#endif
 				}
 				else if (!strncmp(CurArg, "TERMSIGNAL", strlen("TERMSIGNAL")))
 				{
@@ -2036,7 +2034,7 @@ rStatus ReloadConfig(void)
 	ObjTable *Worker = ObjectTable;
 	ObjTable *TRoot = malloc(sizeof(ObjTable)), *SWorker = TRoot, *Temp = NULL;
 	struct _RLTree *RLTemp1 = NULL, *RLTemp2 = NULL;
-	Bool GlobalOpts[4], ConfigOK = true;
+	Bool GlobalOpts[3], ConfigOK = true;
 	struct _RunlevelInheritance *RLIRoot = NULL, *RLIWorker[2] = { NULL };
 	char RunlevelBackup[MAX_DESCRIPT_SIZE];
 	
@@ -2096,7 +2094,6 @@ rStatus ReloadConfig(void)
 	GlobalOpts[0] = EnableLogging;
 	GlobalOpts[1] = DisableCAD;
 	GlobalOpts[2] = AlignStatusReports;
-	GlobalOpts[3] = ShellEnabled;
 	
 	WriteLogLine("CONFIG: Initializing new configuration.", true);
 	
@@ -2123,7 +2120,6 @@ rStatus ReloadConfig(void)
 	EnableLogging = GlobalOpts[0];
 	DisableCAD = GlobalOpts[1];
 	AlignStatusReports = GlobalOpts[2];
-	ShellEnabled = GlobalOpts[3];
 	
 	if (!ConfigOK) return ConfigOK;
 	
