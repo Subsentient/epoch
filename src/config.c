@@ -1276,6 +1276,11 @@ static rStatus GetLineDelim(const char *InStream, char *OutStream)
 		OutStream[Inc] = InStream[Inc + cOffset];
 	}
 	OutStream[Inc] = '\0';
+	
+	for (--Inc; Inc + 1 > 0 && (OutStream[Inc] == ' ' || OutStream[Inc] == '\t'); --Inc)
+	{
+		OutStream[Inc] = '\0';
+	}
 
 	return SUCCESS;
 }
