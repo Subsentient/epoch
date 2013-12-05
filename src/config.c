@@ -1514,9 +1514,12 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 		Worker = ObjectTable;
 	}
 	
-	while (Worker->Next)
+	for (; Worker->Next; Worker = Worker->Next)
 	{
-		Worker = Worker->Next;
+		if (!strcmp(ObjectID, Worker->ObjectID))
+		{ /*Do not allow duplicate entries.*/
+			return Worker;
+		}
 	}
 
 	Worker->Next = malloc(sizeof(ObjTable));
