@@ -2051,7 +2051,7 @@ rStatus ReloadConfig(void)
 	ObjTable *Worker = ObjectTable;
 	ObjTable *TRoot = malloc(sizeof(ObjTable)), *SWorker = TRoot, *Temp = NULL;
 	struct _RLTree *RLTemp1 = NULL, *RLTemp2 = NULL;
-	Bool GlobalOpts[5], ConfigOK = true;
+	Bool GlobalOpts[4], ConfigOK = true;
 	struct _RunlevelInheritance *RLIRoot = NULL, *RLIWorker[2] = { NULL };
 	char RunlevelBackup[MAX_DESCRIPT_SIZE];
 	
@@ -2112,7 +2112,6 @@ rStatus ReloadConfig(void)
 	GlobalOpts[1] = DisableCAD;
 	GlobalOpts[2] = AlignStatusReports;
 	GlobalOpts[3] = ShellEnabled;
-	GlobalOpts[4] = ShellDissolves;
 	
 	WriteLogLine("CONFIG: Initializing new configuration.", true);
 	
@@ -2140,7 +2139,6 @@ rStatus ReloadConfig(void)
 	DisableCAD = GlobalOpts[1];
 	AlignStatusReports = GlobalOpts[2];
 	ShellEnabled = GlobalOpts[3];
-	ShellDissolves = GlobalOpts[4];
 	
 	if (!ConfigOK) return ConfigOK;
 	

@@ -245,7 +245,6 @@ extern Bool AlignStatusReports;
 extern volatile signed long MemBusKey;
 extern volatile Bool BusRunning;
 extern Bool ShellEnabled;
-extern Bool ShellDissolves;
 
 /**Function forward declarations.*/
 

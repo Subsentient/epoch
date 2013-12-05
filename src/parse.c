@@ -23,7 +23,6 @@ volatile unsigned long RunningChildCount = 0; /*How many child processes are run
 struct _CTask CurrentTask = { NULL }; /*We save this for each linear task, so we can kill the process if it becomes unresponsive.*/
 volatile BootMode CurrentBootMode = BOOT_NEUTRAL;
 Bool ShellEnabled = USE_SHELL_BY_DEFAULT; /*If we use shells.*/
-Bool ShellDissolves = SHELLDISSOLVES;
 
 /**Function forward declarations.**/
 
@@ -53,8 +52,9 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	rStatus ExitStatus = FAILURE; /*We failed unless we succeeded.*/
 	Bool ForceShell = InObj->Opts.ForceShell;
 	int RawExitStatus, Inc = 0;
-	Bool _ShellDissolves = ShellDissolves;
+	Bool ShellDissolves = SHELLDISSOLVES;
 	sigset_t SigMaker[2];
+	static Bool DidWarn = false;
 	
 #ifdef NOMMU
 #define ForkFunc() fork()
@@ -72,34 +72,33 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 		}
 		else if (FileUsable("/bin/bash"))
 		{
-			_ShellDissolves = true;
+			ShellDissolves = true;
 			ShellPath = "/bin/bash";
 		}
 		else if (FileUsable("/bin/dash"))
 		{
 			ShellPath = "/bin/dash";
-			_ShellDissolves = true;
+			ShellDissolves = true;
 		}
 		else if (FileUsable("/bin/zsh"))
 		{
 			ShellPath = "/bin/zsh";
-			_ShellDissolves = true;
+			ShellDissolves = true;
 		}
 		else if (FileUsable("/bin/csh"))
 		{
 			ShellPath = "/bin/csh";
-			_ShellDissolves = true;
+			ShellDissolves = true;
 		}
 		else if (FileUsable("/bin/busybox"))
 		{ /*This is one of those weird shells that still does the old practice of creating a child for -c.
 			* We can deal with the likes of them. Small chance that for shells like this, another PID could jump in front
 			* and we could end up storing the wrong one. Very small, but possible.*/
 			ShellPath = "/bin/busybox";
-			_ShellDissolves = false;
+			ShellDissolves = false;
 		}
 		else /*Found no other shells. Assume fossil, spit warning.*/
 		{
-			static Bool DidWarn = false; /*Don't spam this warning.*/
 			const char *Errs[2] = { ("Cannot find any functioning shell. /bin/sh is not available.\n"
 									 CONSOLE_COLOR_YELLOW "** Disabling shell support! **" CONSOLE_ENDCOLOR),
 									("No known shell found. Using \"/bin/sh\".\n"
@@ -116,6 +115,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 				}
 				else
 				{
+					ShellDissolves = true; /*Most do.*/
 					SpitWarning(Errs[1]);
 					WriteLogLine(Errs[1], true);
 				}
@@ -124,7 +124,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 			}
 		}
 		
-		if (strcmp(ShellPath, ENVVAR_SHELL) != 0)
+		if (!DidWarn && strcmp(ShellPath, ENVVAR_SHELL) != 0)
 		{
 			char ErrBuf[MAX_LINE_SIZE];
 			
@@ -133,6 +133,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 			/*Just write to log, because this happens.*/
 			WriteLogLine(ErrBuf, true);
 			SpitWarning(ErrBuf);
+			DidWarn = true;
 		}
 	}
 	/**Here be where we execute commands.---------------**/
@@ -250,7 +251,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	{
 		InObj->ObjectPID = LaunchPID; /*Save our PID.*/
 		
-		if (!_ShellDissolves)
+		if (!ShellDissolves)
 		{
 			++InObj->ObjectPID; /*This probably won't always work, but 99.9999999% of the time, yes, it will.*/
 		}
