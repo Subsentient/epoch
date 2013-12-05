@@ -88,7 +88,10 @@
 
 #ifndef MEMBUS_SIZE
 #define MEMBUS_SIZE 2048
+#elif MEMBUS_SIZE < 2048
+#error "MEMBUS_SIZE cannot be below 2048!" /*This is important.*/
 #endif
+
 /*The codes that are sent over the bus.*/
 
 /*These are what we use to set message types.*/
