@@ -23,6 +23,7 @@ volatile unsigned long RunningChildCount = 0; /*How many child processes are run
 struct _CTask CurrentTask = { NULL }; /*We save this for each linear task, so we can kill the process if it becomes unresponsive.*/
 volatile BootMode CurrentBootMode = BOOT_NEUTRAL;
 Bool ShellEnabled = USE_SHELL_BY_DEFAULT; /*If we use shells.*/
+Bool ShellDissolves = SHELLDISSOLVES;
 
 /**Function forward declarations.**/
 
@@ -47,12 +48,12 @@ static Bool FileUsable(const char *FileName)
 
 static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 { /*Not making static because this is probably going to be useful for other stuff.*/
-	pid_t LaunchPID;
-	const char *ShellPath = "sh"; /*We try not to use absolute paths here, because some distros don't have normal layouts,
-											*And I'm sure they would rather see a warning than have it just botch up.*/
+	pid_t LaunchPID = 0;
+	const char *ShellPath = "/bin/sh";
 	rStatus ExitStatus = FAILURE; /*We failed unless we succeeded.*/
-	Bool ShellDissolves = true, ForceShell = InObj->Opts.ForceShell;
+	Bool ForceShell = InObj->Opts.ForceShell;
 	int RawExitStatus, Inc = 0;
+	Bool _ShellDissolves = ShellDissolves;
 	sigset_t SigMaker[2];
 	
 #ifdef NOMMU
@@ -65,53 +66,74 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	* and support shell commands, we need to jump through a bunch of hoops.*/
 	if (ShellEnabled)
 	{
-		if (!FileUsable(ENVVAR_SHELL))
-		{
-			SpitWarning("Cannot find and/or read shell binary \"" ENVVAR_SHELL "\". Disabling shell support.");
-			ShellEnabled = false;
+		if (FileUsable(ENVVAR_SHELL))
+		{ /*Try our specified shell first.*/
+			ShellPath = ENVVAR_SHELL;
 		}
 		else if (FileUsable("/bin/bash"))
 		{
-			ShellDissolves = true;
-			ShellPath = "bash";
+			_ShellDissolves = true;
+			ShellPath = "/bin/bash";
 		}
 		else if (FileUsable("/bin/dash"))
 		{
-			ShellPath = "dash";
-			ShellDissolves = true;
+			ShellPath = "/bin/dash";
+			_ShellDissolves = true;
 		}
 		else if (FileUsable("/bin/zsh"))
 		{
-			ShellPath = "zsh";
-			ShellDissolves = true;
+			ShellPath = "/bin/zsh";
+			_ShellDissolves = true;
 		}
 		else if (FileUsable("/bin/csh"))
 		{
-			ShellPath = "csh";
-			ShellDissolves = true;
+			ShellPath = "/bin/csh";
+			_ShellDissolves = true;
 		}
 		else if (FileUsable("/bin/busybox"))
 		{ /*This is one of those weird shells that still does the old practice of creating a child for -c.
 			* We can deal with the likes of them. Small chance that for shells like this, another PID could jump in front
 			* and we could end up storing the wrong one. Very small, but possible.*/
-			ShellPath = "busybox";
-			ShellDissolves = false;
+			ShellPath = "/bin/busybox";
+			_ShellDissolves = false;
 		}
-#ifndef WEIRDSHELLPERMITTED
 		else /*Found no other shells. Assume fossil, spit warning.*/
 		{
 			static Bool DidWarn = false; /*Don't spam this warning.*/
-			
-			ShellDissolves = false;
+			const char *Errs[2] = { ("Cannot find any functioning shell. /bin/sh is not available.\n"
+									 CONSOLE_COLOR_YELLOW "** Disabling shell support! **" CONSOLE_ENDCOLOR),
+									("No known shell found. Using \"/bin/sh\".\n"
+									"Best if you install one of these: bash, dash, csh, zsh, or busybox.\n") };
 			if (!DidWarn)
-			{	 
+			{
+				
+				if (!FileUsable("/bin/sh"))
+				{
+					SpitWarning(Errs[0]);
+					WriteLogLine(Errs[0], true);
+					
+					ShellEnabled = false; /*Disable shell support.*/
+				}
+				else
+				{
+					SpitWarning(Errs[1]);
+					WriteLogLine(Errs[1], true);
+				}
+				
 				DidWarn = true;
-				SpitWarning("No known shell found. Using /bin/sh.\n"
-				"Best if you install one of these: bash, dash, csh, zsh, or busybox.\n"
-				"This matters because PID detection is affected by the way shells handle sh -c.");
 			}
 		}
-#endif
+		
+		if (strcmp(ShellPath, ENVVAR_SHELL) != 0)
+		{
+			char ErrBuf[MAX_LINE_SIZE];
+			
+			snprintf(ErrBuf, MAX_LINE_SIZE, "\"" ENVVAR_SHELL "\" cannot be read. Using \"%s\" instead.", ShellPath);
+			
+			/*Just write to log, because this happens.*/
+			WriteLogLine(ErrBuf, true);
+			SpitWarning(ErrBuf);
+		}
 	}
 	/**Here be where we execute commands.---------------**/
 	
@@ -228,7 +250,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	{
 		InObj->ObjectPID = LaunchPID; /*Save our PID.*/
 		
-		if (!ShellDissolves)
+		if (!_ShellDissolves)
 		{
 			++InObj->ObjectPID; /*This probably won't always work, but 99.9999999% of the time, yes, it will.*/
 		}

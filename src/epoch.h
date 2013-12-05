@@ -54,6 +54,10 @@
 #define ENVVAR_PATH "/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin"
 #endif
 
+#ifndef SHELLDISSOLVES
+#define SHELLDISSOLVES true
+#endif
+
 /*Version.*/
 #define VERSIONSTRING "Epoch Init System (git/master)"
 
@@ -241,6 +245,7 @@ extern Bool AlignStatusReports;
 extern volatile signed long MemBusKey;
 extern volatile Bool BusRunning;
 extern Bool ShellEnabled;
+extern Bool ShellDissolves;
 
 /**Function forward declarations.*/
 

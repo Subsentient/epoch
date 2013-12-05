@@ -308,6 +308,28 @@ rStatus InitConfig(void)
 				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 			}
 		}
+		else if (!strncmp(Worker, (CurrentAttribute = "ShellForks"), strlen("ShellForks")))
+		{
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+
+				continue;
+			}
+			
+			if (!strcmp(DelimCurr, "true"))
+			{
+				ShellDissolves = true;
+			}
+			else if (!strcmp(DelimCurr, "false"))
+			{
+				ShellDissolves = false;
+			}
+			else
+			{
+				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+			}
+		}
 		else if (!strncmp(Worker, (CurrentAttribute = "EnableLogging"), strlen("EnableLogging")))
 		{
 			if (!GetLineDelim(Worker, DelimCurr))
@@ -2051,7 +2073,7 @@ rStatus ReloadConfig(void)
 	ObjTable *Worker = ObjectTable;
 	ObjTable *TRoot = malloc(sizeof(ObjTable)), *SWorker = TRoot, *Temp = NULL;
 	struct _RLTree *RLTemp1 = NULL, *RLTemp2 = NULL;
-	Bool GlobalTriple[3], ConfigOK = true;
+	Bool GlobalOpts[5], ConfigOK = true;
 	struct _RunlevelInheritance *RLIRoot = NULL, *RLIWorker[2] = { NULL };
 	char RunlevelBackup[MAX_DESCRIPT_SIZE];
 	
@@ -2108,9 +2130,11 @@ rStatus ReloadConfig(void)
 	ShutdownConfig();
 	
 	/*Do this to prevent some weird options from being changeable by a config reload.*/
-	GlobalTriple[0] = EnableLogging;
-	GlobalTriple[1] = DisableCAD;
-	GlobalTriple[2] = AlignStatusReports;
+	GlobalOpts[0] = EnableLogging;
+	GlobalOpts[1] = DisableCAD;
+	GlobalOpts[2] = AlignStatusReports;
+	GlobalOpts[3] = ShellEnabled;
+	GlobalOpts[4] = ShellDissolves;
 	
 	WriteLogLine("CONFIG: Initializing new configuration.", true);
 	
@@ -2134,9 +2158,11 @@ rStatus ReloadConfig(void)
 	}
 	
 	/*And then restore those options to their previous states.*/
-	EnableLogging = GlobalTriple[0];
-	DisableCAD = GlobalTriple[1];
-	AlignStatusReports = GlobalTriple[2];
+	EnableLogging = GlobalOpts[0];
+	DisableCAD = GlobalOpts[1];
+	AlignStatusReports = GlobalOpts[2];
+	ShellEnabled = GlobalOpts[3];
+	ShellDissolves = GlobalOpts[4];
 	
 	if (!ConfigOK) return ConfigOK;
 	
