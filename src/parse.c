@@ -360,6 +360,11 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		/*Wait for a PID file to appear if we specified one. This prevents autorestart hell.*/
 		if (CurObj->Opts.HasPIDFile)
 		{
+			CurrentTask.Node = (void*)&Counter;
+			CurrentTask.TaskName = CurObj->ObjectID;
+			CurrentTask.PID = 0;
+			CurrentTask.Set = true;
+			
 			while (!FileUsable(CurObj->ObjectPIDFile))
 			{ /*Wait ten seconds total but check every 0.0001 seconds.*/
 				usleep(100);
@@ -371,7 +376,16 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					ExitStatus = WARNING;
 					break;
 				}
+				else if (Counter > 100000)
+				{
+					break;
+				}
 			}
+			
+			CurrentTask.Set = false;
+			CurrentTask.Node = NULL;
+			CurrentTask.TaskName = NULL;
+			CurrentTask.PID = 0;;
 		}
 		
 		CurObj->Started = (ExitStatus ? true : false); /*Mark the process dead or alive.*/
