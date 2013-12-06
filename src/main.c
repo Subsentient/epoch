@@ -119,7 +119,15 @@ static void SigHandler(int Signal)
 				}
 				else
 				{
-					LaunchShutdown(OSCTL_LINUX_REBOOT);
+					if (CurrentBootMode == BOOT_SHUTDOWN)
+					{
+						puts(CONSOLE_COLOR_YELLOW "System halt/reboot already in progress." CONSOLE_ENDCOLOR);
+						return;
+					}
+					else
+					{
+						LaunchShutdown(OSCTL_LINUX_REBOOT);
+					}
 				}
 			}
 			else
