@@ -1,12 +1,13 @@
 /*This code is part of the Epoch Init System.
 * The Epoch Init System is maintained by Subsentient.
 * This software is public domain.
-* Please read the file LICENSE.TXT for more information.*/
+* Please read the file UNLICENSE.TXT for more information.*/
 
 /**This file is for console related stuff, like status reports and whatnot.
  * I can't see this file getting too big.**/
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include "epoch.h"
@@ -26,8 +27,9 @@ void PrintBootBanner(void)
 	
 	if (!strncmp(BootBanner.BannerText, "FILE", strlen("FILE")))
 	{ /*Now we read the file and copy it into the new array.*/
-		char *Worker, *TW, TChar;
+		char *Worker, *TW;
 		FILE *TempDescriptor;
+		short TChar;
 		unsigned long Inc = 0;
 		
 		BootBanner.BannerText[Inc] = '\0';	
@@ -52,7 +54,7 @@ void PrintBootBanner(void)
 		
 		for (; (TChar = getc(TempDescriptor)) != EOF && Inc < MAX_LINE_SIZE - 1; ++Inc)
 		{ /*It's a loop copy. Get over it.*/
-			BootBanner.BannerText[Inc] = TChar;
+			BootBanner.BannerText[Inc] = (char)TChar;
 		}
 		BootBanner.BannerText[Inc] = '\0';
 		
@@ -61,11 +63,11 @@ void PrintBootBanner(void)
 	
 	if (*BootBanner.BannerColor)
 	{
-		printf("\n%s%s%s\n\n", BootBanner.BannerColor, BootBanner.BannerText, CONSOLE_ENDCOLOR);
+		printf("%s%s%s\n\n", BootBanner.BannerColor, BootBanner.BannerText, CONSOLE_ENDCOLOR);
 	}
 	else
 	{
-		printf("\n%s\n\n", BootBanner.BannerText);
+		printf("%s\n\n", BootBanner.BannerText);
 	}
 }
 
@@ -157,11 +159,6 @@ void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 			snprintf(StatusFormat, sizeof StatusFormat, "[%s]\n", CONSOLE_COLOR_YELLOW "WARNING" CONSOLE_ENDCOLOR);
 			break;
 		}
-		case NOTIFICATION:
-		{ /*Used for objects where Opts.NoWait == true.*/
-			snprintf(StatusFormat, sizeof StatusFormat, "[%s]\n", CONSOLE_COLOR_CYAN "Launched" CONSOLE_ENDCOLOR);
-			break;
-		}
 		default:
 		{
 			SpitWarning("Bad parameter passed to PerformStatusReport() in console.c.");
@@ -183,9 +180,6 @@ void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 			case WARNING:
 				StreamLength -= strlen("[WARNING]");
 				break;
-			case NOTIFICATION:
-				StreamLength -= strlen("[Launched]");
-				break;
 			default:
 				SpitWarning("Bad parameter passed to PerformStatusReport() in console.c");
 				return;
@@ -198,7 +192,56 @@ void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 		}
 		else
 		{
-			StreamLength -= strlen(IP2);
+			FILE *Descriptor = fopen("/dev/vcs", "r");
+			Bool Matches = true;
+			
+			if (Descriptor != NULL)
+			{
+				unsigned long Filesize = 0;
+				char *FileBuf = NULL;
+				char *Locator = NULL;
+				
+				/*Get the file size since nothing in those virtual filesystems
+				 * has it in the filesystem.*/
+				while (getc(Descriptor) != EOF) ++Filesize;
+				rewind(Descriptor);
+
+				FileBuf = malloc(Filesize + 1);
+				
+				fread(FileBuf, 1, Filesize, Descriptor);
+				FileBuf[Filesize] = '\0';
+				
+				fclose(Descriptor);
+				
+				if (!(Locator = strstr(FileBuf, IP2)))
+				{
+					Matches = true; /*Set this to true, because sometimes,
+					* weird stuff can happen that makes the current console
+					* not the current console.*/
+				}
+				else
+				{
+					Locator += strlen(IP2);
+					
+					for (; *Locator != '\0'; ++Locator)
+					{
+						if (*Locator != ' ' && *Locator != '\t')
+						{
+							Matches = false;
+							break;
+						}
+					}
+				}
+				free(FileBuf);
+					
+			}
+			
+			if (Matches) StreamLength -= strlen(IP2);
+			else
+			{
+				strncat(OutMsg, "\n", 1);
+				strncat(StatusFormat, "\n", 1);
+			}
 		}
 	}
 	
@@ -220,10 +263,15 @@ void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 		
 		GetCurrentTime(HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2]);
 		
-		snprintf(TimeFormat, 64, "[%s:%s:%s | %s/%s/%s] ",
+		snprintf(TimeFormat, 64, "[%s:%s:%s | %s-%s-%s] ",
 				HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2]);
 		
-		StatusFormat[strlen(StatusFormat) - 1] = '\0'; /*Get rid of the newline.*/
+		while (StatusFormat[strlen(StatusFormat) - 1] == '\n')
+		{
+			StatusFormat[strlen(StatusFormat) - 1] = '\0'; /*Get rid of the newline.*/
+		}
+
+		
 		snprintf(TmpBuf, MAX_LINE_SIZE, "%s%s %s", TimeFormat, InStream, StatusFormat);
 		WriteLogLine(TmpBuf, false);
 	}
@@ -231,23 +279,28 @@ void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 	return;
 }
 
-/*Two little error handling functions. Yay!*/
-void SpitError(char *INErr)
+/*Three little error handling functions. Yay!*/
+void SpitError(const char *INErr)
 {
 	char HMS[3][16], MDY[3][16];
 	
 	GetCurrentTime(HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2]);
 	
-	fprintf(stderr, "[%s:%s:%s | %s/%s/%s] " CONSOLE_COLOR_RED "Epoch: ERROR:\n" CONSOLE_ENDCOLOR "%s\n\n",
+	fprintf(stderr, "[%s:%s:%s | %s-%s-%s] " CONSOLE_COLOR_RED "Epoch: ERROR:\n" CONSOLE_ENDCOLOR "%s\n\n",
 			HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2], INErr);
 }
 
-void SpitWarning(char *INWarning)
+void SmallError(const char *INErr)
+{
+	fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR "%s\n", INErr);
+}
+
+void SpitWarning(const char *INWarning)
 {
 	char HMS[3][16], MDY[3][16];
 	
 	GetCurrentTime(HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2]);
 	
-	fprintf(stderr, "[%s:%s:%s | %s/%s/%s] " CONSOLE_COLOR_YELLOW "Epoch: WARNING:\n" CONSOLE_ENDCOLOR "%s\n\n",
+	fprintf(stderr, "[%s:%s:%s | %s-%s-%s] " CONSOLE_COLOR_YELLOW "Epoch: WARNING:\n" CONSOLE_ENDCOLOR "%s\n\n",
 			HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2], INWarning);
 }

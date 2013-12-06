@@ -1,7 +1,7 @@
 /*This code is part of the Epoch Init System.
 * The Epoch Init System is maintained by Subsentient.
 * This software is public domain.
-* Please read the file LICENSE.TXT for more information.*/
+* Please read the file UNLICENSE.TXT for more information.*/
 
 /**CLI parsing, etc. main() is here.**/
 
@@ -14,6 +14,7 @@
 #include <execinfo.h>
 #include <signal.h>
 #include <sys/reboot.h>
+#include <sys/shm.h>
 #include "epoch.h"
 
 #define ArgIs(z) !strcmp(CArg, z)
@@ -25,6 +26,7 @@ static Bool __CmdIs(const char *CArg, const char *InCmd);
 static void PrintEpochHelp(const char *RootCommand, const char *InCmd);
 static rStatus HandleEpochCommand(int argc, char **argv);
 static void SigHandler(int Signal);
+static void SetDefaultProcessTitle(int argc, char **argv);
 
 /*
  * Actual functions.
@@ -64,14 +66,15 @@ static void SigHandler(int Signal)
 			
 			if (getpid() == 1)
 			{
-				if (CurrentTask.Node != NULL && CurrentBootMode != BOOT_NEUTRAL
+				if (CurrentTask.Set && CurrentBootMode != BOOT_NEUTRAL
 					&& (LastKillAttempt == 0 || CurrentBootMode == BOOT_SHUTDOWN || time(NULL) > (LastKillAttempt + 5)))
 				{
 					char MsgBuf[MAX_LINE_SIZE];
+					rStatus KilledOK = SUCCESS;
 					
 					snprintf(MsgBuf, sizeof MsgBuf, 
 							"\n%sKilling task %s. %s",
-							CONSOLE_COLOR_YELLOW, CurrentTask.Node->ObjectID, CONSOLE_ENDCOLOR);
+							CONSOLE_COLOR_YELLOW, CurrentTask.TaskName, CONSOLE_ENDCOLOR);
 
 					if (CurrentBootMode == BOOT_BOOTUP)
 					{
@@ -83,15 +86,28 @@ static void SigHandler(int Signal)
 					
 					WriteLogLine(MsgBuf, true);
 					
-					if (kill(CurrentTask.PID, SIGKILL) != 0)
+					if (CurrentTask.PID == 0)
+					{
+						unsigned long *TPtr = (void*)CurrentTask.Node;
+						
+						*TPtr = 100001;
+						
+						KilledOK = SUCCESS;
+					}
+					else
+					{
+						KilledOK = !kill(CurrentTask.PID, SIGKILL);
+					}
+					
+					if (!KilledOK)
 					{
 						snprintf(MsgBuf, sizeof MsgBuf, "%sUnable to kill %s.%s",
-								CONSOLE_COLOR_RED, CurrentTask.Node->ObjectID, CONSOLE_ENDCOLOR);
+								CONSOLE_COLOR_RED, CurrentTask.TaskName, CONSOLE_ENDCOLOR);
 					}
 					else
 					{
 						snprintf(MsgBuf, sizeof MsgBuf, "%s%s was successfully killed.%s", CONSOLE_COLOR_GREEN,
-								CurrentTask.Node->ObjectID, CONSOLE_ENDCOLOR);
+								CurrentTask.TaskName, CONSOLE_ENDCOLOR);
 					}
 					puts(MsgBuf);
 					fflush(stdout);
@@ -172,8 +188,8 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		  "Enter disable or enable followed by an object ID to disable or enable\nthat object."
 		),
 		
-		( "[start/stop] objectid:\n-----\n"
-		  "Enter start or stop followed by an object ID to start or stop that object."
+		( "[start/stop/restart] objectid:\n-----\n"
+		  "Enter start, stop, or restart followed by an object ID to control that object."
 		),
 		
 		( "objrl objectid [del/add/check] runlevel:\n-----\n"
@@ -203,16 +219,40 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		  "to add or remove services, change runlevels, and more."
 		),
 		
+		( "reexec:\n-----\n"
+		
+		  "Enter reeexec to partially restart Epoch from disk.\n"
+		  "This is necessary for updating the Epoch binary to prevent\n"
+		  "a failure with unmounting the filesystem the binary is on."
+		),
+		
 		( "currentrunlevel:\n-----\n"
 		
 		  "Enter currentrunlevel to print the system's current runlevel."
+		),
+		
+		( "getpid objectid:\n-----\n"
+		
+		  "Retrieves the PID Epoch has on record for the given object. If a PID file is specified,\n"
+		  "then the PID will be gotten from there."
+		),
+		
+		( "kill objectid:\n-----\n"
+		
+		  "Sends SIGKILL to the object specified. If a PID file is specified, the PID\n"
+		  "will be retrieved from that."
+		),
+		
+		( "version:\n-----\n"
+		
+		  "Prints the current version of the Epoch Init System."
 		)
 	};
 	
-	enum { HCMD, ENDIS, STAP, OBJRL, STATUS, SETCAD, CONFRL, CURRL };
+	enum { HCMD, ENDIS, STAP, OBJRL, STATUS, SETCAD, CONFRL, REEXEC, CURRL, GETPID, KILLOBJ, VER, ENUM_MAX };
 	
 	
-	printf("%s\nCompiled %s\n\n", VERSIONSTRING, __DATE__);
+	printf("%s\nCompiled %s %s\n\n", VERSIONSTRING, __DATE__, __TIME__);
 	
 	if (InCmd == NULL)
 	{
@@ -220,7 +260,7 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		
 		puts(CONSOLE_COLOR_RED "Printing all help.\n" CONSOLE_ENDCOLOR "-----\n");
 		
-		for (; Inc <= CURRL; ++Inc)
+		for (; Inc < ENUM_MAX; ++Inc)
 		{
 			printf("%s %s\n\n", RootCommand, HelpMsgs[Inc]);
 		}
@@ -235,7 +275,7 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		printf("%s %s\n\n", RootCommand, HelpMsgs[ENDIS]);
 		return;
 	}
-	else if (!strcmp(InCmd, "start") || !strcmp(InCmd, "stop"))
+	else if (!strcmp(InCmd, "start") || !strcmp(InCmd, "stop") || !strcmp(InCmd, "restart"))
 	{
 		printf("%s %s\n\n", RootCommand, HelpMsgs[STAP]);
 		return;
@@ -260,9 +300,29 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		printf("%s %s\n\n", RootCommand, HelpMsgs[CONFRL]);
 		return;
 	}
+	else if (!strcmp(InCmd, "reexec"))
+	{
+		printf("%s %s\n\n", RootCommand, HelpMsgs[REEXEC]);
+		return;
+	}
 	else if (!strcmp(InCmd, "currentrunlevel"))
 	{
 		printf("%s %s\n\n", RootCommand, HelpMsgs[CURRL]);
+		return;
+	}
+	else if (!strcmp(InCmd, "getpid"))
+	{
+		printf("%s %s\n\n", RootCommand, HelpMsgs[GETPID]);
+		return;
+	}
+	else if (!strcmp(InCmd, "kill"))
+	{
+		printf("%s %s\n\n", RootCommand, HelpMsgs[KILLOBJ]);
+		return;
+	}
+	else if (!strcmp(InCmd, "version"))
+	{
+		printf("%s %s\n\n", RootCommand, HelpMsgs[VER]);
 		return;
 	}
 	else
@@ -323,7 +383,7 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 			}
 			else
 			{
-				SpitError("Bad argument(s).");
+				puts("Bad argument(s).");
 				return FAILURE;
 			}
 		}
@@ -365,13 +425,18 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		
 			return SUCCESS;
 		}
+		else if (ArgIs("--version") || ArgIs("version") || ArgIs("-v"))
+		{
+			printf("%s\nCompiled %s %s\n", VERSIONSTRING, __DATE__, __TIME__);
+			return SUCCESS;
+		}
 		else if (ArgIs("poweroff") || ArgIs("reboot") || ArgIs("halt"))
 		{
 			Bool RVal;
 			
 			if (!InitMemBus(false))
 			{
-				SpitError("main(): Failed to connect to membus.");
+				
 				return FAILURE;
 			}
 			
@@ -379,6 +444,39 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			ShutdownMemBus(false);
 			return (int)RVal;
+		}
+		else if (ArgIs("reexec"))
+		{
+			char InStream[MAX_LINE_SIZE];
+			
+			if (!InitMemBus(false))
+			{
+				return FAILURE;
+			}
+			
+			MemBus_Write(MEMBUS_CODE_RXD, false);
+			
+			puts("Re-executing Epoch."); fflush(NULL);
+			
+			ShutdownMemBus(false);
+			while (shmget(MEMKEY, MEMBUS_SIZE, 0660) != -1) usleep(100); /*Wait for it to quit...*/
+			while (shmget(MEMKEY, MEMBUS_SIZE, 0660) == -1) usleep(100); /*Then wait for it to start...*/
+			InitMemBus(false);
+
+			while (!MemBus_Read(InStream, false)) usleep(100);
+			
+			if (!strcmp(InStream, MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_RXD))
+			{
+				puts("Reexecution successful.");
+			}
+			else
+			{
+				puts(CONSOLE_COLOR_RED "FAILED TO REEXECUTE!" CONSOLE_ENDCOLOR);
+			}
+			
+			ShutdownMemBus(false);
+			
+			return SUCCESS;
 		}
 	}
 	
@@ -400,7 +498,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 
 			if (!InitMemBus(false))
 			{
-				SpitError("main(): Failed to connect to membus.");
+				
 				return FAILURE;
 			}
 
@@ -453,7 +551,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			if (!InitMemBus(false))
 			{
-				SpitError("main(): Failed to connect to membus.");
+				
 				return FAILURE;
 			}
 			
@@ -474,7 +572,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			}
 			
 			ShutdownMemBus(false);
-			return !RV;
+			return RV;
 		}
 		
 		else
@@ -495,7 +593,6 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			if (!InitMemBus(false))
 			{
-				SpitError("HandleEpochCommand(): Failed to connect to membus.");
 				return FAILURE;
 			}
 			
@@ -524,7 +621,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			}
 			else
 			{
-				fprintf(stderr, CONSOLE_COLOR_RED "Failed to %s Ctrl-Alt-Del instant reboot!\n" CONSOLE_ENDCOLOR, ReportLump);
+				fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR "Failed to %s Ctrl-Alt-Del instant reboot!\n", ReportLump);
 				RetVal = FAILURE;
 			}
 			
@@ -539,7 +636,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			if (!InitMemBus(false))
 			{
-				SpitError("main(): Failed to connect to membus.");
+				
 				return FAILURE;
 			}
 			
@@ -552,30 +649,205 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			PerformStatusReport(TOut, RV, false);
 			
 			ShutdownMemBus(false);
-			return !RV;
+			return RV;
 		}
-		else if (ArgIs("start") || ArgIs("stop"))
+		else if (ArgIs("start") || ArgIs("stop") || ArgIs("restart"))
 		{
 			rStatus RV = SUCCESS;
-			Bool Starting = ArgIs("start");
+			short StartMode = 0;
+			enum { START = 1, STOP, RESTART };
 			char TOut[MAX_LINE_SIZE];
-			
+			const char *ActionString = NULL;
+
 			if (!InitMemBus(false))
 			{
-				SpitError("main(): Failed to connect to membus.");
+				
 				return FAILURE;
 			}
 			
-			CArg = argv[2];
-			snprintf(TOut, sizeof TOut, (Starting ? "Starting %s" : "Stopping %s"), CArg);
+			if (ArgIs("start"))
+			{
+				ActionString = "Starting";
+				StartMode = START;
+			}
+			else if (ArgIs("stop"))
+			{
+				ActionString = "Stopping";
+				StartMode = STOP;
+			}
+			else
+			{
+				ActionString = "Restarting";
+				StartMode = RESTART;
+			}
+			
+			snprintf(TOut, sizeof TOut, "%s %s", ActionString, argv[2]);
 			printf("%s", TOut);
 			fflush(NULL);
 			
-			RV = ObjControl(CArg, (Starting ? MEMBUS_CODE_OBJSTART : MEMBUS_CODE_OBJSTOP));
+			if (StartMode < RESTART)
+			{
+				RV = ObjControl(argv[2], (StartMode == START ? MEMBUS_CODE_OBJSTART : MEMBUS_CODE_OBJSTOP));
+			}
+			else
+			{
+				RV = (ObjControl(argv[2], MEMBUS_CODE_OBJSTOP) && ObjControl(argv[2], MEMBUS_CODE_OBJSTART));
+			}
+			
 			PerformStatusReport(TOut, RV, false);
 			
 			ShutdownMemBus(false);
-			return !RV;
+			return RV;
+		}
+		else if (ArgIs("reload"))
+		{
+			rStatus RV = SUCCESS;
+			char InBuf[MEMBUS_SIZE/2 - 1], OutBuf[MEMBUS_SIZE/2 - 1];
+			char PossibleResponses[4][MEMBUS_SIZE/2 - 1];
+			char StatusBuf[MAX_LINE_SIZE];
+			Bool Botched = false;
+			
+			if (!InitMemBus(false))
+			{
+				return FAILURE;
+			}
+			
+			snprintf(OutBuf, sizeof OutBuf, "%s %s", MEMBUS_CODE_OBJRELOAD, argv[2]);
+			
+			snprintf(PossibleResponses[0], MEMBUS_SIZE/2 - 1, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, OutBuf);
+			snprintf(PossibleResponses[1], MEMBUS_SIZE/2 - 1, "%s %s", MEMBUS_CODE_WARNING, OutBuf);
+			snprintf(PossibleResponses[2], MEMBUS_SIZE/2 - 1, "%s %s", MEMBUS_CODE_FAILURE, OutBuf);
+			snprintf(PossibleResponses[3], MEMBUS_SIZE/2 - 1, "%s %s", MEMBUS_CODE_BADPARAM, OutBuf);
+			
+			snprintf(StatusBuf, MAX_LINE_SIZE, "Reloading %s", argv[2]);
+			printf("%s", StatusBuf);
+			
+			MemBus_Write(OutBuf, false);
+			
+			while (!MemBus_Read(InBuf, false)) usleep(1000);
+			
+			if (!strcmp(InBuf, PossibleResponses[0]))
+			{
+				RV = SUCCESS;
+			}
+			else if (!strcmp(InBuf, PossibleResponses[1]))
+			{
+				RV = WARNING;
+			}
+			else if (!strcmp(InBuf, PossibleResponses[2]))
+			{
+				RV = FAILURE;
+			}
+			else if (!strcmp(InBuf, PossibleResponses[3]))
+			{
+				PerformStatusReport(StatusBuf, (RV = FAILURE), false);
+				SpitError("We are being told that we sent a bad parameter over membus.\n"
+							"This is probably a bug. Please report to Epoch!");
+				Botched = true;
+			}
+			else
+			{
+				PerformStatusReport(StatusBuf, (RV = FAILURE), false);
+				SpitError("Bad parameter received over membus! This is probably a bug.\n"
+							"Please report to Epoch!");
+				Botched = true;
+			}
+			
+			if (!Botched)
+			{
+				PerformStatusReport(StatusBuf, RV, false);
+			}
+			
+			ShutdownMemBus(false);
+			
+			return RV;
+		}
+		else if (ArgIs("getpid"))
+		{
+			rStatus RV = SUCCESS;
+			char InBuf[MEMBUS_SIZE/2 - 1];
+			char OutBuf[MEMBUS_SIZE/2 - 1];
+			char PossibleResponses[3][MEMBUS_SIZE/2 - 1];
+			
+			if (!InitMemBus(false)) return FAILURE;
+			
+			snprintf(OutBuf, sizeof InBuf, "%s %s", MEMBUS_CODE_SENDPID, argv[2]);
+			
+			snprintf(PossibleResponses[0], sizeof PossibleResponses[0], "%s %s ", MEMBUS_CODE_SENDPID, argv[2]);
+			snprintf(PossibleResponses[1], sizeof PossibleResponses[1], "%s %s", MEMBUS_CODE_FAILURE, OutBuf);
+			snprintf(PossibleResponses[2], sizeof PossibleResponses[2], "%s %s", MEMBUS_CODE_BADPARAM, OutBuf);
+			
+			MemBus_Write(OutBuf, false);
+			
+			while (!MemBus_Read(InBuf, false)) usleep(1000);
+			
+			if (!strncmp(InBuf, PossibleResponses[0], strlen(PossibleResponses[0])))
+			{
+				const char *TextPID = InBuf + strlen(PossibleResponses[0]);
+				
+				printf("PID for object %s: %s\n", argv[2], TextPID);
+			}
+			else if (!strcmp(PossibleResponses[1], InBuf))
+			{
+				fprintf(stderr, CONSOLE_COLOR_RED "Unable to retrieve PID for object %s" CONSOLE_ENDCOLOR "\n", argv[2]);
+				RV = FAILURE;
+			}
+			else if (!strcmp(PossibleResponses[2], InBuf))
+			{
+				SpitError("We are being told that MEMBUS_CODE_SENDPID is not understood. Please report this to Epoch.");
+				RV = FAILURE;
+			}
+			else
+			{
+				SpitError("Bad response received over membus. Please report this to Epoch.");
+				RV = FAILURE;
+			}
+			
+			ShutdownMemBus(false);
+			return RV;
+		}
+		else if (ArgIs("kill"))
+		{
+			char InBuf[MEMBUS_SIZE/2 - 1], OutBuf[MEMBUS_SIZE/2 - 1];
+			char PossibleResponses[3][MEMBUS_SIZE/2 - 1];
+			rStatus RV = SUCCESS;
+			
+			if (!InitMemBus(false)) return FAILURE;
+			
+			snprintf(OutBuf, sizeof OutBuf, "%s %s", MEMBUS_CODE_KILLOBJ, argv[2]);
+			
+			snprintf(PossibleResponses[0], sizeof PossibleResponses[0], "%s %s", MEMBUS_CODE_ACKNOWLEDGED, OutBuf);
+			snprintf(PossibleResponses[1], sizeof PossibleResponses[1], "%s %s", MEMBUS_CODE_FAILURE, OutBuf);
+			snprintf(PossibleResponses[2], sizeof PossibleResponses[2], "%s %s", MEMBUS_CODE_BADPARAM, OutBuf);
+			
+			MemBus_Write(OutBuf, false);
+			
+			while (!MemBus_Read(InBuf, false)) usleep(1000);
+			
+			if (!strcmp(InBuf, PossibleResponses[0]))
+			{
+				printf("Object %s successfully killed.\n", argv[2]);
+			}
+			else if (!strcmp(InBuf, PossibleResponses[1]))
+			{
+				fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR "Unable to kill object %s.\n", argv[2]);
+				RV = FAILURE;
+			}
+			else if (!strcmp(InBuf, PossibleResponses[2]))
+			{
+				SpitError("We are being told that MEMBUS_CODE_KILLOBJ is not understood.\n"
+							"Please report to Epoch.");
+				RV = FAILURE;
+			}
+			else
+			{
+				SpitError("Bad response received over membus. This is likely a bug, please report to Epoch.");
+				RV = FAILURE;
+			}
+			
+			ShutdownMemBus(false);
+			
+			return RV;
 		}
 		else if (ArgIs("status"))
 		{
@@ -584,7 +856,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			if (!InitMemBus(false))
 			{
-				SpitError("main(): Failed to connect to membus.");
+				
 				return FAILURE;
 			}
 			
@@ -637,7 +909,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			if (!InitMemBus(false))
 			{
-				SpitError("main(): Failed to connect to membus.");
+				
 				return FAILURE;
 			}
 			
@@ -657,7 +929,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			}
 			else
 			{
-				fprintf(stderr, "Invalid runlevel option %s.\n", CArg);
+				fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR "Invalid runlevel option %s.\n", CArg);
 				ShutdownMemBus(false);
 				return FAILURE;
 			}
@@ -734,6 +1006,11 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 						printf(CONSOLE_COLOR_GREEN "Object %s is enabled for runlevel %s.\n" CONSOLE_ENDCOLOR,
 								ObjectID, RL);
 					}
+					else if (*CNumber == '2')
+					{
+						printf(CONSOLE_COLOR_CYAN "Object %s is inherited by the runlevel %s.\n" CONSOLE_ENDCOLOR,
+								ObjectID, RL);
+					}
 					else
 					{
 						SpitError("Internal error, bad status number received from membus. Please report to Epoch.");
@@ -745,7 +1022,8 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 				}
 				else if (!strcmp(PossibleResponses[1], IBuf))
 				{
-					printf("Unable to determine if object %s belongs to runlevel %s. Does it exist?\n", ObjectID, RL);
+					fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR 
+							"Unable to determine if object %s belongs to runlevel %s. Does it exist?\n", ObjectID, RL);
 					ShutdownMemBus(false);
 					return FAILURE;
 				}
@@ -782,6 +1060,19 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 	return SUCCESS;
 }
 
+static void SetDefaultProcessTitle(int argc, char **argv)
+{
+	unsigned long Inc = 1;
+	
+	for (; Inc < argc; ++Inc)
+	{
+		memset(argv[Inc], 0, strlen(argv[Inc]));
+		argv[Inc] = NULL;
+	}
+	
+	strncpy(argv[0], "init", strlen(argv[0]));
+}
+
 #ifndef NOMAINFUNC
 int main(int argc, char **argv)
 { /*Lotsa sloppy CLI processing here.*/
@@ -800,14 +1091,53 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	
-	if (CmdIs("poweroff") || CmdIs("reboot") || CmdIs("halt"))
+	if (getpid() == 1)
+	{ /*Just us, as init. That means, begin bootup.*/
+		const char *TRunlevel = NULL;
+		
+		/**Check if we are resuming from a reexec.**/
+		if (argc == 2 && !strcmp(argv[0], "!rxd") && !strcmp(argv[1], "REEXEC"))
+		{
+			SetDefaultProcessTitle(argc, argv);
+			RecoverFromReexec();	
+		}
+		
+		else if (argc > 1)
+		{
+			short ArgCount = (short)argc, Inc = 1;
+			const char *Arguments[] = { "shell" }; /*I'm sick of repeating myself with literals.*/
+			
+			for (; Inc < ArgCount; ++Inc)
+			{
+				if (!strcmp(argv[Inc], Arguments[0]))
+				{
+					puts(CONSOLE_COLOR_GREEN "Now launching a simple shell as per your request." CONSOLE_ENDCOLOR);
+					EmergencyShell(); /*Drop everything we're doing and start an emergency shell.*/
+				}
+			}
+		}
+		
+		/*Need we set a default runlevel?*/
+		if ((TRunlevel = getenv("runlevel")) != NULL)
+		{ /*Sets the default runlevel we use on bootup.*/
+			snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", TRunlevel);
+		}
+		
+		SetDefaultProcessTitle(argc, argv);
+		
+		/*Now that args are set, boot.*/		
+		LaunchBootup();
+	}
+	
+	/**Beyond here we check for argv[0] being one thing or the other.**/
+	else if (CmdIs("poweroff") || CmdIs("reboot") || CmdIs("halt"))
 	{
 		Bool RVal;
 		
 		/*Start membus.*/
 		if (argc == 1 && !InitMemBus(false))
 		{ /*Don't initialize the membus if we could be doing "-f".*/
-			SpitError("main(): Failed to connect to membus.");
+			
 			return 1;
 		}
 		
@@ -819,39 +1149,11 @@ int main(int argc, char **argv)
 	}
 	else if (CmdIs("epoch")) /*Our main management program.*/
 	{	
-		return HandleEpochCommand(argc, argv);
+		return !HandleEpochCommand(argc, argv);
 	}
 	else if (CmdIs("init"))
 	{ /*This is a bit long winded here, however, it's better than devoting a function for it.*/
-		if (getpid() == 1)
-		{ /*Just us, as init. That means, begin bootup.*/
-			const char *TRunlevel = NULL;
-			
-			if (argc > 1)
-			{
-				short ArgCount = (short)argc, Inc = 1;
-				const char *Arguments[] = { "shell" }; /*I'm sick of repeating myself with literals.*/
-				
-				for (; Inc < ArgCount; ++Inc)
-				{
-					if (!strcmp(argv[Inc], Arguments[0]))
-					{
-						puts(CONSOLE_COLOR_GREEN "Now launching a simple shell as per your request." CONSOLE_ENDCOLOR);
-						EmergencyShell(); /*Drop everything we're doing and start an emergency shell.*/
-					}
-				}
-			}
-			
-			/*Need we set a default runlevel?*/
-			if ((TRunlevel = getenv("runlevel")) != NULL)
-			{ /*Sets the default runlevel we use on bootup.*/
-				snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", TRunlevel);
-			}
-			
-			/*Now that args are set, boot.*/		
-			LaunchBootup();
-		}
-		else if (argc == 2)
+		if (argc == 2)
 		{
 			char TmpBuf[MEMBUS_SIZE/2 - 1];
 			char MembusResponse[MEMBUS_SIZE/2 - 1];
@@ -893,7 +1195,7 @@ int main(int argc, char **argv)
 			}
 			else if (!strcmp(MembusResponse, PossibleResponses[1]))
 			{
-				printf("Failed to change runlevel to \"%s\".\n", argv[1]);
+				fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR "Failed to change runlevel to \"%s\".\n", argv[1]);
 				ShutdownMemBus(false);
 				
 				return 1;
@@ -916,7 +1218,7 @@ int main(int argc, char **argv)
 		}
 		else
 		{
-			printf("%s", "Too many arguments. Specify one argument to set the runlevel.\n");
+			SmallError("Too many arguments. Specify one argument to set the runlevel.");
 			return 1;
 		}
 	}
@@ -937,7 +1239,9 @@ int main(int argc, char **argv)
 			}
 			else
 			{
-				SpitError("Bad signal number. Please specify an integer signal number.\nPass no arguments to assume signal 15.");
+				SmallError(
+						"Bad signal number. Please specify an integer signal number.\n"
+						"Pass no arguments to assume signal 15.");
 				
 				return 1;
 			}
@@ -948,7 +1252,8 @@ int main(int argc, char **argv)
 		}
 		else
 		{
-			SpitError("Too many arguments. Syntax is killall5 -signum where signum is the integer signal number to send.");
+			SmallError("Too many arguments. Syntax is killall5 -signum where signum\n"
+						"is the integer signal number to send.");
 			return 1;
 		}
 		
@@ -978,7 +1283,7 @@ int main(int argc, char **argv)
 	}
 	else
 	{
-		SpitError("Unrecognized applet name.");
+		SmallError("Unrecognized applet name.");
 		return 1;
 	}
 	

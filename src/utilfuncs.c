@@ -1,7 +1,7 @@
 /*This code is part of the Epoch Init System.
 * The Epoch Init System is maintained by Subsentient.
 * This software is public domain.
-* Please read the file LICENSE.TXT for more information.*/
+* Please read the file UNLICENSE.TXT for more information.*/
 
 /**This file contains functions and utilities used across Epoch
  * for miscellanious purposes, that don't really belong in a category of their own.**/
@@ -13,11 +13,13 @@
 #include <time.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <signal.h>
 #include "epoch.h"
 
 /**Constants**/
 Bool EnableLogging = false;
 Bool LogInMemory = true; /*This is necessary so long as we have a readonly filesystem.*/
+Bool BlankLogOnBoot = false;
 char *MemLogBuffer = NULL;
 
 /*Days in the month, for time stuff.*/
@@ -63,11 +65,11 @@ rStatus WriteLogLine(const char *InStream, Bool AddDate)
 		return FAILURE;
 	}
 	
-	GetCurrentTime(Hr, Min, Sec, Month, Day, Year);
+	GetCurrentTime(Hr, Min, Sec, Year, Month, Day);
 	
 	if (AddDate)
 	{
-		snprintf(OBuf, MAX_LINE_SIZE + 64, "[%s:%s:%s | %s/%s/%s] %s\n", Hr, Min, Sec, Month, Day, Year, InStream);
+		snprintf(OBuf, MAX_LINE_SIZE + 64, "[%s:%s:%s | %s-%s-%s] %s\n", Hr, Min, Sec, Year, Month, Day, InStream);
 	}
 	else
 	{
@@ -99,121 +101,70 @@ rStatus WriteLogLine(const char *InStream, Bool AddDate)
 	
 
 Bool ObjectProcessRunning(const ObjTable *InObj)
-{ /*Checks /proc for a directory with the name of the requested process.*/
-	DIR *DCore;
-	struct dirent *DStruct;
-	pid_t InPID;
+{ /*This is so much better than the convoluted /proc method we used before,
+	* but I was scared of using kill() for this purpose. I thought that
+	* some processes would notice it and whine. Lucky me that it turns out
+	* signal 0 is not real.*/
+	pid_t InPID = 0;
 	
 
-	if (InObj->Opts.StopMode != STOP_PIDFILE || !(InPID = ReadPIDFile(InObj)))
+	if (!InObj->Opts.HasPIDFile || !(InPID = ReadPIDFile(InObj)))
 	{ /*We got a PID file requested and present? Get PID from that, otherwise 
 		* get the PID from memory.*/
 		InPID = InObj->ObjectPID;
 	}
 	
-	if (!(DCore = opendir("/proc/")))
+	if (InPID == 0) /*This means the object has no PID.*/
 	{
 		return false;
 	}
 	
-	while ((DStruct = readdir(DCore)))
+	if (kill(InPID, 0) == 0)
 	{
-		if (AllNumeric(DStruct->d_name) && DStruct->d_type == 4)
-		{
-			if (atoi(DStruct->d_name) == InPID)
-			{
-				closedir(DCore);
-				return true;
-			}
-		}
+		return true;
 	}
-	closedir(DCore);
-	
-	return false;
+	else
+	{
+		return false;
+	}
 }
 
 void MinsToDate(unsigned long MinInc, unsigned long *OutHr, unsigned long *OutMin,
 				unsigned long *OutMonth, unsigned long *OutDay, unsigned long *OutYear)
 {  /*Returns the projected date that it will be after MinInc minutes.
 	* Not really a good example of a function that belongs in console.c.*/
-	time_t CoreClock;
-	struct tm *TimeStruct = NULL;
-	unsigned long Hr, Min, Day, Mon, Year;
+	time_t CurrentTime, LaterTime;
+	struct tm OutTime;
 	
-	time(&CoreClock);
-	TimeStruct = localtime(&CoreClock);
+	time(&CurrentTime);
 	
-	Hr = TimeStruct->tm_hour;
-	Min = TimeStruct->tm_min;
-	Mon = TimeStruct->tm_mon + 1;
-	Day = TimeStruct->tm_mday;
-	Year = TimeStruct->tm_year + 1900;
+	LaterTime = CurrentTime + 60 * MinInc;
+
+	localtime_r(&LaterTime, &OutTime);
 	
-	for (; MinInc; --MinInc)
-	{
-		if (Min + 1 == 60)
-		{
-			Min = 0;
-			
-			if (Hr + 1 == 24)
-			{
-				Hr = 0;
-				
-				if (Day == MDays[Mon - 1])
-				{
-					Day = 1;
-					
-					if (Mon == 12)
-					{
-						Mon = 1;
-						
-						++Year;
-					}
-					else
-					{
-						++Mon;
-					}
-				}
-				else
-				{
-					++Day;
-				}
-	
-			}
-			else
-			{
-				++Hr;
-			}
-		}
-		else
-		{
-			++Min;
-		}
-	}
-	
-	*OutHr = Hr;
-	*OutMin = Min;
-	*OutMonth = Mon;
-	*OutDay = Day;
-	*OutYear = Year;
+	*OutHr = OutTime.tm_hour;
+	*OutMin = OutTime.tm_min;
+	*OutMonth = OutTime.tm_mon + 1;
+	*OutDay = OutTime.tm_mday;
+	*OutYear = OutTime.tm_year + 1900;
 }
 
 unsigned long DateDiff(unsigned long InHr, unsigned long InMin, unsigned long *OutMonth,
 						unsigned long *OutDay, unsigned long *OutYear)
 { /*Provides a true date as to when the next occurrence of this hour and minute will return via pointers, and
 	* also provides the number of minutes that will elapse during the time between. You can pass NULL for the pointers.*/
-	struct tm *TimeP;
+	struct tm TimeStruct;
 	time_t CoreClock;
 	unsigned long Hr, Min, Month, Day, Year, IncMin = 0;
 	
 	time(&CoreClock);
-	TimeP = localtime(&CoreClock);
+	localtime_r(&CoreClock, &TimeStruct);
 	
-	Hr = TimeP->tm_hour;
-	Min = TimeP->tm_min;
-	Month = TimeP->tm_mon + 1;
-	Day = TimeP->tm_mday;
-	Year = TimeP->tm_year + 1900;
+	Hr = TimeStruct.tm_hour;
+	Min = TimeStruct.tm_min;
+	Month = TimeStruct.tm_mon + 1;
+	Day = TimeStruct.tm_mday;
+	Year = TimeStruct.tm_year + 1900;
 	
 	for (; Hr != InHr || Min != InMin; ++IncMin)
 	{
@@ -263,9 +214,9 @@ unsigned long DateDiff(unsigned long InHr, unsigned long InMin, unsigned long *O
 	return IncMin;
 }
 
-void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutMonth, char *OutDay, char *OutYear)
+void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutYear, char *OutMonth, char *OutDay)
 { /*You can put NULL for items that you don't want the value of.*/
-	struct tm *TimeP;
+	struct tm TimeStruct;
 	long HMS_I[3];
 	long MDY_I[3];
 	char *HMS[3];
@@ -284,15 +235,15 @@ void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutMonth, cha
 	
 	/*Actually get the time.*/
 	time(&TimeT);
-	TimeP = localtime(&TimeT);
+	localtime_r(&TimeT, &TimeStruct);
 	
-	HMS_I[0] = TimeP->tm_hour;
-	HMS_I[1] = TimeP->tm_min;
-	HMS_I[2] = TimeP->tm_sec;
+	HMS_I[0] = TimeStruct.tm_hour;
+	HMS_I[1] = TimeStruct.tm_min;
+	HMS_I[2] = TimeStruct.tm_sec;
 	
-	MDY_I[0] = TimeP->tm_mon + 1;
-	MDY_I[1] = TimeP->tm_mday;
-	MDY_I[2] = TimeP->tm_year + 1900;
+	MDY_I[0] = TimeStruct.tm_mon + 1;
+	MDY_I[1] = TimeStruct.tm_mday;
+	MDY_I[2] = TimeStruct.tm_year + 1900;
 	
 	for (; Inc < 3; ++Inc)
 	{
@@ -319,27 +270,36 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 	DIR *ProcDir = NULL;
 	struct dirent *DirPtr = NULL;
 	char FileName[MAX_LINE_SIZE];
-	char *FileBuf = NULL;
-	unsigned long Inc = 0, Inc2 = 0, NumSpaces = 0;
+	char FileBuf[MAX_LINE_SIZE];
+	char CmdLine[MAX_LINE_SIZE];
+	unsigned long Inc = 0, Streamsize = 0, Countdown = 0;
 	FILE *Descriptor = NULL;
 	
-	
-	for (; InObj->ObjectStartCommand[Inc] != '\0'; ++Inc)
+	if (*InObj->ObjectStartCommand == '\0')
 	{
-		if (InObj->ObjectStartCommand[Inc] == ' ') ++NumSpaces;
-	}
+		return 0;
+	}	
 	
 	if (!(ProcDir = opendir("/proc/")))
 	{
 		return 0;
 	}
 	
+	/*Remove forbidden characters.*/
+	snprintf(CmdLine, sizeof CmdLine, "%s", InObj->ObjectStartCommand);
+		
+	for (Countdown = strlen(CmdLine) - 1; Countdown > 0 &&
+		(CmdLine[Countdown] == ' ' || CmdLine[Countdown] == '\t' ||
+		CmdLine[Countdown] == '&' || CmdLine[Countdown] == ';'); --Countdown)
+	{
+		CmdLine[Countdown] = '\0';
+	}
+	
 	while ((DirPtr = readdir(ProcDir)))
 	{
-		if (AllNumeric(DirPtr->d_name) && atoi(DirPtr->d_name) >= InObj->ObjectPID &&
-			atoi(DirPtr->d_name) <= InObj->ObjectPID + 10) /*Search 10 PIDs forward.*/
+		if (AllNumeric(DirPtr->d_name) && atol(DirPtr->d_name) >= InObj->ObjectPID)
 		{
-			char TChar;
+			short TChar;
 			
 			snprintf(FileName, sizeof FileName, "/proc/%s/cmdline", DirPtr->d_name);
 			
@@ -349,46 +309,39 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 				return 0;
 			}
 			
-			FileBuf = malloc(MAX_LINE_SIZE);
-			
 			for (Inc = 0; (TChar = getc(Descriptor)) != EOF && Inc < MAX_LINE_SIZE - 1; ++Inc)
 			{
-				FileBuf[Inc] = TChar;
+				FileBuf[Inc] = (char)TChar;
 			}
 			FileBuf[Inc] = '\0';
 			
+			Streamsize = Inc;
+			
 			fclose(Descriptor);
 			
-			for (Inc = 0, Inc2 = NumSpaces; Inc2 != 0; ++Inc)
+			for (Inc = 0; Inc < Streamsize; ++Inc)
 			{ /*We need to replace the NUL characters with spaces.*/
 				if (FileBuf[Inc] == '\0')
 				{
-					--Inc2;
 					FileBuf[Inc] = ' ';
 				}
 			}
 			
-			if (!strcmp(FileBuf, InObj->ObjectStartCommand))
+			if (!strncmp(FileBuf, CmdLine, strlen(CmdLine)))
 			{
 				unsigned long RealPID;
 				
-				free(FileBuf);
-				FileBuf = NULL;
-				snprintf(FileName, sizeof FileName, "%s", DirPtr->d_name);
-				closedir(ProcDir);
-				
-				RealPID = atoi(FileName);
+				RealPID = atol(DirPtr->d_name);
 				
 				if (UpdatePID)
 				{
 					InObj->ObjectPID = RealPID;
 				}
 				
+				closedir(ProcDir);
 				return RealPID;
 				
 			}
-			
-			free(FileBuf);
 		}
 	}
 	closedir(ProcDir);
@@ -401,8 +354,9 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 unsigned long ReadPIDFile(const ObjTable *InObj)
 {
 	FILE *PIDFileDescriptor = fopen(InObj->ObjectPIDFile, "r");
-	char TChar, PIDBuf[MAX_LINE_SIZE], *TW = NULL, *TW2 = NULL;
+	char PIDBuf[MAX_LINE_SIZE], *TW = NULL, *TW2 = NULL;
 	unsigned long InPID = 0, Inc = 0;
+	short TChar;
 	
 	if (!PIDFileDescriptor)
 	{
@@ -411,7 +365,7 @@ unsigned long ReadPIDFile(const ObjTable *InObj)
 	
 	for (; (TChar = getc(PIDFileDescriptor)) != EOF && Inc < (MAX_LINE_SIZE - 1); ++Inc)
 	{
-		PIDBuf[Inc] = TChar;
+		PIDBuf[Inc] = (char)TChar;
 	}
 	PIDBuf[Inc] = '\0';
 	
@@ -422,9 +376,9 @@ unsigned long ReadPIDFile(const ObjTable *InObj)
 	for (TW2 = TW; *TW2 != '\0' && *TW2 != '\t' && *TW2 != '\n' && *TW2 != ' '; ++TW2); /*Delete any following the number.*/
 	*TW2 = '\0';
 	
-	if (AllNumeric(PIDBuf))
+	if (AllNumeric(TW))
 	{
-		InPID = atoi(PIDBuf);
+		InPID = atoi(TW);
 	}
 	else
 	{
@@ -432,4 +386,41 @@ unsigned long ReadPIDFile(const ObjTable *InObj)
 	}
 	
 	return InPID;
+}
+
+short GetStateOfTime(unsigned long Hr, unsigned long Min, unsigned long Sec,
+				unsigned long Month, unsigned long Day, unsigned long Year)
+{  /*This function is used to determine if the passed time is in the past,
+	* present, or future.*/
+	time_t CurrentTime, PassedTime;
+	struct tm PassedTimeS;
+	
+	time(&CurrentTime);
+	
+	PassedTimeS.tm_year = Year - 1900;
+	PassedTimeS.tm_mon = Month - 1;
+	PassedTimeS.tm_mday = Day;
+	PassedTimeS.tm_hour = Hr;
+	PassedTimeS.tm_min = Min;
+	PassedTimeS.tm_sec = Sec;
+	PassedTimeS.tm_isdst = -1;
+	
+	if ((PassedTime = mktime(&PassedTimeS)) == -1)
+	{ /*Not entirely sure how else I can do this.*/
+		return -1;
+	}
+	
+	if (PassedTime < CurrentTime)
+	{ /*The passed time is in the past.*/
+		return 2;
+	}
+	else if (PassedTime == CurrentTime)
+	{ /*The passed time is in the present.*/
+		return 1;
+	}
+	else
+	{ /*The passed time is in the future.*/
+		return 0;
+	}
+	
 }

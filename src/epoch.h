@@ -1,7 +1,7 @@
 /*This code is part of the Epoch Init System.
 * The Epoch Init System is maintained by Subsentient.
 * This software is public domain.
-* Please read the file LICENSE.TXT for more information.*/
+* Please read the file UNLICENSE.TXT for more information.*/
 
 
 /**This is the only header file we will ever need for Epoch, in all likelihood.**/
@@ -16,6 +16,16 @@
 #define MAX_LINE_SIZE 2048
 
 /*Configuration.*/
+
+/*EPOCH_INIT_PATH is not used for much. Mainly reexec.*/
+#ifndef EPOCH_BINARY_PATH
+#define EPOCH_BINARY_PATH "/sbin/epoch"
+#endif
+
+#ifndef SHELLPATH
+#define SHELLPATH "/bin/sh"
+#endif
+
 #ifndef CONFIGDIR /*This is available for good purpose.*/
 #define CONFIGDIR "/etc/epoch/"
 #endif
@@ -37,11 +47,15 @@
 #endif
 
 #ifndef ENVVAR_SHELL
-#define ENVVAR_SHELL "/bin/sh"
+#define ENVVAR_SHELL SHELLPATH
 #endif
 
 #ifndef ENVVAR_PATH
 #define ENVVAR_PATH "/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin"
+#endif
+
+#ifndef SHELLDISSOLVES
+#define SHELLDISSOLVES true
 #endif
 
 /*Version.*/
@@ -69,14 +83,18 @@
 #define MEMKEY (('E' + 'P' + 'O' + 'C' + 'H') + ('W'+'h'+'i'+'t'+'e' + 'R'+'a'+'t')) * 7 /*Cool, right?*/
 
 #ifndef MEMBUS_SIZE
-#define MEMBUS_SIZE 1024
+#define MEMBUS_SIZE 2048
+#elif MEMBUS_SIZE < 2048
+#error "MEMBUS_SIZE cannot be below 2048!" /*This is important.*/
 #endif
+
 /*The codes that are sent over the bus.*/
 
 /*These are what we use to set message types.*/
 #define MEMBUS_NOMSG 25
 #define MEMBUS_MSG 100
-#define MEMBUS_NEWCONNECTION 50
+#define MEMBUS_CHECKALIVE_NOMSG 34
+#define MEMBUS_CHECKALIVE_MSG 43
 
 /*These are status for operations.*/
 #define MEMBUS_CODE_ACKNOWLEDGED "OK"
@@ -97,6 +115,7 @@
 #define MEMBUS_CODE_OBJSTOP "OBJSTOP"
 #define MEMBUS_CODE_OBJENABLE "OBJENABLE"
 #define MEMBUS_CODE_OBJDISABLE "OBJDISABLE"
+#define MEMBUS_CODE_OBJRELOAD "OBJRELOAD"
 #define MEMBUS_CODE_OBJRLS "OBJRLS" /*Generic way to detect if we are using one of the OBJRLS commands below.*/
 #define MEMBUS_CODE_OBJRLS_CHECK "OBJRLS_CHECK"
 #define MEMBUS_CODE_OBJRLS_ADD "OBJRLS_ADD"
@@ -104,6 +123,10 @@
 #define MEMBUS_CODE_STATUS "OBJSTAT"
 #define MEMBUS_CODE_RUNLEVEL "RUNLEVEL"
 #define MEMBUS_CODE_GETRL "GETRL"
+#define MEMBUS_CODE_KILLOBJ "KILLOBJ"
+#define MEMBUS_CODE_SENDPID "SENDPID"
+#define MEMBUS_CODE_RXD "RXD"
+#define MEMBUS_CODE_RXD_OPTS "ORXD"
 
 /**Types, enums, structs and whatnot**/
 
@@ -118,7 +141,7 @@ typedef signed char Bool;
 typedef enum { STOP_NONE, STOP_COMMAND, STOP_PID, STOP_PIDFILE, STOP_INVALID } StopType;
 
 /*Trinary return values for functions.*/
-typedef enum { FAILURE, SUCCESS, WARNING, NOTIFICATION } rStatus;
+typedef enum { FAILURE, SUCCESS, WARNING } rStatus;
 
 /*Trinary boot/shutdown/nothing modes.*/
 typedef enum { BOOT_NEUTRAL, BOOT_BOOTUP, BOOT_SHUTDOWN } BootMode;
@@ -137,23 +160,30 @@ typedef struct _EpochObjectTable
 	char ObjectID[MAX_DESCRIPT_SIZE]; /*The ASCII ID given to this item by whoever configured Epoch.*/
 	char ObjectDescription[MAX_DESCRIPT_SIZE]; /*The description of the object.*/
 	char ObjectStartCommand[MAX_LINE_SIZE]; /*The command to be executed.*/
+	char ObjectPrestartCommand[MAX_LINE_SIZE]; /*Run before ObjectStartCommand, if it exists.*/
 	char ObjectStopCommand[MAX_LINE_SIZE]; /*How to shut it down.*/
+	char ObjectReloadCommand[MAX_LINE_SIZE]; /*Used to reload an object without starting/stopping. Most services don't have this.*/
 	char ObjectPIDFile[MAX_LINE_SIZE];
 	unsigned long ObjectStartPriority;
 	unsigned long ObjectStopPriority;
 	unsigned long ObjectPID; /*The process ID, used for shutting down.*/
+	unsigned char TermSignal; /*The signal we send to an object if it's stop mode is PID or PIDFILE.*/
 	Bool Enabled;
 	Bool Started;
 	
 	struct 
 	{
-		Bool CanStop; /*Allowed to stop this without starting a shutdown?*/
 		StopType StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
-		Bool NoWait; /*Should we just start this thing and cut it loose, and not wait for it?*/
-		Bool HaltCmdOnly; /*Run just the stop command when we halt, not the start command?*/
-		Bool IsService; /*If true, we assume it's going to fork itself and one-up it's PID.*/
-		Bool RawDescription; /*This inhibits insertion of "Starting", "Stopping", etc in front of descriptions.*/
-		Bool AutoRestart;
+		
+		/*This saves a tiny bit of memory to use bitfields here.*/
+		unsigned int CanStop : 1; /*Allowed to stop this without starting a shutdown?*/
+		unsigned int HaltCmdOnly : 1; /*Run just the stop command when we halt, not the start command?*/
+		unsigned int IsService : 1; /*If true, we assume it's going to fork itself and one-up it's PID.*/
+		unsigned int RawDescription : 1; /*This inhibits insertion of "Starting", "Stopping", etc in front of descriptions.*/
+		unsigned int AutoRestart : 1;
+		unsigned int EmulNoWait : 1; /*Emulates the deprecated NOWAIT option by appending an ampersand to the end of ObjectStartCommand.*/
+		unsigned int ForceShell : 1; /*Forces us to start /bin/sh to run an object, even if it looks like we don't need to.*/
+		unsigned int HasPIDFile : 1; /*If StopMode == STOP_PIDFILE, we also stop it just by sending a signal to the PID in the file.*/
 	} Opts;
 	
 	struct _RLTree *ObjectRunlevels; /*Dynamically allocated, needless to say.*/
@@ -190,8 +220,10 @@ typedef struct
 
 struct _CTask
 {
+	const char *TaskName;
 	ObjTable *Node;
 	unsigned long PID;
+	unsigned int Set : 1;
 };
 
 
@@ -200,7 +232,6 @@ struct _CTask
 extern ObjTable *ObjectTable;
 extern struct _BootBanner BootBanner;
 extern char CurRunlevel[MAX_DESCRIPT_SIZE];
-extern int MemDescriptor;
 extern volatile char *MemData;
 extern Bool DisableCAD;
 extern char Hostname[MAX_LINE_SIZE];
@@ -209,10 +240,13 @@ extern Bool AutoMountOpts[5];
 extern volatile unsigned long RunningChildCount;
 extern Bool EnableLogging;
 extern Bool LogInMemory;
+extern Bool BlankLogOnBoot;
 extern char *MemLogBuffer;
 extern struct _CTask CurrentTask;
 extern volatile BootMode CurrentBootMode;
 extern Bool AlignStatusReports;
+extern volatile signed long MemBusKey;
+extern volatile Bool BusRunning;
 
 /**Function forward declarations.*/
 
@@ -225,20 +259,24 @@ extern ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartP
 extern unsigned long GetHighestPriority(Bool WantStartPriority);
 extern rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char *Value);
 extern void ObjRL_AddRunlevel(const char *InRL, ObjTable *InObj);
-extern Bool ObjRL_CheckRunlevel(const char *InRL, const ObjTable *InObj);
+extern Bool ObjRL_CheckRunlevel(const char *InRL, const ObjTable *InObj, Bool CountInherited);
 extern Bool ObjRL_DelRunlevel(const char *InRL, ObjTable *InObj);
 extern Bool ObjRL_ValidRunlevel(const char *InRL);
 extern void ObjRL_ShutdownRunlevels(ObjTable *InObj);
+extern char *WhitespaceArg(const char *InStream);
 
 /*parse.c*/
 extern rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintStatus);
 extern rStatus RunAllObjects(Bool IsStartingMode);
 extern rStatus SwitchRunlevels(const char *Runlevel);
+extern rStatus ProcessReloadCommand(ObjTable *CurObj, Bool PrintStatus);
 
 /*actions.c*/
 extern void LaunchBootup(void);
 extern void LaunchShutdown(signed long Signal);
 extern void EmergencyShell(void);
+extern void ReexecuteEpoch(void);
+extern void RecoverFromReexec(void);
 
 /*modes.c*/
 extern rStatus SendPowerControl(const char *MembusCode);
@@ -254,20 +292,26 @@ extern rStatus MemBus_Write(const char *InStream, Bool ServerSide);
 extern Bool MemBus_Read(char *OutStream, Bool ServerSide);
 extern void ParseMemBus(void);
 extern rStatus ShutdownMemBus(Bool ServerSide);
+extern Bool HandleMemBusPings(void);
+extern unsigned long MemBus_BinWrite(const void *InStream_, unsigned long DataSize, Bool ServerSide);
+extern unsigned long MemBus_BinRead(void *OutStream_, unsigned long MaxOutSize, Bool ServerSide);
 
 /*console.c*/
 extern void PrintBootBanner(void);
 extern void SetBannerColor(const char *InChoice);
 extern void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog);
-extern void SpitWarning(char *INWarning);
-extern void SpitError(char *INErr);
+extern void SpitWarning(const char *INWarning);
+extern void SpitError(const char *INErr);
+extern void SmallError(const char *INErr);
 
 /*utilfuncs.c*/
-extern void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutMonth, char *OutDay, char *OutYear);
+extern void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutYear, char *OutMonth, char *OutDay);
 extern unsigned long DateDiff(unsigned long InHr, unsigned long InMin, unsigned long *OutMonth,
 						unsigned long *OutDay, unsigned long *OutYear);
 extern void MinsToDate(unsigned long MinInc, unsigned long *OutHr, unsigned long *OutMin,
 				unsigned long *OutMonth, unsigned long *OutDay, unsigned long *OutYear);
+extern short GetStateOfTime(unsigned long Hr, unsigned long Min, unsigned long Sec,
+				unsigned long Month, unsigned long Day, unsigned long Year);
 extern Bool AllNumeric(const char *InStream);
 extern Bool ObjectProcessRunning(const ObjTable *InObj);
 extern unsigned long ReadPIDFile(const ObjTable *InObj);

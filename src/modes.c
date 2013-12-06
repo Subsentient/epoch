@@ -1,7 +1,7 @@
 /*This code is part of the Epoch Init System.
 * The Epoch Init System is maintained by Subsentient.
 * This software is public domain.
-* Please read the file LICENSE.TXT for more information.*/
+* Please read the file UNLICENSE.TXT for more information.*/
 
 /**This file holds functions for the various things we can do, depending on argv[0].
  * Most are to be called by main() at some point or another.**/
@@ -286,7 +286,7 @@ void EmulWall(const char *InStream, Bool ShowUser)
 	
 	GetCurrentTime(HMS[0], HMS[1], HMS[2], MDY[0], MDY[1], MDY[2]);
 	
-	snprintf(OutBuf, 64, "\007\n%s[%s:%s:%s | %s/%s/%s]%s ", CONSOLE_COLOR_RED, HMS[0], HMS[1], HMS[2],
+	snprintf(OutBuf, 64, "\007\n%s[%s:%s:%s | %s-%s-%s]%s ", CONSOLE_COLOR_RED, HMS[0], HMS[1], HMS[2],
 		MDY[0], MDY[1], MDY[2], CONSOLE_ENDCOLOR);
 	
 	if (ShowUser)
@@ -427,16 +427,16 @@ rStatus EmulShutdown(long ArgumentCount, const char **ArgStream)
 			struct _HaltParams TempParams;
 			const char *TArg = *TPtr + 1; /*Targ manure!*/
 			time_t TTime;
-			struct tm *TimeP;
+			struct tm TimeStruct;
 			
 			MinsToDate(atoi(TArg), &TempParams.TargetHour, &TempParams.TargetMin, &TempParams.TargetMonth,
 						&TempParams.TargetDay, &TempParams.TargetYear);
 						
 			time(&TTime); /*Get this for the second.*/
-			TimeP = localtime(&TTime);
+			localtime_r(&TTime, &TimeStruct);
 			
 			snprintf(TimeFormat, sizeof TimeFormat, "%lu:%lu:%d %lu/%lu/%lu",
-					TempParams.TargetHour, TempParams.TargetMin, TimeP->tm_sec, TempParams.TargetMonth,
+					TempParams.TargetHour, TempParams.TargetMin, TimeStruct.tm_sec, TempParams.TargetMonth,
 					TempParams.TargetDay, TempParams.TargetYear);
 					
 			++TimeIsSet;

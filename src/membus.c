@@ -1,7 +1,7 @@
 /*This code is part of the Epoch Init System.
 * The Epoch Init System is maintained by Subsentient.
 * This software is public domain.
-* Please read the file LICENSE.TXT for more information.*/
+* Please read the file UNLICENSE.TXT for more information.*/
 
 /**This file is responsible for the
  * shared memory communication system
@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
@@ -21,15 +22,19 @@
 
 /*Memory bus uhh, static globals.*/
 volatile char *MemData = NULL;
-static volatile Bool BusRunning = false;
+volatile Bool BusRunning = false;
+volatile signed long MemBusKey = MEMKEY;
+volatile int MemDescriptor = 0;
 
 rStatus InitMemBus(Bool ServerSide)
 { /*Fire up the memory bus.*/
-	int MemDescriptor;
+	char CheckCode = 0;
+	unsigned long Inc = 0;
+	
 	
 	if (BusRunning) return SUCCESS;
 	
-	if ((MemDescriptor = shmget((key_t)MEMKEY, MEMBUS_SIZE, (ServerSide ? (IPC_CREAT | 0660) : 0660))) < 0)
+	if ((MemDescriptor = shmget((key_t)MemBusKey, MEMBUS_SIZE, (ServerSide ? (IPC_CREAT | 0660) : 0660))) < 0)
 	{
 		if (ServerSide) SpitError("InitMemBus(): Failed to allocate memory bus."); /*should probably use perror*/
 		else SpitError("InitMemBus(): Failed to connect to memory bus. Permissions?");
@@ -48,23 +53,117 @@ rStatus InitMemBus(Bool ServerSide)
 		memset((void*)MemData, 0, MEMBUS_SIZE); /*Zero it out just to be neat. Probably don't really need this.*/
 		
 		*MemData = MEMBUS_NOMSG; /*Set to no message by default.*/
-		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NEWCONNECTION;
-	}
-	else if (*(MemData + (MEMBUS_SIZE/2)) != MEMBUS_NEWCONNECTION)
-	{ /*Snowball's chance in hell that this will not always work.*/
-		SpitError("InitMemBus(): Bus is not running.");
-		return FAILURE;
 	}
 	else
-	{
-		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NOMSG;
+	{ /*Client side stuff.*/
+		for (; *MemData != MEMBUS_NOMSG && *MemData != MEMBUS_MSG; ++Inc)
+		{ /*Wait for server-side to finish setting up it's half, if it was just starting up itself.*/
+			if (Inc == 100000) /*Ten secs.*/
+			{
+				SmallError("Cannot connect to Epoch over MemBus, stream corrupted. Aborting MemBus initialization.");
+				BusRunning = false;
+				
+				return FAILURE;
+			}
+			
+			usleep(100);
+		}
+		
+		CheckCode = *MemData = (*MemData == MEMBUS_MSG ? MEMBUS_CHECKALIVE_MSG : MEMBUS_CHECKALIVE_NOMSG); /*Ask server-side if they're alive.*/
+		
+		for (Inc = 0; *MemData == CheckCode; ++Inc)
+		{ /*Wait ten seconds for server-side to respond.*/
+			if (Inc == 100000)
+			{ /*Ten seconds.*/
+				SmallError("Cannot connect to Epoch over MemBus, timeout expired. Aborting MemBus initialization.");
+				
+				BusRunning = false;
+				
+				return FAILURE;
+			}
+			
+			usleep(100);
+		}
+		
+		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NOMSG; /*Initialize client side.*/
 	}
-	
+	/*Either the server side is alive, or we ARE the server side.*/
 	BusRunning = true;
 	
 	return SUCCESS;
 }
 
+unsigned long MemBus_BinWrite(const void *InStream_, unsigned long DataSize, Bool ServerSide)
+{ /*Copies binary data of length DataSize to the membus.*/
+	const char *InStream = InStream_;
+	volatile char *BusData = NULL, *BusStatus = NULL;
+	unsigned long Inc = 0;
+	unsigned short WaitCount = 0;
+	
+	if (ServerSide)
+	{
+		BusStatus = &MemData[MEMBUS_SIZE/2];
+	}
+	else
+	{
+		BusStatus = MemData;
+	}
+	
+	BusData = BusStatus + 1;
+	
+	while (*BusStatus != MEMBUS_NOMSG) /*Wait ten secs for their last message to process.*/
+	{
+		usleep(1000); /*0.001 seconds.*/
+		++WaitCount;
+		
+		if (WaitCount == 10000)
+		{
+			return 0;
+		}
+	}
+	
+	for (; Inc < DataSize && Inc < MEMBUS_SIZE/2 - 1; ++Inc)
+	{
+		BusData[Inc] = InStream[Inc];
+	}
+	
+	*BusStatus = MEMBUS_MSG;
+	
+	return Inc; /*Return number of bytes written.*/
+}
+
+unsigned long MemBus_BinRead(void *OutStream_, unsigned long MaxOutSize, Bool ServerSide)
+{
+	volatile char *BusStatus = NULL, *BusData = NULL;
+	char *OutStream = OutStream_;
+	unsigned long Inc = 0;
+	
+	if (ServerSide)
+	{
+		BusStatus = MemData;
+	}
+	else
+	{
+		BusStatus = &MemData[MEMBUS_SIZE/2];
+	}
+	
+	BusData = BusStatus + 1;
+	
+	if (*BusStatus != MEMBUS_MSG)
+	{
+		return 0;
+	}
+	
+	for (; Inc < MaxOutSize && Inc < MEMBUS_SIZE/2 - 1; ++Inc)
+	{
+		OutStream[Inc] = BusData[Inc];
+	}
+	
+	*BusStatus = MEMBUS_NOMSG;
+	
+	return Inc;
+}
+	
 rStatus MemBus_Write(const char *InStream, Bool ServerSide)
 {
 	volatile char *BusStatus = NULL;
@@ -84,10 +183,10 @@ rStatus MemBus_Write(const char *InStream, Bool ServerSide)
 	
 	while (*BusStatus != MEMBUS_NOMSG) /*Wait for them to finish eating their last message.*/
 	{
-		usleep(100000); /*0.1 seconds.*/
+		usleep(1000); /*0.001 seconds.*/
 		++WaitCount;
 		
-		if (WaitCount == 100)
+		if (WaitCount == 10000)
 		{ /*Been 10 seconds! Does it take that long to copy a string?*/
 			return FAILURE;
 		}
@@ -126,6 +225,27 @@ Bool MemBus_Read(char *OutStream, Bool ServerSide)
 	*BusStatus = MEMBUS_NOMSG; /*Set back to NOMSG once we got the message.*/
 
 	return true;
+}
+
+Bool HandleMemBusPings(void)
+{
+	if (!BusRunning) return false;
+	
+	switch (*MemData)
+	{
+		case MEMBUS_CHECKALIVE_MSG:
+			*MemData = MEMBUS_MSG;
+			return true;
+			break;
+		case MEMBUS_CHECKALIVE_NOMSG:
+			*MemData = MEMBUS_NOMSG;
+			return true;
+			break;
+		default:
+			break;
+	}
+	
+	return false;
 }
 
 void ParseMemBus(void)
@@ -183,7 +303,6 @@ void ParseMemBus(void)
 		
 		switch (DidWork)
 		{
-			case NOTIFICATION: /*If we have NOWAIT set for this object, we will receive NOTIFICATION in response, and that can be confusing.*/
 			case SUCCESS:
 				MCode = MEMBUS_CODE_ACKNOWLEDGED;
 				break;
@@ -394,7 +513,7 @@ void ParseMemBus(void)
 			if (BusDataIs(MEMBUS_CODE_OBJRLS_CHECK))
 			{
 				snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s %d", MEMBUS_CODE_OBJRLS_CHECK, TID, TRL,
-						ObjRL_CheckRunlevel(TRL, CurObj));
+						ObjRL_CheckRunlevel(TRL, CurObj, true));
 			}
 			else if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD) || BusDataIs(MEMBUS_CODE_OBJRLS_DEL))
 			{
@@ -403,7 +522,7 @@ void ParseMemBus(void)
 				
 				if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD))
 				{
-					if (!ObjRL_CheckRunlevel(TRL, CurObj))
+					if (!ObjRL_CheckRunlevel(TRL, CurObj, false))
 					{
 						ObjRL_AddRunlevel(TRL, CurObj);
 					}
@@ -611,6 +730,119 @@ void ParseMemBus(void)
 			MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_CADON, true);
 		}
 	}
+	else if (BusDataIs(MEMBUS_CODE_SENDPID))
+	{
+		char TmpBuf[MEMBUS_SIZE/2 - 1];
+		unsigned long LOffset = strlen(MEMBUS_CODE_SENDPID " ");
+		const char *TWorker = BusData + LOffset;
+		const ObjTable *TmpObj = NULL;
+		
+		if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
+		{ /*No argument?*/
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+			MemBus_Write(TmpBuf, true);
+	
+			return;
+		}
+		
+		if (!(TmpObj = LookupObjectInTable(TWorker)) || !TmpObj->Started)
+		{ /*Bad argument?*/
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+			MemBus_Write(TmpBuf, true);
+			
+			return;
+		}
+		
+		snprintf(TmpBuf, sizeof TmpBuf, "%s %s %lu", MEMBUS_CODE_SENDPID, TWorker,
+				(TmpObj->Opts.HasPIDFile ? ReadPIDFile(TmpObj) : TmpObj->ObjectPID));
+		MemBus_Write(TmpBuf, true);
+	}
+	else if (BusDataIs(MEMBUS_CODE_KILLOBJ) || BusDataIs(MEMBUS_CODE_OBJRELOAD))
+	{
+		char TmpBuf[MEMBUS_SIZE/2 - 1];
+		unsigned long LOffset = (BusDataIs(MEMBUS_CODE_KILLOBJ) ? strlen(MEMBUS_CODE_KILLOBJ " ")
+								: strlen(MEMBUS_CODE_OBJRELOAD " "));
+		const char *TWorker = BusData + LOffset;
+		ObjTable *TmpObj = NULL;
+		
+		if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
+		{ /*No argument?*/
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+			MemBus_Write(TmpBuf, true);
+			
+			return;
+		}
+		
+		if (!(TmpObj = LookupObjectInTable(TWorker)) || !TmpObj->Started)
+		{ /*Bad argument?*/
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+			MemBus_Write(TmpBuf, true);
+			
+			return;
+		}
+		
+		if (BusDataIs(MEMBUS_CODE_KILLOBJ))
+		{
+			/*Attempt to send SIGKILL to the PID.*/
+			if (!TmpObj->ObjectPID || 
+				kill((TmpObj->Opts.HasPIDFile ? ReadPIDFile(TmpObj) : TmpObj->ObjectPID), SIGKILL) != 0)
+			{
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+			}
+			else
+			{
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, BusData);
+				TmpObj->Started = false; /*Mark it as stopped now that it's dead.*/
+				TmpObj->ObjectPID = 0; /*Erase the PID.*/
+			}
+			MemBus_Write(TmpBuf, true);
+		}
+		else
+		{
+			rStatus RV = SUCCESS;
+			const char *MCode = MEMBUS_CODE_ACKNOWLEDGED, *RMsg = NULL;
+			char LogOut[MAX_LINE_SIZE];
+			
+			if (TmpObj->ObjectReloadCommand[0] == 0)
+			{
+				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+				MemBus_Write(TmpBuf, true);
+				return;
+			}
+			
+			RV = ProcessReloadCommand(TmpObj, false);
+			
+			switch (RV)
+			{
+				case SUCCESS:
+					MCode = MEMBUS_CODE_ACKNOWLEDGED;
+					RMsg = "succeeded";
+					break;
+				case WARNING:
+					MCode = MEMBUS_CODE_WARNING;
+					RMsg = "succeeded with a warning";
+					break;
+				case FAILURE:
+					MCode = MEMBUS_CODE_FAILURE;
+					RMsg = "failed";
+					break;
+				default:
+					break;
+			}
+			
+			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MCode, BusData);
+			
+			MemBus_Write(TmpBuf, true);
+			
+			snprintf(LogOut, MAX_LINE_SIZE, "Reload of object %s %s.", TWorker, RMsg);
+			WriteLogLine(LogOut, true);
+		}
+	}
+	else if (BusDataIs(MEMBUS_CODE_RXD))
+	{ /*Restart Epoch from disk, but saves object states and whatnot.
+		* Done mainly so we can unmount the filesystem after someone updates /sbin/epoch.*/
+		ReexecuteEpoch();
+	}
 	/*Something we don't understand. Send BADPARAM.*/
 	else
 	{
@@ -623,29 +855,28 @@ void ParseMemBus(void)
 }
 
 rStatus ShutdownMemBus(Bool ServerSide)
-{
-	if (!BusRunning) return SUCCESS;
-	
-	if (!ServerSide)
-	{ /*We write to our own code.*/
-		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NEWCONNECTION;
-		return SUCCESS;
-	}
-	else
-	{
-		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NOMSG; /*We do this so client applications don't think they are still up.*/
-	}
-	
-	if (!MemData)
+{	
+	if (!BusRunning || !MemData)
 	{
 		return SUCCESS;
 	}
 	
-	*MemData = MEMBUS_NOMSG;
+	*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NOMSG;
+	
+	if (ServerSide)
+	{
+		*MemData = MEMBUS_NOMSG;
+	
+		if (shmctl(MemDescriptor, IPC_RMID, NULL) == -1)
+		{
+			SpitWarning("ShutdownMemBus(): Unable to deallocate membus.");
+			return FAILURE;
+		}
+	}
 	
 	if (shmdt((void*)MemData) != 0)
 	{
-		SpitWarning("ShutdownMemBus(): Unable to shut down memory bus.");
+		SpitWarning("ShutdownMemBus(): Unable to detach membus.");
 		return FAILURE;
 	}
 	
