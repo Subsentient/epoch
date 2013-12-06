@@ -111,7 +111,7 @@ if [ "$#" != "0" ]; then
 			outdir="$1"
 			
 		elif [ "$1" == "--disable-shell" ]; then
-			CFLAGS=$CFLAGS" -DUSE_SHELL=false"
+			CFLAGS=$CFLAGS" -DNOSHELL"
 			
 		elif [ "$1" == "--shellpath" ]; then
 			shift
