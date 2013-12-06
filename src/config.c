@@ -1638,6 +1638,15 @@ static rStatus ScanConfigIntegrity(void)
 			RetState = WARNING;
 		}
 		
+		if (Worker->Opts.HasPIDFile && Worker->Opts.StopMode == STOP_PID)
+		{
+			snprintf(TmpBuf, 1024, "Object \"%s\" is set to stop via tracked PID,\n"
+					"but a PID file has been specified! Switching to STOP_PIDFILE from STOP_PID.", Worker->ObjectID);
+			SpitWarning(TmpBuf);
+			Worker->Opts.StopMode = STOP_PIDFILE;
+			RetState = WARNING;
+		}
+		
 		if (!Worker->Opts.HasPIDFile && Worker->Opts.StopMode == STOP_PIDFILE)
 		{
 			snprintf(TmpBuf, 1024, "Object \"%s\" is set to stop via PID File,\n"
