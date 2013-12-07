@@ -91,6 +91,9 @@ static void *PrimaryLoop(void *UselessArg)
 	
 	(void)UselessArg;
 	
+	pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+	pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+	
 	for (; ContinuePrimaryLoop; ++ScanStepper)
 	{
 		usleep(250000); /*Quarter of a second.*/
@@ -689,7 +692,13 @@ void LaunchShutdown(signed long Signal)
 		if (!ContinuePrimaryLoop) /*Loop hasn't set the flag to 'true' again to let us know it's cooperating?*/
 		{
 			/*Too late.*/
-			pthread_kill(PrimaryLoopThread, SIGKILL);
+			if (pthread_cancel(PrimaryLoopThread) != 0)
+			{
+				SmallError("Failed to stop primary loop, this is a bug. Please report.\n"
+							"In the meantime, waiting for it to quit on it's own...");
+			}
+			
+			while (pthread_kill(PrimaryLoopThread, 0) == 0) usleep(100);
 		}
 	}
 	
