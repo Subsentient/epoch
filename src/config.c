@@ -1165,9 +1165,15 @@ rStatus InitConfig(void)
 		}
 	}
 	
-	/*NOWAIT is deprecated, so emulate it's effect with an ampersand.*/
 	for (ObjWorker = ObjectTable; ObjWorker->Next; ObjWorker = ObjWorker->Next)
 	{
+		/*We don't need to specify a description, but if we neglect to, use the ObjectID.*/
+		if (ObjWorker->ObjectDescription[0] == 0)
+		{
+			strncpy(ObjWorker->ObjectDescription, ObjWorker->ObjectID, strlen(ObjWorker->ObjectID) + 1);
+		}
+
+		/*NOWAIT is deprecated, so emulate it's effect with an ampersand.*/
 		if (ObjWorker->Opts.EmulNoWait)
 		{
 			unsigned long TInc = 0;
@@ -1617,19 +1623,7 @@ static rStatus ScanConfigIntegrity(void)
 	}
 	
 	for (; Worker->Next != NULL; Worker = Worker->Next)
-	{
-		if (*Worker->ObjectDescription == '\0')
-		{
-			snprintf(TmpBuf, 1024, "Object %s has no attribute ObjectDescription.\n"
-						"Changing description to \"missing description\".", Worker->ObjectID);
-			SpitWarning(TmpBuf);
-			
-			snprintf(Worker->ObjectDescription, MAX_DESCRIPT_SIZE, "%s", 
-					CONSOLE_COLOR_YELLOW "[missing description]" CONSOLE_ENDCOLOR);
-
-			RetState = WARNING;
-		}
-		
+	{		
 		if (*Worker->ObjectStartCommand == '\0' && *Worker->ObjectStopCommand == '\0' && Worker->Opts.StopMode == STOP_COMMAND)
 		{
 			snprintf(TmpBuf, 1024, "Object %s has neither ObjectStopCommand nor ObjectStartCommand attributes.", Worker->ObjectID);
