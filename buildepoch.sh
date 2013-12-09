@@ -37,6 +37,8 @@ ShowHelp()
 	echo -e "\tand symlinks will be placed upon completion."
 	echo -e "\tSimilar to make install DESTDIR=\"\"."
 	echo -e $Green"--disable-shell"$EndGreen":\n\tIf this flag is set, Epoch will be built"
+	echo -e $Green"--disable-backtraces"$EndGreen":\n\tThis flag is necessary for building with"
+	echo -e "\tuClibc and other libc implementations that don't provide the execinfo.h header."
 	echo -e "\tto not launch objects with /bin/sh, and will instead try to use an"
 	echo -e "\targument list. This may be useful on embedded systems,"
 	echo -e "\tbut comes at a high price of removing support for any shell characters,"
@@ -112,6 +114,9 @@ if [ "$#" != "0" ]; then
 			
 		elif [ "$1" == "--disable-shell" ]; then
 			CFLAGS=$CFLAGS" -DNOSHELL"
+			
+		elif [ "$1" == "--disable-backtraces" ]; then
+			CFLAGS=$CFLAGS" -DNO_EXECINFO"
 			
 		elif [ "$1" == "--shellpath" ]; then
 			shift

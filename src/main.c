@@ -11,10 +11,14 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
-#include <execinfo.h>
 #include <signal.h>
 #include <sys/reboot.h>
 #include <sys/shm.h>
+
+#ifndef NO_EXECINFO
+#include <execinfo.h>
+#endif
+
 #include "epoch.h"
 
 #define ArgIs(z) !strcmp(CArg, z)
@@ -53,10 +57,14 @@ static Bool __CmdIs(const char *CArg, const char *InCmd)
 static void SigHandler(int Signal)
 {
 	const char *ErrorM = NULL;
+	char OutMsg[MAX_LINE_SIZE * 2] = { '\0' };
+	
+#ifndef NO_EXECINFO
 	void *BTList[25];
 	char **BTStrings;
 	size_t BTSize;
-	char OutMsg[MAX_LINE_SIZE * 2] = { '\0' }, *TWorker = OutMsg;
+	char *TWorker = OutMsg;
+#endif
 	
 	switch (Signal)
 	{
@@ -160,6 +168,7 @@ static void SigHandler(int Signal)
 		
 	}
 	
+#ifndef NO_EXECINFO
 	BTSize = backtrace(BTList, 25);
 	BTStrings = backtrace_symbols(BTList, BTSize);
 
@@ -170,6 +179,9 @@ static void SigHandler(int Signal)
 	{
 		snprintf(TWorker, sizeof OutMsg - strlen(OutMsg) - 1, "\n%s", *BTStrings);
 	}
+#else
+	snprintf(OutMsg, sizeof OutMsg, "%s\n\nEpoch was compiled without backtrace support.", ErrorM);
+#endif
 	
 	if (getpid() == 1)
 	{

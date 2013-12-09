@@ -16,6 +16,9 @@
 #include <dirent.h>
 #include "epoch.h"
 
+/*To shut up some weird compilers. I don't know what this thing wants from me.*/
+pid_t getsid(pid_t);
+
 rStatus SendPowerControl(const char *MembusCode)
 { /*Client side to send a request to halt/reboot/power off/disable or enable CAD/etc.*/
 	char InitsResponse[MEMBUS_SIZE/2 - 1], *PCode[2], *PErrMsg;
