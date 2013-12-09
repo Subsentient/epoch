@@ -368,8 +368,9 @@ void ParseMemBus(void)
 			
 			/*We need a version for this protocol, because relevant options can change with updates.
 			 * Not all options are here, because some are not really useful.*/
-			snprintf(OutBuf, sizeof OutBuf, "%s %s %s %s %lu %d %hhd %hhd %d %d %d %d %d %d %d",
+			snprintf(OutBuf, sizeof OutBuf, "%s %s %s %lu %s %lu %d %hhd %hhd %d %d %d %d %d %d %d",
 					MEMBUS_CODE_LSOBJS, MEMBUS_LSOBJS_VERSION, Worker->ObjectID,
+					(unsigned long)strlen(Worker->ObjectDescription),
 					Worker->ObjectDescription, TPID, (Worker->Started && !Worker->Opts.HaltCmdOnly),
 					ObjectProcessRunning(Worker), Worker->Enabled, Worker->Opts.CanStop,
 					Worker->Opts.HaltCmdOnly, Worker->Opts.IsService, Worker->Opts.AutoRestart,
