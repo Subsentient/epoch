@@ -626,6 +626,14 @@ rStatus InitConfig(void)
 				continue;
 			}
 
+			if (strstr(DelimCurr, " ") || strstr(DelimCurr, "\t")) /*We cannot allow whitespace.*/
+			{
+				snprintf(ErrBuf, sizeof ErrBuf, "ObjectIDs may not contain whitespace! This is a critical error.\n"
+						"Line %lu in epoch.conf.", LineNum);
+				SpitError(ErrBuf);
+				EmergencyShell();
+			}
+			
 			CurObj = AddObjectToTable(DelimCurr); /*Sets this as our current object.*/
 
 			if ((strlen(DelimCurr) + 1) >= MAX_DESCRIPT_SIZE)
