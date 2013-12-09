@@ -351,6 +351,48 @@ void ParseMemBus(void)
 			MemBus_Write(TmpBuf, true);
 		}
 	}
+	else if (BusDataIs(MEMBUS_CODE_LSOBJS))
+	{ /*Done for mostly third party stuff.*/
+		char OutBuf[MEMBUS_SIZE/2 - 1];
+		ObjTable *Worker = ObjectTable;
+		unsigned long TPID = 0;
+		
+		for (; Worker->Next; Worker = Worker->Next)
+		{
+			const struct _RLTree *RLWorker = Worker->ObjectRunlevels;
+			
+			if (!Worker->Opts.HasPIDFile || !(TPID = ReadPIDFile(Worker)))
+			{
+				TPID = Worker->ObjectPID;
+			}
+			
+			/*We need a version for this protocol, because relevant options can change with updates.
+			 * Not all options are here, because some are not really useful.*/
+			snprintf(OutBuf, sizeof OutBuf, "%s %s %s %s %lu %d %hhd %hhd %d %d %d %d %d %d %d",
+					MEMBUS_CODE_LSOBJS, MEMBUS_LSOBJS_VERSION, Worker->ObjectID,
+					Worker->ObjectDescription, TPID, (Worker->Started && !Worker->Opts.HaltCmdOnly),
+					ObjectProcessRunning(Worker), Worker->Enabled, Worker->Opts.CanStop,
+					Worker->Opts.HaltCmdOnly, Worker->Opts.IsService, Worker->Opts.AutoRestart,
+					Worker->Opts.ForceShell, Worker->Opts.RawDescription, Worker->Opts.StopMode);
+			
+			MemBus_Write(OutBuf, true);
+			
+			if (RLWorker)
+			{
+				for (; RLWorker->Next; RLWorker = RLWorker->Next)
+				{ /*Send all runlevels.*/
+					snprintf(OutBuf, sizeof OutBuf, "%s %s %s %s", MEMBUS_CODE_LSOBJS,
+							MEMBUS_LSOBJS_VERSION, Worker->ObjectID, RLWorker->RL);
+				
+					MemBus_Write(OutBuf, true);
+				}
+			}
+		}
+		
+		/*This says we are done.*/
+		MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_LSOBJS, true);
+		return;
+	}					
 	else if (BusDataIs(MEMBUS_CODE_GETRL))
 	{
 		char TmpBuf[MEMBUS_SIZE/2 - 1];

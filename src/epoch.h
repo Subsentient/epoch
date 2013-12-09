@@ -125,9 +125,11 @@
 #define MEMBUS_CODE_GETRL "GETRL"
 #define MEMBUS_CODE_KILLOBJ "KILLOBJ"
 #define MEMBUS_CODE_SENDPID "SENDPID"
+#define MEMBUS_CODE_LSOBJS "LSOBJS"
 #define MEMBUS_CODE_RXD "RXD"
 #define MEMBUS_CODE_RXD_OPTS "ORXD"
 
+#define MEMBUS_LSOBJS_VERSION "V1"
 /**Types, enums, structs and whatnot**/
 
 
