@@ -199,77 +199,78 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 { /*Used for help for the epoch command.*/
 	const char *HelpMsgs[] =
 	{ 
-		("[poweroff/halt/reboot]:\n-----\n"
+		("[poweroff/halt/reboot]:\n\t" CONSOLE_ENDCOLOR
 		
 		 "Enter poweroff, halt, or reboot to do the obvious."
 		),
 		
-		( "[disable/enable] objectid:\n-----\n"
-		  "Enter disable or enable followed by an object ID to disable or enable\nthat object."
+		( "[disable/enable] objectid:\n\t" CONSOLE_ENDCOLOR
+		  "Enter disable or enable followed by an object ID to disable or enable\n\tthat object."
 		),
 		
-		( "[start/stop/restart] objectid:\n-----\n"
-		  "Enter start, stop, or restart followed by an object ID to control that object."
+		( "[start/stop/restart] objectid:\n\t" CONSOLE_ENDCOLOR
+		  "Enter start, stop, or restart followed by an object ID to control\n\tthat object."
 		),
 		
-		( "objrl objectid [del/add/check] runlevel:\n-----\n"
+		( "objrl objectid [del/add/check] runlevel:\n\t" CONSOLE_ENDCOLOR
 		
-		  "runlevel del and add do pretty much what it sounds like,\n"
+		  "runlevel del and add do pretty much what it sounds like,\n\t"
 		  "and check will tell you if that object is enabled for that runlevel."
 		),
 		  
-		( "status objectid:\n-----\n"
+		( "status objectid:\n\t" CONSOLE_ENDCOLOR
 		
-		  "Enter status followed by an object ID to see if that object\nis currently started."
+		  "Enter status followed by an object ID to see if that object\n\tis currently started."
 		),
 		
-		( "setcad [on/off]:\n-----\n"
+		( "setcad [on/off]:\n\t" CONSOLE_ENDCOLOR
 		
-		  "Sets Ctrl-Alt-Del instant reboot modes. If set to on, striking Ctrl-Alt-Del\n"
-		  "at a console will instantly reboot the system without intervention by Epoch.\n"
-		  "Otherwise, if set to off, Epoch will perform a normal reboot when Ctrl-Alt-Del\n"
-		  "is pressed."
+		  "Sets Ctrl-Alt-Del instant reboot modes. If set to on,\n\t"
+		  "striking Ctrl-Alt-Del at a console will instantly reboot the system\n\t"
+		  "without intervention by Epoch. Otherwise, if set to off, Epoch will perform\n\t"
+		  "a normal reboot when Ctrl-Alt-Del is pressed."
 		),
 			
 		
-		( "configreload:\n-----\n"
+		( "configreload:\n\t" CONSOLE_ENDCOLOR
 		
-		  "Enter configreload to reload the configuration file epoch.conf.\nThis is useful for "
-		  "when you change epoch.conf\n"
+		  "Enter configreload to reload the configuration file epoch.conf.\n\t"
+		  "This is useful for when you change epoch.conf\n\t"
 		  "to add or remove services, change runlevels, and more."
 		),
 		
-		( "reexec:\n-----\n"
+		( "reexec:\n\t" CONSOLE_ENDCOLOR
 		
-		  "Enter reeexec to partially restart Epoch from disk.\n"
-		  "This is necessary for updating the Epoch binary to prevent\n"
+		  "Enter reeexec to partially restart Epoch from disk.\n\t"
+		  "This is necessary for updating the Epoch binary to prevent\n\t"
 		  "a failure with unmounting the filesystem the binary is on."
 		),
 		
-		( "currentrunlevel:\n-----\n"
+		( "runlevel:\n\t" CONSOLE_ENDCOLOR
 		
-		  "Enter currentrunlevel to print the system's current runlevel."
+		  "Enter runlevel without any arguments to print the current runlevel,\n\t"
+		  "or enter an argument as the new runlevel."
 		),
 		
-		( "getpid objectid:\n-----\n"
+		( "getpid objectid:\n\t" CONSOLE_ENDCOLOR
 		
-		  "Retrieves the PID Epoch has on record for the given object. If a PID file is specified,\n"
-		  "then the PID will be gotten from there."
+		  "Retrieves the PID Epoch has on record for the given object.\n\t"
+		  "If a PID file is specified, then the PID will be gotten from there."
 		),
 		
-		( "kill objectid:\n-----\n"
+		( "kill objectid:\n\t" CONSOLE_ENDCOLOR
 		
-		  "Sends SIGKILL to the object specified. If a PID file is specified, the PID\n"
-		  "will be retrieved from that."
+		  "Sends SIGKILL to the object specified. If a PID file is specified,\n\t"
+		  "the PID will be retrieved from that."
 		),
 		
-		( "version:\n-----\n"
+		( "version:\n\t" CONSOLE_ENDCOLOR
 		
 		  "Prints the current version of the Epoch Init System."
 		)
 	};
 	
-	enum { HCMD, ENDIS, STAP, OBJRL, STATUS, SETCAD, CONFRL, REEXEC, CURRL, GETPID, KILLOBJ, VER, ENUM_MAX };
+	enum { HCMD, ENDIS, STAP, OBJRL, STATUS, SETCAD, CONFRL, REEXEC, RLCTL, GETPID, KILLOBJ, VER, ENUM_MAX };
 	
 	
 	printf("%s\nCompiled %s %s\n\n", VERSIONSTRING, __DATE__, __TIME__);
@@ -282,67 +283,67 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		
 		for (; Inc < ENUM_MAX; ++Inc)
 		{
-			printf("%s %s\n\n", RootCommand, HelpMsgs[Inc]);
+			printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[Inc]);
 		}
 	}
 	else if (!strcmp(InCmd, "poweroff") || !strcmp(InCmd, "halt") || !strcmp(InCmd, "reboot"))
 	{
-		printf("%s %s\n\n", RootCommand, HelpMsgs[HCMD]);
+		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[HCMD]);
 		return;
 	}
 	else if (!strcmp(InCmd, "disable") || !strcmp(InCmd, "enable"))
 	{
-		printf("%s %s\n\n", RootCommand, HelpMsgs[ENDIS]);
+		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[ENDIS]);
 		return;
 	}
 	else if (!strcmp(InCmd, "start") || !strcmp(InCmd, "stop") || !strcmp(InCmd, "restart"))
 	{
-		printf("%s %s\n\n", RootCommand, HelpMsgs[STAP]);
+		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[STAP]);
 		return;
 	}
 	else if (!strcmp(InCmd, "objrl"))
 	{
-		printf("%s %s\n\n", RootCommand, HelpMsgs[OBJRL]);
+		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[OBJRL]);
 		return;
 	}
 	else if (!strcmp(InCmd, "status"))
 	{
-		printf("%s %s\n\n", RootCommand, HelpMsgs[STATUS]);
+		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[STATUS]);
 		return;
 	}
 	else if (!strcmp(InCmd, "setcad"))
 	{
-		printf("%s %s\n\n", RootCommand, HelpMsgs[SETCAD]);
+		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[SETCAD]);
 		return;
 	}
 	else if (!strcmp(InCmd, "configreload"))
 	{
-		printf("%s %s\n\n", RootCommand, HelpMsgs[CONFRL]);
+		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[CONFRL]);
 		return;
 	}
 	else if (!strcmp(InCmd, "reexec"))
 	{
-		printf("%s %s\n\n", RootCommand, HelpMsgs[REEXEC]);
+		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[REEXEC]);
 		return;
 	}
-	else if (!strcmp(InCmd, "currentrunlevel"))
+	else if (!strcmp(InCmd, "runlevel"))
 	{
-		printf("%s %s\n\n", RootCommand, HelpMsgs[CURRL]);
+		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[RLCTL]);
 		return;
 	}
 	else if (!strcmp(InCmd, "getpid"))
 	{
-		printf("%s %s\n\n", RootCommand, HelpMsgs[GETPID]);
+		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[GETPID]);
 		return;
 	}
 	else if (!strcmp(InCmd, "kill"))
 	{
-		printf("%s %s\n\n", RootCommand, HelpMsgs[KILLOBJ]);
+		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[KILLOBJ]);
 		return;
 	}
 	else if (!strcmp(InCmd, "version"))
 	{
-		printf("%s %s\n\n", RootCommand, HelpMsgs[VER]);
+		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[VER]);
 		return;
 	}
 	else
@@ -428,6 +429,13 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 static rStatus HandleEpochCommand(int argc, char **argv)
 {
 	const char *CArg = argv[1];
+	
+	/*No arguments?*/
+	if (argc == 1)
+	{
+		PrintEpochHelp(argv[0], NULL);;
+		return SUCCESS;
+	}
 	
 	/*Help parser and shutdown commands (for possible -f).*/
 	if (ArgIs("help"))
@@ -581,38 +589,78 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			return FAILURE;
 		}
 	}
-	else if (ArgIs("currentrunlevel"))
+	else if (ArgIs("runlevel"))
 	{
-		rStatus RV = SUCCESS;
 		char InBuf[MEMBUS_SIZE/2 - 1];
+		rStatus RV = SUCCESS;
 		
-		if (argc > 2)
+		if (argc > 3)
 		{
-			puts("Too many arguments.\n");
-			PrintEpochHelp(argv[0], "currentrunlevel");
+			puts("Too many arguments.");
+			PrintEpochHelp(argv[0], "runlevel");
 			return FAILURE;
 		}
 		
 		if (!InitMemBus(false))
 		{
-			
 			return FAILURE;
 		}
 		
-		MemBus_Write(MEMBUS_CODE_GETRL, false);
-		
-		while (!MemBus_Read(InBuf, false)) usleep(1000);
-		
-		if (!strcmp(MEMBUS_CODE_BADPARAM " " MEMBUS_CODE_GETRL, InBuf))
+		if (argc == 2)
 		{
-			SpitError("We are being told that MEMBUS_CODE_GETRL is not valid.\n"
-					"This is a bug. Please report to Epoch.");
-			RV = FAILURE;
+			MemBus_Write(MEMBUS_CODE_GETRL, false);
+			
+			while (!MemBus_Read(InBuf, false)) usleep(1000);
+			
+			if (!strcmp(MEMBUS_CODE_BADPARAM " " MEMBUS_CODE_GETRL, InBuf))
+			{
+				SpitError("We are being told that MEMBUS_CODE_GETRL is not valid.\n"
+						"This is a bug. Please report to Epoch.");
+				RV = FAILURE;
+			}
+			else if (!strncmp(MEMBUS_CODE_GETRL " ", InBuf, strlen(MEMBUS_CODE_GETRL " ")))
+			{
+				printf("Current runlevel is \"%s\".\n", InBuf + strlen(MEMBUS_CODE_GETRL " "));
+				RV = SUCCESS;
+			
+			}
 		}
-		else if (!strncmp(MEMBUS_CODE_GETRL " ", InBuf, strlen(MEMBUS_CODE_GETRL " ")))
+		else
 		{
-			printf("Current runlevel is \"%s\".\n", InBuf + strlen(MEMBUS_CODE_GETRL " "));
-			RV = SUCCESS;
+			char OutBuf[MEMBUS_SIZE/2 - 1];
+			char PossibleResponses[3][MEMBUS_SIZE/2 - 1] = { { '\0' } };
+			
+			
+			snprintf(OutBuf, sizeof OutBuf, "%s %s", MEMBUS_CODE_RUNLEVEL, argv[2]);
+			
+			snprintf(PossibleResponses[0], MEMBUS_SIZE/2 - 1, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, OutBuf);
+			snprintf(PossibleResponses[1], MEMBUS_SIZE/2 - 1, "%s %s", MEMBUS_CODE_FAILURE, OutBuf);
+			snprintf(PossibleResponses[2], MEMBUS_SIZE/2 - 1, "%s %s", MEMBUS_CODE_BADPARAM, OutBuf);
+			
+			
+			MemBus_Write(OutBuf, false);
+			
+			while (!MemBus_Read(InBuf, false)) usleep(1000);
+			
+			if (!strcmp(PossibleResponses[0], InBuf))
+			{
+				RV = SUCCESS;
+			}
+			else if (!strcmp(PossibleResponses[1], InBuf))
+			{
+				RV = FAILURE;
+				fprintf(stderr, "Unable to switch to runlevel %s.\n", argv[2]);
+			}
+			else if (!strcmp(PossibleResponses[2], InBuf))
+			{
+				RV = FAILURE;
+				SpitError("We are being told we sent bad data over the membus.\nThis is a bug. Please report.");
+			}
+			else
+			{
+				RV = FAILURE;
+				SpitError("We have received a corrupted response over the membus.\nThis is a bug. Please report.");
+			}
 		}
 		
 		ShutdownMemBus(false);
@@ -675,7 +723,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		ShutdownMemBus(false);
 		return RetVal;
 	}
-	if (ArgIs("enable") || ArgIs("disable"))
+	else if (ArgIs("enable") || ArgIs("disable"))
 	{
 		rStatus RV = SUCCESS;
 		Bool Enabling = ArgIs("enable");
