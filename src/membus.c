@@ -290,7 +290,7 @@ void ParseMemBus(void)
 		
 		if (CurObj)
 		{ /*If we ask to start a HaltCmdOnly command, run the stop command instead, because that's all that we use.*/
-			DidWork = ProcessConfigObject(CurObj, ((BusDataIs(MEMBUS_CODE_OBJSTART) && !CurObj->Opts.HaltCmdOnly) ? true : false), false);
+			DidWork = ProcessConfigObject(CurObj, (BusDataIs(MEMBUS_CODE_OBJSTART) && !CurObj->Opts.HaltCmdOnly), false);
 			
 			snprintf(TmpBuf, sizeof TmpBuf, "Manual %s of object %s %s%s", (BusDataIs(MEMBUS_CODE_OBJSTART) ? "start" : "stop"),
 					CurObj->ObjectID, (DidWork ? "succeeded" : "failed"), ((DidWork == WARNING) ? " with a warning" : ""));

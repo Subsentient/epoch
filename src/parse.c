@@ -207,6 +207,10 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 		if (ShellEnabled && (strpbrk(CurCmd, "&^$#@!()*%{}`~+=-|\\<>?;:'[]\"\t") != NULL || ForceShell))
 		{
 			execlp(ShellPath, "sh", "-c", CurCmd, NULL); /*I bet you think that this is going to return the PID of sh. No.*/
+			
+			snprintf(TmpBuf, 1024, "Failed to execute %s: execlp() failure launching \"" SHELLPATH "\".", InObj->ObjectID);
+			SpitError(TmpBuf);
+			exit(1); /*Makes sure that we report failure. This is a problem.*/
 		}
 		else
 #endif
@@ -243,19 +247,17 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 			
 			execvp(ArgV[0], ArgV);
 			
+			/*In this case, it could be a file not found, in which case, just have the child, us, exit gracefully.*/
+			exit(1);
+			
 		}
 		/*We still around to talk about it? We were supposed to be imaged with the new command!*/
-		
-		snprintf(TmpBuf, 1024, "Failed to execute %s: execlp() failure.", InObj->ObjectID);
-		SpitError(TmpBuf);
-		return -1;
 	}
 	
 	/**Parent code resumes.**/
-
 	waitpid(LaunchPID, &RawExitStatus, 0); /*Wait for the process to exit.*/
 	--RunningChildCount; /*We're done, so say so.*/
-	
+
 	CurrentTask.Set = false;
 	CurrentTask.Node = NULL;
 	CurrentTask.TaskName = NULL;
@@ -358,7 +360,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		}
 		
 		/*Wait for a PID file to appear if we specified one. This prevents autorestart hell.*/
-		if (CurObj->Opts.HasPIDFile)
+		if (ExitStatus && CurObj->Opts.HasPIDFile)
 		{
 			CurrentTask.Node = (void*)&Counter;
 			CurrentTask.TaskName = CurObj->ObjectID;
