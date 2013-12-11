@@ -450,7 +450,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					break;
 				}
 
-				if (kill(CurObj->ObjectPID, SIGTERM) == 0)
+				if (kill(CurObj->ObjectPID, CurObj->TermSignal) == 0)
 				{ /*Just send SIGTERM.*/
 					unsigned char TInc = 0;
 					
@@ -533,7 +533,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				}
 				
 				/*Now we can actually kill the process ID.*/
-				if (kill(TruePID, SIGTERM) == 0)
+				if (kill(TruePID, CurObj->TermSignal) == 0)
 				{
 					unsigned char TInc = 0;			
 						
