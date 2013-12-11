@@ -320,37 +320,6 @@ void ParseMemBus(void)
 		
 		MemBus_Write(TmpBuf, true);
 	}
-	else if (BusDataIs(MEMBUS_CODE_STATUS))
-	{
-		unsigned long LOffset = strlen(MEMBUS_CODE_STATUS " ");
-		char *TWorker = BusData + LOffset;
-		ObjTable *CurObj = LookupObjectInTable(TWorker);
-		char TmpBuf[MEMBUS_SIZE/2 - 1];
-		
-		if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
-		{ /*No argument?*/
-			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
-			MemBus_Write(TmpBuf, true);
-			
-			return;
-		}
-		
-		if (CurObj)
-		{
-			char TmpBuf[MEMBUS_SIZE/2 - 1];
-			/*Don't let HaltCmdOnly objects be reported as started, because they always look like that anyways.*/
-			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %d %d %d", MEMBUS_CODE_STATUS, TWorker,
-					CurObj->Started && !CurObj->Opts.HaltCmdOnly, ObjectProcessRunning(CurObj), CurObj->Enabled);
-			
-			MemBus_Write(TmpBuf, true);
-		}
-		else
-		{
-			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
-			
-			MemBus_Write(TmpBuf, true);
-		}
-	}
 	else if (BusDataIs(MEMBUS_CODE_LSOBJS))
 	{ /*Done for mostly third party stuff.*/
 		char OutBuf[MEMBUS_SIZE/2 - 1];
