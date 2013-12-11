@@ -373,14 +373,14 @@ void ParseMemBus(void)
 			
 			/*We need a version for this protocol, because relevant options can change with updates.
 			 * Not all options are here, because some are not really useful.*/
-			snprintf(OutBuf, sizeof OutBuf, "%s %s %s %lu %s %lu %d %d %d %d %d %d %d %d %d %d %d",
+			snprintf(OutBuf, sizeof OutBuf, "%s %s %s %lu %s %lu %d %d %d %d %d %d %d %d %d %d %d %lu",
 					MEMBUS_CODE_LSOBJS, MEMBUS_LSOBJS_VERSION, Worker->ObjectID,
 					(unsigned long)strlen(Worker->ObjectDescription),
 					Worker->ObjectDescription, TPID, (Worker->Started && !Worker->Opts.HaltCmdOnly),
 					ObjectProcessRunning(Worker), Worker->Enabled, Worker->Opts.CanStop,
 					Worker->Opts.HaltCmdOnly, Worker->Opts.IsService, Worker->Opts.AutoRestart,
 					Worker->Opts.ForceShell, Worker->Opts.RawDescription, Worker->Opts.StopMode,
-					Worker->TermSignal);
+					Worker->TermSignal, Worker->StartedSince);
 			
 			MemBus_Write(OutBuf, true);
 			
@@ -843,6 +843,7 @@ void ParseMemBus(void)
 				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, BusData);
 				TmpObj->Started = false; /*Mark it as stopped now that it's dead.*/
 				TmpObj->ObjectPID = 0; /*Erase the PID.*/
+				TmpObj->StartedSince = 0;
 			}
 			MemBus_Write(TmpBuf, true);
 		}

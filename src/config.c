@@ -1525,6 +1525,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	
 	/*Initialize these to their default values. Used to test integrity before execution begins.*/
 	Worker->Started = false;
+	Worker->StartedSince = 0;
 	Worker->ObjectDescription[0] = '\0';
 	Worker->ObjectStartCommand[0] = '\0';
 	Worker->ObjectStopCommand[0] = '\0';
@@ -2142,6 +2143,7 @@ rStatus ReloadConfig(void)
 		{
 			Worker->Started = SWorker->Started;
 			Worker->ObjectPID = SWorker->ObjectPID;
+			Worker->StartedSince = SWorker->StartedSince;
 		}
 		
 		ObjRL_ShutdownRunlevels(SWorker);

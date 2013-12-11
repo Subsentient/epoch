@@ -12,6 +12,7 @@
 #include <sys/wait.h>
 #include <ctype.h>
 #include <pthread.h>
+#include <time.h>
 #include "epoch.h"
 
 /**Globals**/
@@ -387,10 +388,15 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 			CurrentTask.Set = false;
 			CurrentTask.Node = NULL;
 			CurrentTask.TaskName = NULL;
-			CurrentTask.PID = 0;;
+			CurrentTask.PID = 0;
 		}
 		
 		CurObj->Started = (ExitStatus ? true : false); /*Mark the process dead or alive.*/
+		
+		if (ExitStatus)
+		{
+			CurObj->StartedSince = time(NULL);
+		}
 		
 		if (PrintStatus)
 		{
@@ -418,6 +424,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				{
 					CurObj->ObjectPID = 0;
 					CurObj->Started = false;
+					CurObj->StartedSince = 0;
 				}
 				
 				if (PrintStatus)
@@ -429,6 +436,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				break;
 			case STOP_NONE:
 				CurObj->Started = false; /*Just say we did it even if nothing to do.*/
+				CurObj->StartedSince = 0;
 				ExitStatus = SUCCESS;
 				CurObj->ObjectPID = 0;
 				break;
@@ -502,6 +510,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				if (ExitStatus)
 				{
 					CurObj->ObjectPID = 0;
+					CurObj->StartedSince = 0;
 					CurObj->Started = false;
 				}
 				
@@ -585,6 +594,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				if (ExitStatus)
 				{
 					CurObj->Started = false;
+					CurObj->StartedSince = 0;
 					CurObj->ObjectPID = 0;
 				}
 				

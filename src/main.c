@@ -217,15 +217,10 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		  "runlevel del and add do pretty much what it sounds like,\n\t"
 		  "and check will tell you if that object is enabled for that runlevel."
 		),
-		  
-		( "status objectid:\n\t" CONSOLE_ENDCOLOR
 		
-		  "Enter status followed by an object ID to see if that object\n\tis currently started."
-		),
+		( "status [objectid]:\n\t" CONSOLE_ENDCOLOR
 		
-		( "list [objectid]:\n\t" CONSOLE_ENDCOLOR
-		
-		  "Prints extensive information about the service specified.\n\t"
+		  "Prints information about the object specified.\n\t"
 		  "If an object is not specified, it prints info on all known objects."
 		),
 		
@@ -276,7 +271,7 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		)
 	};
 	
-	enum { HCMD, ENDIS, STAP, OBJRL, STATUS, LSOBJS, SETCAD, CONFRL, REEXEC,
+	enum { HCMD, ENDIS, STAP, OBJRL, STATUS, SETCAD, CONFRL, REEXEC,
 		RLCTL, GETPID, KILLOBJ, VER, ENUM_MAX };
 	
 	
@@ -351,11 +346,6 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 	else if (!strcmp(InCmd, "version"))
 	{
 		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[VER]);
-		return;
-	}
-	else if (!strcmp(InCmd, "list"))
-	{
-		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[LSOBJS]);
 		return;
 	}
 	else
@@ -601,7 +591,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			return FAILURE;
 		}
 	}
-	else if (ArgIs("list"))
+	else if (ArgIs("status"))
 	{
 		char OutBuf[MEMBUS_SIZE/2 - 1], InBuf[MEMBUS_SIZE/2 - 1];
 		char ObjectID[MAX_DESCRIPT_SIZE], ObjectDescription[MAX_DESCRIPT_SIZE];
@@ -613,6 +603,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		Bool ForceShell, RawDescription;
 		StopType StopMode;
 		unsigned char TermSignal = 0;
+		unsigned long StartedSince;
 		const char *const YN[2] = { CONSOLE_COLOR_RED "No" CONSOLE_ENDCOLOR,
 									CONSOLE_COLOR_GREEN "Yes" CONSOLE_ENDCOLOR };
 		Bool *Opts[9] = { NULL };
@@ -631,7 +622,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		if (argc > 3)
 		{
 			puts("Too many arguments.");
-			PrintEpochHelp(argv[0], "list");
+			PrintEpochHelp(argv[0], "status");
 			return FAILURE;
 		}
 		
@@ -654,6 +645,13 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		
 		while (!MemBus_Read(InBuf, false)) usleep(100);
 
+		if (!strcmp(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_LSOBJS, InBuf))
+		{
+			puts(argc == 2 ? "No objects found!" : "Specified object not found.");
+			ShutdownMemBus(false);
+			return FAILURE;
+		}
+		
 		while (strcmp(InBuf, MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_LSOBJS) != 0)
 		{
 			Bool FoundRL = false;
@@ -664,6 +662,12 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			if (strncmp(Worker, MEMBUS_LSOBJS_VERSION, strlen(MEMBUS_LSOBJS_VERSION)) != 0)
 			{
 				SpitError("LSOBJS protocol version mismatch. Expected \"" MEMBUS_LSOBJS_VERSION "\".");
+				
+				while (strcmp(InBuf, MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_LSOBJS) != 0)
+				{ /*Don't mess up the membus, let it empty.*/
+					while (!MemBus_Read(InBuf, false)) usleep(10);
+				}
+				
 				ShutdownMemBus(false);
 				return FAILURE;
 			}
@@ -724,15 +728,23 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			StopMode = (StopType)atoi(COpt);
 			
-			for (Inc = 0; Worker[Inc] != '\0'; ++Inc)
+			for (Inc = 0; Worker[Inc] != ' '; ++Inc)
 			{ /*Copy in TermSignal.*/
 				COpt[Inc] = Worker[Inc];
 			}
 			COpt[Inc] = '\0';
+			Worker += Inc + 1;
 			
 			TermSignal = (unsigned char)atoi(COpt);
 			
-
+			for (Inc = 0; Worker[Inc] != '\0'; ++Inc)
+			{ /*Copy in StartedSince.*/
+				COpt[Inc] = Worker[Inc];
+			}
+			COpt[Inc] = '\0';
+			
+			StartedSince = atol(COpt);
+			
 			printf("ObjectID: %s\nObjectDescription: %s\nEnabled: %s | Started: %s | Running: %s | Stop mode: ",
 					ObjectID, ObjectDescription, YN[Enabled], YN[Started], YN[Running]);
 			
@@ -748,6 +760,20 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			else
 			{
 				putchar('\n');
+			}
+			
+			if (Started)
+			{
+				time_t SS = (time_t)StartedSince, CTime = time(NULL);
+				struct tm TStruct;
+				char TimeBuf[64] = { '\0' };
+				unsigned long Offset = (CTime - StartedSince) / 60;
+				localtime_r(&SS, &TStruct);
+				
+				asctime_r(&TStruct, TimeBuf);
+				
+				TimeBuf[strlen(TimeBuf) - 1] = '\0'; /*Nuke newline.*/
+				printf("Started since %s, for total of %lu mins.\n", TimeBuf, Offset);
 			}
 			
 			snprintf(RLExpect, sizeof RLExpect, "%s %s %s", MEMBUS_CODE_LSOBJS, MEMBUS_LSOBJS_VERSION, ObjectID);
@@ -1231,63 +1257,6 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		ShutdownMemBus(false);
 		
 		return RV;
-	}
-	else if (ArgIs("status"))
-	{
-		Bool Started, Running, Enabled;
-		Trinity InVal;
-		
-		if (argc != 3)
-		{
-			if (argc > 3)
-			{
-				puts("Too many arguments.\n");
-			}
-			else
-			{
-				puts("Too few arguments.\n");
-			}
-			
-			PrintEpochHelp(argv[0], "status");
-			return FAILURE;
-		}
-		
-		if (!InitMemBus(false))
-		{
-			
-			return FAILURE;
-		}
-		
-		CArg = argv[2];
-		
-		InVal = AskObjectStatus(CArg);
-		
-		if (!InVal.Flag)
-		{
-			printf("Unable to retrieve status of object %s. Does it exist?\n", CArg);
-			ShutdownMemBus(false);
-			return SUCCESS;
-		}
-		else if (InVal.Flag == -1)
-		{
-			SpitError("HandleEpochCommand(): Internal error retrieving status via membus.");
-			ShutdownMemBus(false);
-			return FAILURE;
-		}
-		else
-		{
-			Started = InVal.Val1;
-			Running = InVal.Val2;
-			Enabled = InVal.Val3;
-		}
-		
-		printf("Status for object %s:\n---\nEnabled on boot: %s\nStarted: %s\nRunning: %s\n", CArg, /*This bit is kinda weird I think, but the output is pretty.*/
-				(Enabled ? CONSOLE_COLOR_GREEN "Yes" CONSOLE_ENDCOLOR : CONSOLE_COLOR_RED "No" CONSOLE_ENDCOLOR),
-				(Started ? CONSOLE_COLOR_GREEN "Yes" CONSOLE_ENDCOLOR : CONSOLE_COLOR_RED "No" CONSOLE_ENDCOLOR),
-				(Running ? CONSOLE_COLOR_GREEN "Yes" CONSOLE_ENDCOLOR  : CONSOLE_COLOR_RED "No" CONSOLE_ENDCOLOR));
-
-		ShutdownMemBus(false);
-		return SUCCESS;
 	}
 	else if (ArgIs("objrl"))
 	{

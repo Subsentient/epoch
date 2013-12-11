@@ -129,7 +129,7 @@
 #define MEMBUS_CODE_RXD "RXD"
 #define MEMBUS_CODE_RXD_OPTS "ORXD"
 
-#define MEMBUS_LSOBJS_VERSION "V2"
+#define MEMBUS_LSOBJS_VERSION "V1.2"
 /**Types, enums, structs and whatnot**/
 
 
@@ -172,6 +172,7 @@ typedef struct _EpochObjectTable
 	unsigned char TermSignal; /*The signal we send to an object if it's stop mode is PID or PIDFILE.*/
 	Bool Enabled;
 	Bool Started;
+	unsigned long StartedSince; /*The time in UNIX seconds since it was started.*/
 	
 	struct 
 	{
@@ -211,14 +212,6 @@ struct _HaltParams
 	unsigned long TargetDay;
 	unsigned long TargetYear;
 };
-
-typedef struct
-{ /*This is useful occasionally.*/
-	Bool Flag;
-	Bool Val1;
-	Bool Val2;
-	Bool Val3;
-} Trinity;
 
 struct _CTask
 {
@@ -285,7 +278,6 @@ extern rStatus SendPowerControl(const char *MembusCode);
 extern rStatus EmulKillall5(unsigned long InSignal);
 extern void EmulWall(const char *InStream, Bool ShowUser);
 extern rStatus EmulShutdown(long ArgumentCount, const char **ArgStream);
-extern Trinity AskObjectStatus(const char *ObjectID);
 extern rStatus ObjControl(const char *ObjectID, const char *MemBusSignal);
 
 /*membus.c*/

@@ -269,6 +269,7 @@ void RecoverFromReexec(void)
 			
 			memcpy(&CurObj->ObjectPID, (InBuf + MCodeLength + TLength), sizeof(long));
 			memcpy(&CurObj->Started, (InBuf + MCodeLength + TLength + sizeof(long)), sizeof(Bool));
+			memcpy(&CurObj->StartedSince, (InBuf + MCodeLength + TLength + sizeof(long) + sizeof(Bool)), sizeof(long));
 		}
 		
 		while (!MemBus_BinRead(InBuf, sizeof InBuf, false)) usleep(100);
@@ -469,6 +470,7 @@ void ReexecuteEpoch(void)
 		
 		memcpy(OutBuf + MCodeLength + TLength, &Worker->ObjectPID, sizeof(long));
 		memcpy(OutBuf + sizeof(long) + TLength + MCodeLength, &Worker->Started, sizeof(Bool));
+		memcpy(OutBuf + sizeof(long) + sizeof(Bool) + TLength + MCodeLength, &Worker->StartedSince, sizeof(long));
 		
 		MemBus_BinWrite(OutBuf, sizeof OutBuf, true);
 	}
