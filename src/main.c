@@ -589,6 +589,197 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			return FAILURE;
 		}
 	}
+	else if (ArgIs("list"))
+	{
+		char OutBuf[MEMBUS_SIZE/2 - 1], InBuf[MEMBUS_SIZE/2 - 1];
+		char ObjectID[MAX_DESCRIPT_SIZE], ObjectDescription[MAX_DESCRIPT_SIZE];
+		char LenC[32] = { '\0' }, COpt[32];
+		char *Worker = NULL;
+		char RLExpect[MEMBUS_SIZE/2 - 1 ];
+		unsigned long Inc = 0, Inc2 = 0, Len = 0, PID = 0;
+		Bool Started, Running, Enabled, CanStop, HaltCmdOnly, IsService, AutoRestart;
+		Bool ForceShell, RawDescription;
+		StopType StopMode;
+		unsigned char TermSignal = 0;
+		const char *const YN[2] = { CONSOLE_COLOR_RED "No" CONSOLE_ENDCOLOR,
+									CONSOLE_COLOR_GREEN "Yes" CONSOLE_ENDCOLOR };
+		Bool *const Opts[9] = { &Started, &Running, &Enabled, &CanStop, &HaltCmdOnly,
+							&IsService, &AutoRestart, &ForceShell, &RawDescription };
+							
+		if (argc > 3)
+		{
+			puts("Too many arguments.");
+			PrintEpochHelp(argv[0], "list");
+			return FAILURE;
+		}
+		
+		if (!InitMemBus(false))
+		{
+			return FAILURE;
+		}
+		
+		/*Send the activation code.*/
+		if (argc == 3)
+		{
+			snprintf(OutBuf, sizeof OutBuf, "%s %s", MEMBUS_CODE_LSOBJS, argv[2]);
+		}
+		else
+		{
+			strncpy(OutBuf, MEMBUS_CODE_LSOBJS, strlen(MEMBUS_CODE_LSOBJS) + 1);
+		}
+		
+		MemBus_Write(OutBuf, false);
+		
+		while (!MemBus_Read(InBuf, false)) usleep(100);
+
+		while (strcmp(InBuf, MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_LSOBJS) != 0)
+		{
+			Bool FoundRL = false;
+			
+			Worker = InBuf + strlen(MEMBUS_CODE_LSOBJS " ");
+			
+			/*Version matters.*/
+			if (strncmp(Worker, MEMBUS_LSOBJS_VERSION, strlen(MEMBUS_LSOBJS_VERSION)) != 0)
+			{
+				SpitError("LSOBJS protocol version mismatch. Expected \"" MEMBUS_LSOBJS_VERSION "\".");
+				ShutdownMemBus(false);
+				return FAILURE;
+			}
+			
+			Worker += strlen(MEMBUS_LSOBJS_VERSION " ");
+			
+			/*Copy in the ObjectID.*/
+			for (Inc = 0; Worker[Inc] != ' '; ++Inc)
+			{
+				ObjectID[Inc] = Worker[Inc];
+			}
+			ObjectID[Inc] = '\0';
+			Worker += Inc + 1;
+			
+			for (Inc = 0; Worker[Inc] != ' '; ++Inc)
+			{ /*Get length of the ObjectDescription.*/
+				LenC[Inc] = Worker[Inc];
+			}
+			LenC[Inc] = '\0';
+			Worker += Inc + 1;
+			
+			Len = atol(LenC);
+			
+			for (Inc = 0; Inc < Len; ++Inc)
+			{ /*Copy in the ObjectDescription.*/
+				ObjectDescription[Inc] = Worker[Inc];
+			}
+			ObjectDescription[Inc] = '\0';
+			Worker += Inc + 1;
+			
+			for (Inc = 0; Worker[Inc] != ' '; ++Inc)
+			{ /*Copy in the PID by reusing LenC.*/
+				LenC[Inc] = Worker[Inc];
+			}
+			LenC[Inc] = '\0';
+			Worker += Inc + 1;
+			
+			PID = atol(LenC);
+			
+			for (Inc2 = 0; Inc2 < 9; ++Inc2)
+			{ /*Convenient way to loop through and set all options.*/
+				for (Inc = 0; Worker[Inc] != ' '; ++Inc)
+				{
+					COpt[Inc] = Worker[Inc];
+				}
+				COpt[Inc] = '\0';
+				Worker += Inc + 1;
+			
+				*Opts[Inc2] = (Bool)atoi(COpt);
+			}
+			
+			for (Inc = 0; Worker[Inc] != ' '; ++Inc)
+			{ /*Copy in StopMode.*/
+				COpt[Inc] = Worker[Inc];
+			}
+			COpt[Inc] = '\0';
+			Worker += Inc + 1;
+			
+			StopMode = (StopType)atoi(COpt);
+			
+			for (Inc = 0; Worker[Inc] != '\0'; ++Inc)
+			{ /*Copy in TermSignal.*/
+				COpt[Inc] = Worker[Inc];
+			}
+			COpt[Inc] = '\0';
+			
+			TermSignal = (unsigned char)atoi(COpt);
+			
+
+			printf("ObjectID: %s\nObjectDescription: %s\nEnabled: %s | Started: %s | Running: %s | Stop mode: ",
+					ObjectID, ObjectDescription, YN[Enabled], YN[Started], YN[Running]);
+			
+			if (StopMode == STOP_COMMAND) printf("Command");
+			else if (StopMode == STOP_NONE) printf("None");
+			else if (StopMode == STOP_PID) printf("PID");
+			else if (StopMode == STOP_PIDFILE) printf("PID File");
+			
+			if (Running)
+			{
+				printf(" | PID: %lu\n", PID);
+			}
+			else
+			{
+				putchar('\n');
+			}
+			
+			snprintf(RLExpect, sizeof RLExpect, "%s %s %s", MEMBUS_CODE_LSOBJS, MEMBUS_LSOBJS_VERSION, ObjectID);
+			
+			/*Done with this, now read.*/
+			while (!MemBus_Read(InBuf, false)) usleep(100);
+			
+			while (!strncmp(InBuf, RLExpect, strlen(RLExpect)))
+			{
+				if (!FoundRL && !HaltCmdOnly)
+				{
+					printf("Runlevels:");
+					FoundRL = true;
+				}
+				
+				Worker = InBuf + strlen(MEMBUS_CODE_LSOBJS " " MEMBUS_LSOBJS_VERSION " ") + strlen(ObjectID) + 1;
+				
+				if (!HaltCmdOnly)
+				{
+					printf(" %s", Worker);
+				}
+				
+				while (!MemBus_Read(InBuf, false)) usleep(100);
+			}
+			
+			if (FoundRL) putchar('\n');
+						
+			/*Print the options.*/
+			
+			if (IsService || AutoRestart || HaltCmdOnly || !CanStop ||
+				ForceShell || RawDescription || TermSignal != SIGTERM)
+			{
+				printf("Options:");
+				
+				if (IsService) printf(" SERVICE");
+				if (AutoRestart) printf(" AUTORESTART");
+				if (HaltCmdOnly) printf(" HALTONLY");
+				if (!CanStop) printf(" PERSISTENT");
+				if (ForceShell) printf(" FORCESHELL");
+				if (RawDescription) printf(" RAWDESCRIPTION");
+				if (TermSignal != SIGTERM) printf(" TERMSIGNAL=%u", TermSignal);
+				
+				putchar('\n');
+			}
+			
+			if (argc == 2)
+			{
+				puts("-------");
+			}
+		}
+		
+		ShutdownMemBus(false);
+		return SUCCESS;
+	}
 	else if (ArgIs("runlevel"))
 	{
 		char InBuf[MEMBUS_SIZE/2 - 1];

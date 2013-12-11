@@ -129,7 +129,7 @@
 #define MEMBUS_CODE_RXD "RXD"
 #define MEMBUS_CODE_RXD_OPTS "ORXD"
 
-#define MEMBUS_LSOBJS_VERSION "V1"
+#define MEMBUS_LSOBJS_VERSION "V2"
 /**Types, enums, structs and whatnot**/
 
 
