@@ -17,9 +17,9 @@
 #include "epoch.h"
 
 /**Constants**/
-Bool EnableLogging = false;
+Bool EnableLogging = true;
 Bool LogInMemory = true; /*This is necessary so long as we have a readonly filesystem.*/
-Bool BlankLogOnBoot = false;
+Bool BlankLogOnBoot = true;
 char *MemLogBuffer = NULL;
 
 /*Days in the month, for time stuff.*/

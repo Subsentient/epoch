@@ -688,7 +688,10 @@ void LaunchShutdown(signed long Signal)
 	snprintf(MsgBuf, sizeof MsgBuf, "System is going down for %s NOW!", HType);
 	EmulWall(MsgBuf, false);
 	
-	WriteLogLine(LogMsg, true);
+	if (!BlankLogOnBoot) /*No point in doing it if it's just going to be erased.*/
+	{
+		WriteLogLine(LogMsg, true);
+	}
 	
 
 	EnableLogging = false; /*Prevent any additional log entries.*/
