@@ -164,6 +164,24 @@ static void *PrimaryLoop(void *UselessArg)
 						continue;
 					}
 					
+					/*Don't let us enter a restart loop.*/
+					if (Worker->StartedSince + 5 > time(NULL))
+					{
+						snprintf(TmpBuf, sizeof TmpBuf,
+								"AUTORESTART: "CONSOLE_COLOR_RED "PROBLEM:\n"
+								"Object %s is trying to autorestart "
+								"within 5 secs of last start.\n ** " CONSOLE_ENDCOLOR
+								"Marking object stopped to safeguard against restart loop.",
+								Worker->ObjectID);
+								
+						WriteLogLine(TmpBuf, true);
+						
+						Worker->Started = false;
+						Worker->ObjectPID = 0;
+						Worker->StartedSince = 0;
+						continue;
+					}
+					
 					snprintf(TmpBuf, MAX_LINE_SIZE, "AUTORESTART: Object %s is not running. Restarting.", Worker->ObjectID);
 					WriteLogLine(TmpBuf, true);
 					
@@ -176,6 +194,8 @@ static void *PrimaryLoop(void *UselessArg)
 						snprintf(TmpBuf, MAX_LINE_SIZE, "AUTORESTART: " CONSOLE_COLOR_RED "Failed" CONSOLE_ENDCOLOR
 								" to restart object %s automatically.\nMarking object stopped.", Worker->ObjectID);
 						Worker->Started = false;
+						Worker->ObjectPID = 0;
+						Worker->StartedSince = 0;
 					}
 					
 					WriteLogLine(TmpBuf, true);
