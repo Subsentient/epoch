@@ -223,6 +223,12 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		  "Enter status followed by an object ID to see if that object\n\tis currently started."
 		),
 		
+		( "list [objectid]:\n\t" CONSOLE_ENDCOLOR
+		
+		  "Prints extensive information about the service specified.\n\t"
+		  "If an object is not specified, it prints info on all known objects."
+		),
+		
 		( "setcad [on/off]:\n\t" CONSOLE_ENDCOLOR
 		
 		  "Sets Ctrl-Alt-Del instant reboot modes. If set to on,\n\t"
@@ -270,7 +276,8 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		)
 	};
 	
-	enum { HCMD, ENDIS, STAP, OBJRL, STATUS, SETCAD, CONFRL, REEXEC, RLCTL, GETPID, KILLOBJ, VER, ENUM_MAX };
+	enum { HCMD, ENDIS, STAP, OBJRL, STATUS, LSOBJS, SETCAD, CONFRL, REEXEC,
+		RLCTL, GETPID, KILLOBJ, VER, ENUM_MAX };
 	
 	
 	printf("%s\nCompiled %s %s\n\n", VERSIONSTRING, __DATE__, __TIME__);
@@ -344,6 +351,11 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 	else if (!strcmp(InCmd, "version"))
 	{
 		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[VER]);
+		return;
+	}
+	else if (!strcmp(InCmd, "list"))
+	{
+		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[LSOBJS]);
 		return;
 	}
 	else
@@ -603,9 +615,19 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		unsigned char TermSignal = 0;
 		const char *const YN[2] = { CONSOLE_COLOR_RED "No" CONSOLE_ENDCOLOR,
 									CONSOLE_COLOR_GREEN "Yes" CONSOLE_ENDCOLOR };
-		Bool *const Opts[9] = { &Started, &Running, &Enabled, &CanStop, &HaltCmdOnly,
-							&IsService, &AutoRestart, &ForceShell, &RawDescription };
-							
+		Bool *Opts[9] = { NULL };
+		
+		/*You know, there are some things about C89 I really hate.*/
+		Opts[0] = &Started;
+		Opts[1] = &Running;
+		Opts[2] = &Enabled;
+		Opts[3] = &CanStop;
+		Opts[4] = &HaltCmdOnly;
+		Opts[5] = &IsService;
+		Opts[6] = &AutoRestart;
+		Opts[7] = &ForceShell;
+		Opts[8] = &RawDescription;
+		
 		if (argc > 3)
 		{
 			puts("Too many arguments.");
