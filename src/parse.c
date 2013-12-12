@@ -205,7 +205,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 		setsid();
 		
 #ifndef NOSHELL
-		if (ShellEnabled && (strpbrk(CurCmd, "&^$#@!()*%{}`~+=-|\\<>?;:'[]\"\t") != NULL || ForceShell))
+		if (ShellEnabled && (strpbrk(CurCmd, "&^$#@!()*%{}`~+|\\<>?;:'[]\"\t") != NULL || ForceShell))
 		{
 			execlp(ShellPath, "sh", "-c", CurCmd, NULL); /*I bet you think that this is going to return the PID of sh. No.*/
 			
