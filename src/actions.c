@@ -26,7 +26,7 @@ static void MountVirtuals(void);
 static void *PrimaryLoop(void *UselessArg);
 
 /*Globals.*/
-volatile struct _HaltParams HaltParams = { -1, 0, 0, 0, 0, 0 };
+volatile struct _HaltParams HaltParams = { -1 };
 Bool AutoMountOpts[5] = { false, false, false, false, false };
 static volatile Bool ContinuePrimaryLoop = true;
 static pthread_t PrimaryLoopThread; /*This isn't really changed much once we launch our thread,
@@ -117,16 +117,15 @@ static void *PrimaryLoop(void *UselessArg)
 				so we can just take whatever positive value we are given.*/		
 				LaunchShutdown(HaltParams.HaltMode);
 			}
-			else if (CurSec == HaltParams.TargetSec && CurMin != HaltParams.TargetMin &&
-					DateDiff(HaltParams.TargetHour, HaltParams.TargetMin, NULL, NULL, NULL) <= 20 )
-			{ /*If 20 minutes or less until shutdown, warn us every minute.
-				* If we miss a report because the membus was being parsed or something,
-				* don't try to report it after, because that time has probably passed.*/
+			else if (CurSec >= HaltParams.TargetSec && CurMin != HaltParams.TargetMin &&
+				DateDiff(HaltParams.TargetHour, HaltParams.TargetMin, NULL, NULL, NULL) <= 20 )
+			{ /*If 20 minutes or less until shutdown, warn us every minute.*/
 				char TBuf[MAX_LINE_SIZE];
 				const char *HaltMode = NULL;
+				static unsigned long LastJobID = 0;
 				static short LastMin = -1;
 
-				if (LastMin != CurMin)
+				if (LastJobID != HaltParams.JobID || CurMin != LastMin)
 				{ /*Don't repeat ourselves 80 times while the second rolls over.*/
 					if (HaltParams.HaltMode == OSCTL_LINUX_HALT)
 					{
@@ -146,6 +145,7 @@ static void *PrimaryLoop(void *UselessArg)
 							HaltMode, DateDiff(HaltParams.TargetHour, HaltParams.TargetMin, NULL, NULL, NULL));
 					EmulWall(TBuf, false);
 					
+					LastJobID = HaltParams.JobID;
 					LastMin = CurMin;
 				}
 			}
@@ -306,6 +306,7 @@ void RecoverFromReexec(void)
 	memcpy((void*)&HaltParams.TargetMonth, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
 	memcpy((void*)&HaltParams.TargetDay, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
 	memcpy((void*)&HaltParams.TargetYear, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
+	memcpy((void*)&HaltParams.JobID, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
 	
 	/*Retrieve our trinity of important options.*/
 	while (!MemBus_BinRead(InBuf, sizeof InBuf, false)) usleep(100);
@@ -506,6 +507,7 @@ void ReexecuteEpoch(void)
 	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.TargetMonth, sizeof HaltParams);
 	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.TargetDay, sizeof HaltParams);
 	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.TargetYear, sizeof HaltParams);
+	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.JobID, sizeof HaltParams);
 	
 	MemBus_BinWrite(OutBuf, sizeof HaltParams + MCodeLength, true);
 	

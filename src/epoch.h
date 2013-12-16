@@ -210,6 +210,7 @@ struct _HaltParams
 	unsigned long TargetMonth;
 	unsigned long TargetDay;
 	unsigned long TargetYear;
+	unsigned long JobID;
 };
 
 struct _CTask

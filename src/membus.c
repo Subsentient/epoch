@@ -670,6 +670,7 @@ void ParseMemBus(void)
 				return;
 			}
 			
+			++HaltParams.JobID;
 			HaltParams.HaltMode = Signal;
 
 			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, BusData);
