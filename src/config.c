@@ -180,6 +180,19 @@ rStatus InitConfig(void)
 		return FAILURE;
 	}
 
+	/*Check for non-ASCII characters.*/
+	while (*Worker++ != '\0')
+	{
+		if (*Worker > 127 || *Worker < 0)
+		{
+			SpitWarning("Non-ASCII characters detected in epoch.conf!\n"
+						"Epoch does not support Unicode or the like!");
+			break;
+		}
+	}
+	
+	Worker = ConfigStream;
+	
 	do /*This loop does most of the parsing.*/
 	{
 		
