@@ -206,7 +206,7 @@ void EmulWall(const char *InStream, Bool ShowUser)
 	char OutBuf[8192];
 	char HMS[3][16];
 	char MDY[3][16];
-	char OurUser[256];
+	const char *OurUser = getenv("USER");
 	char OurHostname[256];
 	DIR *DevDir, *PtsDir;
 	struct dirent *DirPtr;
@@ -223,19 +223,15 @@ void EmulWall(const char *InStream, Bool ShowUser)
 		MDY[0], MDY[1], MDY[2], CONSOLE_ENDCOLOR);
 	
 	if (ShowUser)
-	{
-		if (getlogin_r(OurUser, sizeof OurUser) != 0)
-		{
-			snprintf(OurUser, sizeof OurUser, "%s", "(unknown)");
-		}
-		
+	{		
 		if (gethostname(OurHostname, sizeof OurHostname) != 0)
 		{
 			snprintf(OurHostname, sizeof OurHostname, "%s", "(unknown)");
 		}
 		
 		/*I really enjoy pulling stuff off like the line below.*/
-		snprintf(&OutBuf[strlen(OutBuf)], sizeof OutBuf - strlen(OutBuf), "Broadcast message from %s@%s: ", OurUser, OurHostname);
+		snprintf(&OutBuf[strlen(OutBuf)], sizeof OutBuf - strlen(OutBuf), "Broadcast message from %s@%s: ",
+				(OurUser != NULL ? OurUser : "(unknown)"), OurHostname);
 		
 	}
 	else
