@@ -359,7 +359,7 @@ void ParseMemBus(void)
 				{ /*Send all runlevels.*/
 					snprintf(OutBuf, sizeof OutBuf, "%s %s %s %s", MEMBUS_CODE_LSOBJS,
 							MEMBUS_LSOBJS_VERSION, Worker->ObjectID, RLWorker->RL);
-					puts(OutBuf);
+
 					MemBus_Write(OutBuf, true);
 				}
 			}
