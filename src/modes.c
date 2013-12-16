@@ -302,12 +302,6 @@ rStatus EmulShutdown(long ArgumentCount, const char **ArgStream)
 	short TimeIsSet = 0, HaltModeSet = 0;
 	Bool AbortingShutdown = false, ImmediateHalt = false;
 	
-	if (getuid() != 0)
-	{
-		fprintf(stderr, "%s", "Unable to comply with shutdown request. You are not root.\n");
-		return FAILURE;
-	}
-	
 	for (; Inc != (ArgumentCount - 1); ++TPtr, ++Inc)
 	{
 		if (!strcmp(*TPtr, "-h") || !strcmp(*TPtr, "--halt") || !strcmp(*TPtr, "-H"))
