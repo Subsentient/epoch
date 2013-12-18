@@ -91,7 +91,7 @@ static void PrimaryLoop(void)
 	
 		/**The line below is of critical importance. It harvests
 		 * the zombies created by all processes throughout the system.**/
-		while (waitpid(-1, NULL, WNOHANG) > 1); /*The one is not a typo. It can return -1 or 0.*/
+		while (waitpid(-1, NULL, WNOHANG) > 0);
 		
 		/*Do not flood the system with this big loop more than necessary.*/
 		if (LoopStepper == 5)
