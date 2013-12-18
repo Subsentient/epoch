@@ -639,6 +639,8 @@ void ParseMemBus(void)
 			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, MSig);
 			MemBus_Write(TmpBuf, true);
 			
+			while (!MemBus_Read(TmpBuf, true)) usleep(100); /*Wait to be told they received it.*/
+			
 			LaunchShutdown(Signal);
 
 			return;

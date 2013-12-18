@@ -78,6 +78,8 @@ rStatus SendPowerControl(const char *MembusCode)
 		}
 	}
 	
+	MemBus_Write(MembusCode, false); /*Tells init it can shut down the membus.*/
+	
 	if (!strcmp(InitsResponse, PCode[0]))
 	{
 		ShutdownMemBus(false);
