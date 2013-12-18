@@ -123,17 +123,22 @@ void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 	char OutMsg[8192] = { '\0' }, IP2[MAX_DESCRIPT_SIZE];
 	char StatusFormat[64];
 	struct winsize WSize;
-	
-	/*Get terminal width so we can adjust the status report.*/
-    ioctl(0, TIOCGWINSZ, &WSize);
     
     if (AlignStatusReports)
     {
-		StreamLength = WSize.ws_col;
-    
-		if (StreamLength >= sizeof OutMsg/2)
-		{ /*Default to 80 if we get a very big number.*/
+		/*Get terminal width so we can adjust the status report.*/
+	    if (ioctl(0, TIOCGWINSZ, &WSize) != 0)
+		{ /*Must have failed.*/
 			StreamLength = 80;
+		}
+		else
+		{
+			StreamLength = WSize.ws_col;
+
+    		if (StreamLength >= sizeof OutMsg/2)
+			{ /*Default to 80 if we get a very big number.*/
+				StreamLength = 80;
+			}
 		}
 	}
 	else
