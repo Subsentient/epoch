@@ -685,6 +685,7 @@ void LaunchShutdown(signed long Signal)
 		else
 		{
 			kill(CurrentTask.PID, SIGKILL);
+			waitpid(CurrentTask.PID, NULL, 0); /*Reap it.*/
 		}
 		
 		CurrentTask.Set = false;
