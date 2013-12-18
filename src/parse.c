@@ -11,7 +11,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <ctype.h>
-#include <pthread.h>
 #include <time.h>
 #include "epoch.h"
 
@@ -19,8 +18,6 @@
 
 /*We store the current runlevel here.*/
 char CurRunlevel[MAX_DESCRIPT_SIZE] = { '\0' };
-volatile unsigned long RunningChildCount = 0; /*How many child processes are running?
-									* I promised myself I wouldn't use this code.*/
 struct _CTask CurrentTask = { NULL }; /*We save this for each linear task, so we can kill the process if it becomes unresponsive.*/
 volatile BootMode CurrentBootMode = BOOT_NEUTRAL;
 
@@ -160,7 +157,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	}
 	SigMaker[1] = SigMaker[0];
 	
-	pthread_sigmask(SIG_BLOCK, &SigMaker[0], NULL);
+	sigprocmask(SIG_BLOCK, &SigMaker[0], NULL);
 	
 	/**Actually do the (v)fork().**/
 	LaunchPID = ForkFunc();
@@ -173,16 +170,12 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	
 	if (LaunchPID > 0)
 	{
-			++RunningChildCount; /*I have a feeling that when the stars align,
-								* this variable will be accessed by two threads at once
-								* and crash to the ground. I hope I'm wrong.*/
-
 			CurrentTask.Node = InObj;
 			CurrentTask.TaskName = InObj->ObjectID;
 			CurrentTask.PID = LaunchPID;
 			CurrentTask.Set = true;
 			
-			pthread_sigmask(SIG_UNBLOCK, &SigMaker[1], NULL); /*Unblock now that (v)fork() is complete.*/
+			sigprocmask(SIG_UNBLOCK, &SigMaker[1], NULL); /*Unblock now that (v)fork() is complete.*/
 	}
 	
 	if (LaunchPID == 0) /**Child process code.**/
@@ -199,7 +192,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 			signal(Inc, SIG_DFL); /*Set all the signal handlers to default while we're at it.*/
 		}
 		
-		pthread_sigmask(SIG_UNBLOCK, &Sig2, NULL); /*Unblock signals.*/
+		sigprocmask(SIG_UNBLOCK, &Sig2, NULL); /*Unblock signals.*/
 		
 		/*Change our session id.*/
 		setsid();
@@ -257,7 +250,6 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	
 	/**Parent code resumes.**/
 	waitpid(LaunchPID, &RawExitStatus, 0); /*Wait for the process to exit.*/
-	--RunningChildCount; /*We're done, so say so.*/
 
 	CurrentTask.Set = false;
 	CurrentTask.Node = NULL;
@@ -471,9 +463,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					for (; kill(CurObj->ObjectPID, 0) == 0; ++TInc)
 					{ /*Two hundred is ten seconds here.*/
 						
-						/*If we are not in a thread, we need to wait for the process ourselves,
-						because nobody else will do it for us.*/
-						waitpid(CurObj->ObjectPID, NULL, WNOHANG);
+						waitpid(CurObj->ObjectPID, NULL, WNOHANG); /*We must harvest the PID since we have occupied the primary loop.*/
 						
 						usleep(50000);
 						
@@ -555,9 +545,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					for (; kill(TruePID, 0) == 0; ++TInc)
 					{ /*Two hundred is ten seconds here.*/
 						
-						/*If we are not in a thread, we need to wait for the process ourselves,
-						because nobody else will do it for us.*/
-						waitpid(TruePID, NULL, WNOHANG);
+						waitpid(TruePID, NULL, WNOHANG); /*We must harvest the PID since we have occupied the primary loop.*/
 						
 						usleep(50000);
 						

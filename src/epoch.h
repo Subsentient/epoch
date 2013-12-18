@@ -232,7 +232,6 @@ extern Bool DisableCAD;
 extern char Hostname[MAX_LINE_SIZE];
 extern volatile struct _HaltParams HaltParams;
 extern Bool AutoMountOpts[5];
-extern volatile unsigned long RunningChildCount;
 extern Bool EnableLogging;
 extern Bool LogInMemory;
 extern Bool BlankLogOnBoot;

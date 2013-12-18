@@ -172,7 +172,7 @@ echo -e "\nBuilding main executable.\n"
 mkdir -p $outdir/sbin/
 mkdir -p $outdir/bin/
 
-CMD "$CC $LDFLAGS $CFLAGS -pthread -o $outdir/sbin/epoch\
+CMD "$CC $LDFLAGS $CFLAGS -o $outdir/sbin/epoch\
  actions.o config.o console.o main.o membus.o modes.o parse.o utilfuncs.o"
 
 echo -e "\nCreating symlinks.\n"

@@ -12,7 +12,7 @@ Epoch can be built without it by passing the argument
 shell symbols like '&' and any types of quotes.)
 
 The build process only requires an ANSI C89 compliant compiler,
-glibc or similar with pthreads and headers, kernel headers,
+glibc or similar with headers, kernel headers,
 and a bash-compatible shell.
 
 Epoch is public domain software.

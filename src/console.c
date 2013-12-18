@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/ioctl.h>
 #include "epoch.h"
 
@@ -192,55 +193,68 @@ void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog)
 		}
 		else
 		{
-			FILE *Descriptor = fopen("/dev/vcs", "r");
-			Bool Matches = true;
+			FILE *Descriptor = NULL;
+			Bool Matches = true, JustABug = false;
 			
-			if (Descriptor != NULL)
+			if (isatty(STDIN_FILENO))
 			{
-				unsigned long Filesize = 0;
-				char *FileBuf = NULL;
-				char *Locator = NULL;
+				char TTYName[MAX_LINE_SIZE];
 				
-				/*Get the file size since nothing in those virtual filesystems
-				 * has it in the filesystem.*/
-				while (getc(Descriptor) != EOF) ++Filesize;
-				rewind(Descriptor);
-
-				FileBuf = malloc(Filesize + 1);
+				ttyname_r(STDIN_FILENO, TTYName, sizeof TTYName);
 				
-				fread(FileBuf, 1, Filesize, Descriptor);
-				FileBuf[Filesize] = '\0';
-				
-				fclose(Descriptor);
-				
-				if (!(Locator = strstr(FileBuf, IP2)))
+				if (strstr(TTYName, "/dev/pts") == NULL && (Descriptor = fopen("/dev/vcs", "r")) != NULL)
 				{
-					Matches = true; /*Set this to true, because sometimes,
-					* weird stuff can happen that makes the current console
-					* not the current console.*/
-				}
-				else
-				{
-					Locator += strlen(IP2);
+					unsigned long Filesize = 0;
+					char *FileBuf = NULL;
+					char *Locator = NULL;
 					
-					for (; *Locator != '\0'; ++Locator)
+					/*Get the file size since nothing in those virtual filesystems
+					 * has it in the filesystem.*/
+					while (getc(Descriptor) != EOF) ++Filesize;
+					rewind(Descriptor);
+	
+					FileBuf = malloc(Filesize + 1);
+					
+					fread(FileBuf, 1, Filesize, Descriptor);
+					FileBuf[Filesize] = '\0';
+					
+					fclose(Descriptor);
+					
+					if (!(Locator = strstr(FileBuf, IP2)))
 					{
-						if (*Locator != ' ' && *Locator != '\t')
+						Matches = false;
+						JustABug = true; /*This tells us "Don't add a space at the bottom,
+										*We can't currently read the tty.*/
+					}
+					else
+					{
+						Locator += strlen(IP2);
+						
+						for (; *Locator != '\0'; ++Locator)
 						{
-							Matches = false;
-							break;
+							if (*Locator != ' ' && *Locator != '\t')
+							{
+								Matches = false;
+								break;
+							}
 						}
 					}
+					free(FileBuf);
+						
 				}
-				free(FileBuf);
-					
 			}
-			
-			if (Matches) StreamLength -= strlen(IP2);
+				
+			if (Matches)
+			{ /*Then we can go ahead and subtract the number of spaces.*/
+				StreamLength -= strlen(IP2);
+			}
 			else
 			{
 				strncat(OutMsg, "\n", 1);
-				strncat(StatusFormat, "\n", 1);
+				if (!JustABug)
+				{
+					strncat(StatusFormat, "\n", 1);
+				}
 			}
 		}
 	}
