@@ -258,6 +258,7 @@ void RecoverFromReexec(void)
 	char *MCode = MEMBUS_CODE_RXD;
 	unsigned long MCodeLength = strlen(MCode) + 1;
 	short HPS = 0;
+	unsigned long TInc = 0;
 	
 	MemBusKey = MEMKEY + 1;
 	
@@ -342,15 +343,22 @@ void RecoverFromReexec(void)
 	}
 	
 	/*Handle pings.*/
-	while (!HandleMemBusPings()) usleep(100);
+	for (; !HandleMemBusPings() && TInc < 100000; ++TInc)
+	{ /*Wait ten seconds.*/
+		 usleep(100);
+	}
 	
+	if (TInc < 100000)
+	{ /*Do not attempt this if we didn't receive a ping because it will only slow us down
+		with another ten second timeout.*/
+		/*Tell the client we are done.*/
+		MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_RXD, true);
+	}
+
 	LogInMemory = false; /*Nothing in here, but we need this to start our logging.*/
 	WriteLogLine(CONSOLE_COLOR_GREEN "Re-executed Epoch.\nNow using " VERSIONSTRING
 				"\nCompiled " __DATE__ " " __TIME__ "." CONSOLE_ENDCOLOR, true);
-	
-	/*Tell the client we are done.*/
-	MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_RXD, true);
-
+				
 	PrimaryLoop(); /*Does everything until the end of time.*/
 }
 
