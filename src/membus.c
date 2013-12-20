@@ -290,7 +290,7 @@ void ParseMemBus(void)
 		
 		if (CurObj)
 		{ /*If we ask to start a HaltCmdOnly command, run the stop command instead, because that's all that we use.*/
-			DidWork = ProcessConfigObject(CurObj, ((BusDataIs(MEMBUS_CODE_OBJSTART) && !CurObj->Opts.HaltCmdOnly) ? true : false), false);
+			DidWork = ProcessConfigObject(CurObj, (BusDataIs(MEMBUS_CODE_OBJSTART) && !CurObj->Opts.HaltCmdOnly), false);
 			
 			snprintf(TmpBuf, sizeof TmpBuf, "Manual %s of object %s %s%s", (BusDataIs(MEMBUS_CODE_OBJSTART) ? "start" : "stop"),
 					CurObj->ObjectID, (DidWork ? "succeeded" : "failed"), ((DidWork == WARNING) ? " with a warning" : ""));
@@ -320,37 +320,55 @@ void ParseMemBus(void)
 		
 		MemBus_Write(TmpBuf, true);
 	}
-	else if (BusDataIs(MEMBUS_CODE_STATUS))
-	{
-		unsigned long LOffset = strlen(MEMBUS_CODE_STATUS " ");
-		char *TWorker = BusData + LOffset;
-		ObjTable *CurObj = LookupObjectInTable(TWorker);
-		char TmpBuf[MEMBUS_SIZE/2 - 1];
+	else if (BusDataIs(MEMBUS_CODE_LSOBJS))
+	{ /*Done for mostly third party stuff.*/
+		char OutBuf[MEMBUS_SIZE/2 - 1];
+		ObjTable *Worker = ObjectTable;
+		unsigned long TPID = 0;
 		
-		if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
-		{ /*No argument?*/
-			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
-			MemBus_Write(TmpBuf, true);
+		for (; Worker->Next; Worker = Worker->Next)
+		{
+			const struct _RLTree *RLWorker = Worker->ObjectRunlevels;
 			
-			return;
+			if (strlen(BusData) > strlen(MEMBUS_CODE_LSOBJS) && strcmp(BusData + strlen(MEMBUS_CODE_LSOBJS " "), Worker->ObjectID) != 0)
+			{
+				continue;
+			}
+			
+			if (!Worker->Opts.HasPIDFile || !(TPID = ReadPIDFile(Worker)))
+			{
+				TPID = Worker->ObjectPID;
+			}
+			
+			/*We need a version for this protocol, because relevant options can change with updates.
+			 * Not all options are here, because some are not really useful.*/
+			snprintf(OutBuf, sizeof OutBuf, "%s %s %s %lu %s %lu %d %d %d %d %d %d %d %d %d %d %d %lu",
+					MEMBUS_CODE_LSOBJS, MEMBUS_LSOBJS_VERSION, Worker->ObjectID,
+					(unsigned long)strlen(Worker->ObjectDescription),
+					Worker->ObjectDescription, TPID, (Worker->Started && !Worker->Opts.HaltCmdOnly),
+					ObjectProcessRunning(Worker), Worker->Enabled, Worker->Opts.CanStop,
+					Worker->Opts.HaltCmdOnly, Worker->Opts.IsService, Worker->Opts.AutoRestart,
+					Worker->Opts.ForceShell, Worker->Opts.RawDescription, Worker->Opts.StopMode,
+					Worker->TermSignal, Worker->StartedSince);
+			
+			MemBus_Write(OutBuf, true);
+			
+			if (RLWorker)
+			{
+				for (; RLWorker->Next; RLWorker = RLWorker->Next)
+				{ /*Send all runlevels.*/
+					snprintf(OutBuf, sizeof OutBuf, "%s %s %s %s", MEMBUS_CODE_LSOBJS,
+							MEMBUS_LSOBJS_VERSION, Worker->ObjectID, RLWorker->RL);
+
+					MemBus_Write(OutBuf, true);
+				}
+			}
 		}
 		
-		if (CurObj)
-		{
-			char TmpBuf[MEMBUS_SIZE/2 - 1];
-			/*Don't let HaltCmdOnly objects be reported as started, because they always look like that anyways.*/
-			snprintf(TmpBuf, sizeof TmpBuf, "%s %s %d %d %d", MEMBUS_CODE_STATUS, TWorker,
-					CurObj->Started && !CurObj->Opts.HaltCmdOnly, ObjectProcessRunning(CurObj), CurObj->Enabled);
-			
-			MemBus_Write(TmpBuf, true);
-		}
-		else
-		{
-			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
-			
-			MemBus_Write(TmpBuf, true);
-		}
-	}
+		/*This says we are done.*/
+		MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_LSOBJS, true);
+		return;
+	}					
 	else if (BusDataIs(MEMBUS_CODE_GETRL))
 	{
 		char TmpBuf[MEMBUS_SIZE/2 - 1];
@@ -621,6 +639,8 @@ void ParseMemBus(void)
 			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, MSig);
 			MemBus_Write(TmpBuf, true);
 			
+			while (!MemBus_Read(TmpBuf, true)) usleep(100); /*Wait to be told they received it.*/
+			
 			LaunchShutdown(Signal);
 
 			return;
@@ -652,6 +672,7 @@ void ParseMemBus(void)
 				return;
 			}
 			
+			++HaltParams.JobID;
 			HaltParams.HaltMode = Signal;
 
 			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, BusData);
@@ -794,6 +815,7 @@ void ParseMemBus(void)
 				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, BusData);
 				TmpObj->Started = false; /*Mark it as stopped now that it's dead.*/
 				TmpObj->ObjectPID = 0; /*Erase the PID.*/
+				TmpObj->StartedSince = 0;
 			}
 			MemBus_Write(TmpBuf, true);
 		}

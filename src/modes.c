@@ -16,6 +16,9 @@
 #include <dirent.h>
 #include "epoch.h"
 
+/*To shut up some weird compilers. I don't know what this thing wants from me.*/
+pid_t getsid(pid_t);
+
 rStatus SendPowerControl(const char *MembusCode)
 { /*Client side to send a request to halt/reboot/power off/disable or enable CAD/etc.*/
 	char InitsResponse[MEMBUS_SIZE/2 - 1], *PCode[2], *PErrMsg;
@@ -74,6 +77,8 @@ rStatus SendPowerControl(const char *MembusCode)
 			return FAILURE;
 		}
 	}
+	
+	MemBus_Write(MembusCode, false); /*Tells init it can shut down the membus.*/
 	
 	if (!strcmp(InitsResponse, PCode[0]))
 	{
@@ -153,76 +158,6 @@ rStatus ObjControl(const char *ObjectID, const char *MemBusSignal)
 	}
 }
 
-Trinity AskObjectStatus(const char *ObjectID)
-{ /*Just request if the object is running or not.*/
-	char RemoteResponse[MEMBUS_SIZE/2 - 1];
-	char OutMsg[MEMBUS_SIZE/2 - 1];
-	char PossibleResponses[2][MEMBUS_SIZE/2 - 1];
-	unsigned long cCounter = 0;
-	Trinity RetVal = { -1, 0, 0, 0 };
-	
-	snprintf(OutMsg, sizeof OutMsg, "%s %s", MEMBUS_CODE_STATUS, ObjectID);
-	
-	if (!MemBus_Write(OutMsg, false))
-	{
-		return RetVal;
-	}
-	
-	while (!MemBus_Read(RemoteResponse, false))
-	{ /*Third function, I really am just copying and pasting this part.
-		* Hey, this is exactly what I was going to write anyways! */
-		usleep(100000); /*0.1 secs*/
-		++cCounter;
-		
-		if (cCounter == 200)
-		{ /*Extra newline because we probably are going to print in a progress report.*/
-			SpitError("\nFailed to get reply via membus.");
-			return RetVal;
-		}
-	}
-	
-	snprintf(PossibleResponses[0], sizeof PossibleResponses[0], "%s %s ",
-		MEMBUS_CODE_STATUS, ObjectID);
-	snprintf(PossibleResponses[1], sizeof PossibleResponses[1], "%s %s %s",
-		MEMBUS_CODE_FAILURE, MEMBUS_CODE_STATUS, ObjectID);
-		
-	if (!strncmp(RemoteResponse, PossibleResponses[0], strlen(PossibleResponses[0])))
-	{
-		const char *TWorker = RemoteResponse + strlen(PossibleResponses[0]);
-		char StringNumber[2] = { '\0', '\0' };
-		
-		/*Is it started?*/
-		StringNumber[0] = *TWorker;
-		
-		RetVal.Val1 = atoi(StringNumber);
-		
-		/*Is it running?*/
-		TWorker += 2;
-		StringNumber[0] = *TWorker;
-		
-		RetVal.Val2 = atoi(StringNumber);
-		
-		/*Is it enabled?*/
-		TWorker += 2;
-		StringNumber[0] = *TWorker;
-		
-		RetVal.Val3 = atoi(StringNumber);
-		
-		/*Set this to say that the request worked.*/
-		RetVal.Flag = true;
-	}
-	else if (!strcmp(RemoteResponse, PossibleResponses[1]))
-	{
-		RetVal.Flag = false;
-	}
-	else
-	{
-		RetVal.Flag = -1;
-	}
-	
-	return RetVal;
-}
-	
 rStatus EmulKillall5(unsigned long InSignal)
 { /*Used as the killall5 utility.*/
 	DIR *ProcDir;
@@ -273,7 +208,7 @@ void EmulWall(const char *InStream, Bool ShowUser)
 	char OutBuf[8192];
 	char HMS[3][16];
 	char MDY[3][16];
-	char OurUser[256];
+	const char *OurUser = getenv("USER");
 	char OurHostname[256];
 	DIR *DevDir, *PtsDir;
 	struct dirent *DirPtr;
@@ -290,19 +225,15 @@ void EmulWall(const char *InStream, Bool ShowUser)
 		MDY[0], MDY[1], MDY[2], CONSOLE_ENDCOLOR);
 	
 	if (ShowUser)
-	{
-		if (getlogin_r(OurUser, sizeof OurUser) != 0)
-		{
-			snprintf(OurUser, sizeof OurUser, "%s", "(unknown)");
-		}
-		
+	{		
 		if (gethostname(OurHostname, sizeof OurHostname) != 0)
 		{
 			snprintf(OurHostname, sizeof OurHostname, "%s", "(unknown)");
 		}
 		
 		/*I really enjoy pulling stuff off like the line below.*/
-		snprintf(&OutBuf[strlen(OutBuf)], sizeof OutBuf - strlen(OutBuf), "Broadcast message from %s@%s: ", OurUser, OurHostname);
+		snprintf(&OutBuf[strlen(OutBuf)], sizeof OutBuf - strlen(OutBuf), "Broadcast message from %s@%s: ",
+				(OurUser != NULL ? OurUser : "(unknown)"), OurHostname);
 		
 	}
 	else
@@ -372,12 +303,6 @@ rStatus EmulShutdown(long ArgumentCount, const char **ArgStream)
 	short Inc = 0;
 	short TimeIsSet = 0, HaltModeSet = 0;
 	Bool AbortingShutdown = false, ImmediateHalt = false;
-	
-	if (getuid() != 0)
-	{
-		fprintf(stderr, "%s", "Unable to comply with shutdown request. You are not root.\n");
-		return FAILURE;
-	}
 	
 	for (; Inc != (ArgumentCount - 1); ++TPtr, ++Inc)
 	{

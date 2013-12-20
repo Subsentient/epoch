@@ -180,6 +180,19 @@ rStatus InitConfig(void)
 		return FAILURE;
 	}
 
+	/*Check for non-ASCII characters.*/
+	while (*Worker++ != '\0')
+	{
+		if (*Worker > 127 || *Worker < 0)
+		{
+			SpitWarning("Non-ASCII characters detected in epoch.conf!\n"
+						"Epoch does not support Unicode or the like!");
+			break;
+		}
+	}
+	
+	Worker = ConfigStream;
+	
 	do /*This loop does most of the parsing.*/
 	{
 		
@@ -626,6 +639,14 @@ rStatus InitConfig(void)
 				continue;
 			}
 
+			if (strstr(DelimCurr, " ") || strstr(DelimCurr, "\t")) /*We cannot allow whitespace.*/
+			{
+				snprintf(ErrBuf, sizeof ErrBuf, "ObjectIDs may not contain whitespace! This is a critical error.\n"
+						"Line %lu in epoch.conf.", LineNum);
+				SpitError(ErrBuf);
+				EmergencyShell();
+			}
+			
 			CurObj = AddObjectToTable(DelimCurr); /*Sets this as our current object.*/
 
 			if ((strlen(DelimCurr) + 1) >= MAX_DESCRIPT_SIZE)
@@ -1157,9 +1178,15 @@ rStatus InitConfig(void)
 		}
 	}
 	
-	/*NOWAIT is deprecated, so emulate it's effect with an ampersand.*/
 	for (ObjWorker = ObjectTable; ObjWorker->Next; ObjWorker = ObjWorker->Next)
 	{
+		/*We don't need to specify a description, but if we neglect to, use the ObjectID.*/
+		if (ObjWorker->ObjectDescription[0] == 0)
+		{
+			strncpy(ObjWorker->ObjectDescription, ObjWorker->ObjectID, strlen(ObjWorker->ObjectID) + 1);
+		}
+
+		/*NOWAIT is deprecated, so emulate it's effect with an ampersand.*/
 		if (ObjWorker->Opts.EmulNoWait)
 		{
 			unsigned long TInc = 0;
@@ -1511,6 +1538,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	
 	/*Initialize these to their default values. Used to test integrity before execution begins.*/
 	Worker->Started = false;
+	Worker->StartedSince = 0;
 	Worker->ObjectDescription[0] = '\0';
 	Worker->ObjectStartCommand[0] = '\0';
 	Worker->ObjectStopCommand[0] = '\0';
@@ -1609,19 +1637,7 @@ static rStatus ScanConfigIntegrity(void)
 	}
 	
 	for (; Worker->Next != NULL; Worker = Worker->Next)
-	{
-		if (*Worker->ObjectDescription == '\0')
-		{
-			snprintf(TmpBuf, 1024, "Object %s has no attribute ObjectDescription.\n"
-						"Changing description to \"missing description\".", Worker->ObjectID);
-			SpitWarning(TmpBuf);
-			
-			snprintf(Worker->ObjectDescription, MAX_DESCRIPT_SIZE, "%s", 
-					CONSOLE_COLOR_YELLOW "[missing description]" CONSOLE_ENDCOLOR);
-
-			RetState = WARNING;
-		}
-		
+	{		
 		if (*Worker->ObjectStartCommand == '\0' && *Worker->ObjectStopCommand == '\0' && Worker->Opts.StopMode == STOP_COMMAND)
 		{
 			snprintf(TmpBuf, 1024, "Object %s has neither ObjectStopCommand nor ObjectStartCommand attributes.", Worker->ObjectID);
@@ -2140,6 +2156,7 @@ rStatus ReloadConfig(void)
 		{
 			Worker->Started = SWorker->Started;
 			Worker->ObjectPID = SWorker->ObjectPID;
+			Worker->StartedSince = SWorker->StartedSince;
 		}
 		
 		ObjRL_ShutdownRunlevels(SWorker);

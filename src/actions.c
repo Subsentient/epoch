@@ -18,19 +18,16 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <signal.h>
-#include <pthread.h>
 #include "epoch.h"
 
 /*Prototypes.*/
 static void MountVirtuals(void);
-static void *PrimaryLoop(void *UselessArg);
+static void PrimaryLoop(void);
 
 /*Globals.*/
-volatile struct _HaltParams HaltParams = { -1, 0, 0, 0, 0, 0 };
+volatile struct _HaltParams HaltParams = { -1 };
 Bool AutoMountOpts[5] = { false, false, false, false, false };
 static volatile Bool ContinuePrimaryLoop = true;
-static pthread_t PrimaryLoopThread; /*This isn't really changed much once we launch our thread,
-* so we don't need to make it volatile.*/
 
 /*Functions.*/
 
@@ -81,124 +78,150 @@ static void MountVirtuals(void)
 	}
 }
 
-static void *PrimaryLoop(void *UselessArg)
+static void PrimaryLoop(void)
 { /*Loop that provides essentially everything we cycle through.*/
 	unsigned long CurMin = 0, CurSec = 0;
 	ObjTable *Worker = NULL;
 	struct tm TimeStruct;
 	time_t TimeCore;
-	short ScanStepper = 0;
+	short LoopStepper = 0, ScanStepper = 0;
 	
-	(void)UselessArg;
+	for (ContinuePrimaryLoop = true; ContinuePrimaryLoop; ++LoopStepper)
+	{	
 	
-	for (; ContinuePrimaryLoop; ++ScanStepper)
-	{
-		usleep(250000); /*Quarter of a second.*/
+		/**The line below is of critical importance. It harvests
+		 * the zombies created by all processes throughout the system.**/
+		while (waitpid(-1, NULL, WNOHANG) > 0);
 		
-		HandleMemBusPings(); /*Tell clients we are alive if they ask.*/
-		
-		ParseMemBus(); /*Check membus for new data.*/
-		
-		if (HaltParams.HaltMode != -1)
+		/*Do not flood the system with this big loop more than necessary.*/
+		if (LoopStepper == 5)
 		{
-			time(&TimeCore);
-			localtime_r(&TimeCore, &TimeStruct);
 			
-			CurMin = TimeStruct.tm_min;
-			CurSec = TimeStruct.tm_sec;
+			LoopStepper = 0;
 			
-			/*Allow a membus job to finish before shutdown, but actually do the shutdown afterwards.*/
-			if (GetStateOfTime(HaltParams.TargetHour, HaltParams.TargetMin, HaltParams.TargetSec,
-					HaltParams.TargetMonth, HaltParams.TargetDay, HaltParams.TargetYear))
-			{ /*GetStateOfTime() returns 1 if the passed time is the present, and 2 if it's the past,
-				so we can just take whatever positive value we are given.*/		
-				LaunchShutdown(HaltParams.HaltMode);
-			}
-			else if (CurSec == HaltParams.TargetSec && CurMin != HaltParams.TargetMin &&
-					DateDiff(HaltParams.TargetHour, HaltParams.TargetMin, NULL, NULL, NULL) <= 20 )
-			{ /*If 20 minutes or less until shutdown, warn us every minute.
-				* If we miss a report because the membus was being parsed or something,
-				* don't try to report it after, because that time has probably passed.*/
-				char TBuf[MAX_LINE_SIZE];
-				const char *HaltMode = NULL;
-				static short LastMin = -1;
-
-				if (LastMin != CurMin)
-				{ /*Don't repeat ourselves 80 times while the second rolls over.*/
-					if (HaltParams.HaltMode == OSCTL_LINUX_HALT)
-					{
-						HaltMode = "halt";
-					}
-					else if (HaltParams.HaltMode == OSCTL_LINUX_POWEROFF)
-					{
-						HaltMode = "poweroff";
-					}
-					else
-					{
-						HaltParams.HaltMode = OSCTL_LINUX_REBOOT;
-						HaltMode = "reboot";
-					}
-					
-					snprintf(TBuf, sizeof TBuf, "System is going down for %s in %lu minutes!",
-							HaltMode, DateDiff(HaltParams.TargetHour, HaltParams.TargetMin, NULL, NULL, NULL));
-					EmulWall(TBuf, false);
-					
-					LastMin = CurMin;
-				}
-			}
-		}
-		
-		if (ObjectTable)
-		{
-			for (Worker = ObjectTable; Worker->Next != NULL; Worker = Worker->Next)
-			{ /*Handle objects intended for automatic restart.*/
-				if (Worker->Opts.AutoRestart && Worker->Started && !ObjectProcessRunning(Worker))
-				{
-					char TmpBuf[MAX_LINE_SIZE];
-					
-					if (!Worker->Opts.HasPIDFile && AdvancedPIDFind(Worker, true))
-					{ /* Try to update the PID rather than restart, since some things change their PIDs via forking etc.*/
-						continue;
-					}
-					
-					snprintf(TmpBuf, MAX_LINE_SIZE, "AUTORESTART: Object %s is not running. Restarting.", Worker->ObjectID);
-					WriteLogLine(TmpBuf, true);
-					
-					if (ProcessConfigObject(Worker, true, false))
-					{
-						snprintf(TmpBuf, MAX_LINE_SIZE, "AUTORESTART: Object %s successfully restarted.", Worker->ObjectID);
-					}
-					else
-					{
-						snprintf(TmpBuf, MAX_LINE_SIZE, "AUTORESTART: " CONSOLE_COLOR_RED "Failed" CONSOLE_ENDCOLOR
-								" to restart object %s automatically.\nMarking object stopped.", Worker->ObjectID);
-						Worker->Started = false;
-					}
-					
-					WriteLogLine(TmpBuf, true);
-				}
+			HandleMemBusPings(); /*Tell clients we are alive if they ask.*/
+			
+			ParseMemBus(); /*Check membus for new data.*/
+			
+			if (HaltParams.HaltMode != -1)
+			{
+				time(&TimeCore);
+				localtime_r(&TimeCore, &TimeStruct);
 				
-				/*Rescan PIDs every minute to keep them up-to-date.*/
-				if (ScanStepper == 240 && Worker->Started && !Worker->Opts.HasPIDFile)
-				{
-					AdvancedPIDFind(Worker, true);
+				CurMin = TimeStruct.tm_min;
+				CurSec = TimeStruct.tm_sec;
+				
+				/*Allow a membus job to finish before shutdown, but actually do the shutdown afterwards.*/
+				if (GetStateOfTime(HaltParams.TargetHour, HaltParams.TargetMin, HaltParams.TargetSec,
+						HaltParams.TargetMonth, HaltParams.TargetDay, HaltParams.TargetYear))
+				{ /*GetStateOfTime() returns 1 if the passed time is the present, and 2 if it's the past,
+					so we can just take whatever positive value we are given.*/		
+					LaunchShutdown(HaltParams.HaltMode);
+				}
+				else if (CurSec >= HaltParams.TargetSec && CurMin != HaltParams.TargetMin &&
+					DateDiff(HaltParams.TargetHour, HaltParams.TargetMin, NULL, NULL, NULL) <= 20 )
+				{ /*If 20 minutes or less until shutdown, warn us every minute.*/
+					char TBuf[MAX_LINE_SIZE];
+					const char *HaltMode = NULL;
+					static unsigned long LastJobID = 0;
+					static short LastMin = -1;
+	
+					if (LastJobID != HaltParams.JobID || CurMin != LastMin)
+					{ /*Don't repeat ourselves 80 times while the second rolls over.*/
+						if (HaltParams.HaltMode == OSCTL_LINUX_HALT)
+						{
+							HaltMode = "halt";
+						}
+						else if (HaltParams.HaltMode == OSCTL_LINUX_POWEROFF)
+						{
+							HaltMode = "poweroff";
+						}
+						else
+						{
+							HaltParams.HaltMode = OSCTL_LINUX_REBOOT;
+							HaltMode = "reboot";
+						}
+						
+						snprintf(TBuf, sizeof TBuf, "System is going down for %s in %lu minutes!",
+								HaltMode, DateDiff(HaltParams.TargetHour, HaltParams.TargetMin, NULL, NULL, NULL));
+						EmulWall(TBuf, false);
+						
+						LastJobID = HaltParams.JobID;
+						LastMin = CurMin;
+					}
 				}
 			}
+			
+			if (ObjectTable)
+			{
+				for (Worker = ObjectTable; Worker->Next != NULL; Worker = Worker->Next)
+				{ /*Handle objects intended for automatic restart.*/
+					if (Worker->Opts.AutoRestart && Worker->Started && !ObjectProcessRunning(Worker))
+					{
+						char TmpBuf[MAX_LINE_SIZE];
+						
+						if (!Worker->Opts.HasPIDFile && AdvancedPIDFind(Worker, true))
+						{ /* Try to update the PID rather than restart, since some things change their PIDs via forking etc.*/
+							continue;
+						}
+						
+						/*Don't let us enter a restart loop.*/
+						if (Worker->StartedSince + 5 > time(NULL))
+						{
+							snprintf(TmpBuf, sizeof TmpBuf,
+									"AUTORESTART: "CONSOLE_COLOR_RED "PROBLEM:\n"
+									"Object %s is trying to autorestart "
+									"within 5 secs of last start.\n ** " CONSOLE_ENDCOLOR
+									"Marking object stopped to safeguard against restart loop.",
+									Worker->ObjectID);
+									
+							WriteLogLine(TmpBuf, true);
+							
+							Worker->Started = false;
+							Worker->ObjectPID = 0;
+							Worker->StartedSince = 0;
+							continue;
+						}
+						
+						snprintf(TmpBuf, MAX_LINE_SIZE, "AUTORESTART: Object %s is not running. Restarting.", Worker->ObjectID);
+						WriteLogLine(TmpBuf, true);
+						
+						if (ProcessConfigObject(Worker, true, false))
+						{
+							snprintf(TmpBuf, MAX_LINE_SIZE, "AUTORESTART: Object %s successfully restarted.", Worker->ObjectID);
+						}
+						else
+						{
+							snprintf(TmpBuf, MAX_LINE_SIZE, "AUTORESTART: " CONSOLE_COLOR_RED "Failed" CONSOLE_ENDCOLOR
+									" to restart object %s automatically.\nMarking object stopped.", Worker->ObjectID);
+							Worker->Started = false;
+							Worker->ObjectPID = 0;
+							Worker->StartedSince = 0;
+						}
+						
+						WriteLogLine(TmpBuf, true);
+					}
+					
+					/*Rescan PIDs every minute to keep them up-to-date.*/
+					if (ScanStepper == 240 && Worker->Started && !Worker->Opts.HasPIDFile)
+					{
+						AdvancedPIDFind(Worker, true);
+					}
+				}
+			}
+			
+			if (ScanStepper == 240)
+			{
+				ScanStepper = 0;
+			}
+			
+			++ScanStepper;
 		}
 		
-		if (ScanStepper == 240)
-		{
-			ScanStepper = 0;
-		}
-		
+		usleep(50000); /*0.05 secs*/
+
 		/*Lots of brilliant code here, but I typed it in invisible pixels.*/
-	}
-	
-	ContinuePrimaryLoop = true;
-	/*We do this so LaunchShutdown(), when called via SigHandler(),
-	will know that we exited gracefully and not kill us.*/
-	
-	return NULL;
+	}		
 }
 
 /*This does what it sounds like. It exits us to go to a shell in event of catastrophe.*/
@@ -235,6 +258,7 @@ void RecoverFromReexec(void)
 	char *MCode = MEMBUS_CODE_RXD;
 	unsigned long MCodeLength = strlen(MCode) + 1;
 	short HPS = 0;
+	unsigned long TInc = 0;
 	
 	MemBusKey = MEMKEY + 1;
 	
@@ -266,6 +290,7 @@ void RecoverFromReexec(void)
 			
 			memcpy(&CurObj->ObjectPID, (InBuf + MCodeLength + TLength), sizeof(long));
 			memcpy(&CurObj->Started, (InBuf + MCodeLength + TLength + sizeof(long)), sizeof(Bool));
+			memcpy(&CurObj->StartedSince, (InBuf + MCodeLength + TLength + sizeof(long) + sizeof(Bool)), sizeof(long));
 		}
 		
 		while (!MemBus_BinRead(InBuf, sizeof InBuf, false)) usleep(100);
@@ -282,6 +307,7 @@ void RecoverFromReexec(void)
 	memcpy((void*)&HaltParams.TargetMonth, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
 	memcpy((void*)&HaltParams.TargetDay, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
 	memcpy((void*)&HaltParams.TargetYear, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
+	memcpy((void*)&HaltParams.JobID, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
 	
 	/*Retrieve our trinity of important options.*/
 	while (!MemBus_BinRead(InBuf, sizeof InBuf, false)) usleep(100);
@@ -305,40 +331,35 @@ void RecoverFromReexec(void)
 	ShutdownMemBus(false);
 	MemBusKey = MEMKEY;
 	
-	if (!InitMemBus(true))
-	{
-		SpitWarning("Cannot restart normal membus after re-exec. System is otherwise operational.");
-	}
-	
 	/*Reset environment variables.*/
 	setenv("USER", ENVVAR_USER, true);
 	setenv("PATH", ENVVAR_PATH, true);
 	setenv("HOME", ENVVAR_HOME, true);
 	setenv("SHELL", ENVVAR_SHELL, true);
 	
-	/*Restart the PrimaryLoop thread.*/
-	memset(&PrimaryLoopThread, 0, sizeof(pthread_t));
+	if (!InitMemBus(true))
+	{
+		SpitWarning("Cannot restart normal membus after re-exec. System is otherwise operational.");
+	}
 	
-	pthread_create(&PrimaryLoopThread, NULL, PrimaryLoop, NULL);
-	pthread_detach(PrimaryLoopThread);
+	/*Handle pings.*/
+	for (; !HandleMemBusPings() && TInc < 100000; ++TInc)
+	{ /*Wait ten seconds.*/
+		 usleep(100);
+	}
 	
+	if (TInc < 100000)
+	{ /*Do not attempt this if we didn't receive a ping because it will only slow us down
+		with another ten second timeout.*/
+		/*Tell the client we are done.*/
+		MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_RXD, true);
+	}
+
 	LogInMemory = false; /*Nothing in here, but we need this to start our logging.*/
 	WriteLogLine(CONSOLE_COLOR_GREEN "Re-executed Epoch.\nNow using " VERSIONSTRING
 				"\nCompiled " __DATE__ " " __TIME__ "." CONSOLE_ENDCOLOR, true);
-	
-	/*Tell the client we are done.*/
-	MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_RXD, true);
-	
-	/*Now start our eternal 'derp' loop.*/
-	while (1)
-	{
-		if (!RunningChildCount)
-		{
-			waitpid(-1, NULL, WNOHANG);
-		}
-		
-		usleep(50000);
-	}
+				
+	PrimaryLoop(); /*Does everything until the end of time.*/
 }
 
 void ReexecuteEpoch(void)
@@ -353,8 +374,7 @@ void ReexecuteEpoch(void)
 	
 	ShutdownMemBus(true); /*We are now going to use a different MemBus key.*/
 	MemBusKey = MEMKEY + 1; /*This prevents clients from interfering.*/
-	++RunningChildCount; /*Stop the tiny loop that reaps system wide dead processes.*/
-	
+		
 	
 	if (!TestDescriptor)
 	{
@@ -466,6 +486,7 @@ void ReexecuteEpoch(void)
 		
 		memcpy(OutBuf + MCodeLength + TLength, &Worker->ObjectPID, sizeof(long));
 		memcpy(OutBuf + sizeof(long) + TLength + MCodeLength, &Worker->Started, sizeof(Bool));
+		memcpy(OutBuf + sizeof(long) + sizeof(Bool) + TLength + MCodeLength, &Worker->StartedSince, sizeof(long));
 		
 		MemBus_BinWrite(OutBuf, sizeof OutBuf, true);
 	}
@@ -481,6 +502,7 @@ void ReexecuteEpoch(void)
 	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.TargetMonth, sizeof HaltParams);
 	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.TargetDay, sizeof HaltParams);
 	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.TargetYear, sizeof HaltParams);
+	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.JobID, sizeof HaltParams);
 	
 	MemBus_BinWrite(OutBuf, sizeof HaltParams + MCodeLength, true);
 	
@@ -502,11 +524,6 @@ void ReexecuteEpoch(void)
 
 void LaunchBootup(void)
 { /*Handles what would happen if we were PID 1.*/
-	Bool Insane = false;
-	
-	/*I am going to grumble about the type of pthread_t being implementation defined.*/
-	/*Grumble.*/
-	memset(&PrimaryLoopThread, 0, sizeof(pthread_t));
 	
 	setsid();
 	
@@ -620,22 +637,7 @@ void LaunchBootup(void)
 		putc('\007', stderr); /*Beep.*/
 	}
 	
-	/*Start the primary loop's thread. It's responsible for parsimg membus,
-	 * handling scheduled shutdowns and service auto-restarts, and more.
-	 * We pass it a Bool so we can shut it down when the time comes.*/
-	pthread_create(&PrimaryLoopThread, NULL, &PrimaryLoop, NULL);
-	pthread_detach(PrimaryLoopThread); /*A lazier way than using attrs.*/
-	
-	while (!Insane) /*We're still pretty insane.*/
-	{ /*Now wait forever.*/
-		if (!RunningChildCount)
-		{ /*Clean away extra child processes that are started by the rest of the system.
-			Do this to avoid zombie process apocalypse.*/
-			waitpid(-1, NULL, WNOHANG);
-		}
-		
-		usleep(50000);
-	}
+	PrimaryLoop(); /*Does everything after initial boot.*/
 }
 
 void LaunchShutdown(signed long Signal)
@@ -663,35 +665,35 @@ void LaunchShutdown(signed long Signal)
 	snprintf(MsgBuf, sizeof MsgBuf, "System is going down for %s NOW!", HType);
 	EmulWall(MsgBuf, false);
 	
-	WriteLogLine(LogMsg, true);
+	if (!BlankLogOnBoot) /*No point in doing it if it's just going to be erased.*/
+	{
+		WriteLogLine(LogMsg, true);
+	}
 	
 
 	EnableLogging = false; /*Prevent any additional log entries.*/
 	
-	ContinuePrimaryLoop = false; /*Bring down the primary loop.*/
-	
-	if (!pthread_equal(pthread_self(), PrimaryLoopThread))
-	{ /*We need to kill the primary loop if we aren't it.
-		This happens when we are rebooted via CTRL-ALT-DEL.*/
-		short Inc = 0;
-		
-		/*Give it a moment to come down peacefully.*/
-		for (; !ContinuePrimaryLoop && Inc < 40; ++Inc) /*40/4 = 10 secs*/
+	/*Kill any running jobs.*/
+	if (CurrentTask.Set)
+	{
+		if (CurrentTask.PID == 0)
 		{
-			usleep(250000);/*.25 seconds.*/
+			unsigned long *TNum = (void*)CurrentTask.Node;
 			
-			if (Inc == 8) /*Warn us what we're waiting for after two seconds.*/
-			{
-				printf("Waiting for primary loop to exit...\n");
-			}
+			*TNum = 100001;
+		}
+		else
+		{
+			kill(CurrentTask.PID, SIGKILL);
+			waitpid(CurrentTask.PID, NULL, 0); /*Reap it.*/
 		}
 		
-		if (!ContinuePrimaryLoop) /*Loop hasn't set the flag to 'true' again to let us know it's cooperating?*/
-		{
-			/*Too late.*/
-			pthread_kill(PrimaryLoopThread, SIGKILL);
-		}
+		CurrentTask.Set = false;
+		CurrentTask.Node = NULL;
+		CurrentTask.TaskName = NULL;
+		CurrentTask.PID = 0;
 	}
+	
 	
 	if (!ShutdownMemBus(true))
 	{ /*Shutdown membus first, so no other signals will reach us.*/

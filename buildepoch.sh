@@ -36,6 +36,8 @@ ShowHelp()
 	echo -e $Green"--outpath dir"$EndGreen":\n\tThe location that the compiled binary"
 	echo -e "\tand symlinks will be placed upon completion."
 	echo -e "\tSimilar to make install DESTDIR=\"\"."
+	echo -e $Green"--disable-backtraces"$EndGreen":\n\tThis flag is necessary for building with"
+	echo -e "\tuClibc and other libc implementations that don't provide execinfo.h."
 	echo -e $Green"--disable-shell"$EndGreen":\n\tIf this flag is set, Epoch will be built"
 	echo -e "\tto not launch objects with /bin/sh, and will instead try to use an"
 	echo -e "\targument list. This may be useful on embedded systems,"
@@ -113,6 +115,9 @@ if [ "$#" != "0" ]; then
 		elif [ "$1" == "--disable-shell" ]; then
 			CFLAGS=$CFLAGS" -DNOSHELL"
 			
+		elif [ "$1" == "--disable-backtraces" ]; then
+			CFLAGS=$CFLAGS" -DNO_EXECINFO"
+			
 		elif [ "$1" == "--shellpath" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DSHELLPATH=\"$1\""
@@ -167,7 +172,7 @@ echo -e "\nBuilding main executable.\n"
 mkdir -p $outdir/sbin/
 mkdir -p $outdir/bin/
 
-CMD "$CC $LDFLAGS $CFLAGS -pthread -o $outdir/sbin/epoch\
+CMD "$CC $LDFLAGS $CFLAGS -o $outdir/sbin/epoch\
  actions.o config.o console.o main.o membus.o modes.o parse.o utilfuncs.o"
 
 echo -e "\nCreating symlinks.\n"

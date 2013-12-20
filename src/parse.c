@@ -11,15 +11,13 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <ctype.h>
-#include <pthread.h>
+#include <time.h>
 #include "epoch.h"
 
 /**Globals**/
 
 /*We store the current runlevel here.*/
 char CurRunlevel[MAX_DESCRIPT_SIZE] = { '\0' };
-volatile unsigned long RunningChildCount = 0; /*How many child processes are running?
-									* I promised myself I wouldn't use this code.*/
 struct _CTask CurrentTask = { NULL }; /*We save this for each linear task, so we can kill the process if it becomes unresponsive.*/
 volatile BootMode CurrentBootMode = BOOT_NEUTRAL;
 
@@ -159,7 +157,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	}
 	SigMaker[1] = SigMaker[0];
 	
-	pthread_sigmask(SIG_BLOCK, &SigMaker[0], NULL);
+	sigprocmask(SIG_BLOCK, &SigMaker[0], NULL);
 	
 	/**Actually do the (v)fork().**/
 	LaunchPID = ForkFunc();
@@ -172,16 +170,12 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	
 	if (LaunchPID > 0)
 	{
-			++RunningChildCount; /*I have a feeling that when the stars align,
-								* this variable will be accessed by two threads at once
-								* and crash to the ground. I hope I'm wrong.*/
-
 			CurrentTask.Node = InObj;
 			CurrentTask.TaskName = InObj->ObjectID;
 			CurrentTask.PID = LaunchPID;
 			CurrentTask.Set = true;
 			
-			pthread_sigmask(SIG_UNBLOCK, &SigMaker[1], NULL); /*Unblock now that (v)fork() is complete.*/
+			sigprocmask(SIG_UNBLOCK, &SigMaker[1], NULL); /*Unblock now that (v)fork() is complete.*/
 	}
 	
 	if (LaunchPID == 0) /**Child process code.**/
@@ -198,15 +192,19 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 			signal(Inc, SIG_DFL); /*Set all the signal handlers to default while we're at it.*/
 		}
 		
-		pthread_sigmask(SIG_UNBLOCK, &Sig2, NULL); /*Unblock signals.*/
+		sigprocmask(SIG_UNBLOCK, &Sig2, NULL); /*Unblock signals.*/
 		
 		/*Change our session id.*/
 		setsid();
 		
 #ifndef NOSHELL
-		if (ShellEnabled && (strpbrk(CurCmd, "&^$#@!()*%{}`~+=-|\\<>?;:'[]\"\t") != NULL || ForceShell))
+		if (ShellEnabled && (strpbrk(CurCmd, "&^$#@!()*%{}`~+|\\<>?;:'[]\"\t") != NULL || ForceShell))
 		{
 			execlp(ShellPath, "sh", "-c", CurCmd, NULL); /*I bet you think that this is going to return the PID of sh. No.*/
+			
+			snprintf(TmpBuf, 1024, "Failed to execute %s: execlp() failure launching \"" SHELLPATH "\".", InObj->ObjectID);
+			SpitError(TmpBuf);
+			exit(1); /*Makes sure that we report failure. This is a problem.*/
 		}
 		else
 #endif
@@ -243,19 +241,16 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 			
 			execvp(ArgV[0], ArgV);
 			
+			/*In this case, it could be a file not found, in which case, just have the child, us, exit gracefully.*/
+			exit(1);
+			
 		}
 		/*We still around to talk about it? We were supposed to be imaged with the new command!*/
-		
-		snprintf(TmpBuf, 1024, "Failed to execute %s: execlp() failure.", InObj->ObjectID);
-		SpitError(TmpBuf);
-		return -1;
 	}
 	
 	/**Parent code resumes.**/
-
 	waitpid(LaunchPID, &RawExitStatus, 0); /*Wait for the process to exit.*/
-	--RunningChildCount; /*We're done, so say so.*/
-	
+
 	CurrentTask.Set = false;
 	CurrentTask.Node = NULL;
 	CurrentTask.TaskName = NULL;
@@ -358,8 +353,13 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		}
 		
 		/*Wait for a PID file to appear if we specified one. This prevents autorestart hell.*/
-		if (CurObj->Opts.HasPIDFile)
+		if (ExitStatus && CurObj->Opts.HasPIDFile)
 		{
+			CurrentTask.Node = (void*)&Counter;
+			CurrentTask.TaskName = CurObj->ObjectID;
+			CurrentTask.PID = 0;
+			CurrentTask.Set = true;
+			
 			while (!FileUsable(CurObj->ObjectPIDFile))
 			{ /*Wait ten seconds total but check every 0.0001 seconds.*/
 				usleep(100);
@@ -371,10 +371,24 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					ExitStatus = WARNING;
 					break;
 				}
+				else if (Counter > 100000)
+				{
+					break;
+				}
 			}
+			
+			CurrentTask.Set = false;
+			CurrentTask.Node = NULL;
+			CurrentTask.TaskName = NULL;
+			CurrentTask.PID = 0;
 		}
 		
 		CurObj->Started = (ExitStatus ? true : false); /*Mark the process dead or alive.*/
+		
+		if (ExitStatus)
+		{
+			CurObj->StartedSince = time(NULL);
+		}
 		
 		if (PrintStatus)
 		{
@@ -402,6 +416,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				{
 					CurObj->ObjectPID = 0;
 					CurObj->Started = false;
+					CurObj->StartedSince = 0;
 				}
 				
 				if (PrintStatus)
@@ -413,6 +428,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				break;
 			case STOP_NONE:
 				CurObj->Started = false; /*Just say we did it even if nothing to do.*/
+				CurObj->StartedSince = 0;
 				ExitStatus = SUCCESS;
 				CurObj->ObjectPID = 0;
 				break;
@@ -434,7 +450,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					break;
 				}
 
-				if (kill(CurObj->ObjectPID, SIGTERM) == 0)
+				if (kill(CurObj->ObjectPID, CurObj->TermSignal) == 0)
 				{ /*Just send SIGTERM.*/
 					unsigned char TInc = 0;
 					
@@ -447,9 +463,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					for (; kill(CurObj->ObjectPID, 0) == 0; ++TInc)
 					{ /*Two hundred is ten seconds here.*/
 						
-						/*If we are not in a thread, we need to wait for the process ourselves,
-						because nobody else will do it for us.*/
-						waitpid(CurObj->ObjectPID, NULL, WNOHANG);
+						waitpid(CurObj->ObjectPID, NULL, WNOHANG); /*We must harvest the PID since we have occupied the primary loop.*/
 						
 						usleep(50000);
 						
@@ -486,6 +500,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				if (ExitStatus)
 				{
 					CurObj->ObjectPID = 0;
+					CurObj->StartedSince = 0;
 					CurObj->Started = false;
 				}
 				
@@ -517,7 +532,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				}
 				
 				/*Now we can actually kill the process ID.*/
-				if (kill(TruePID, SIGTERM) == 0)
+				if (kill(TruePID, CurObj->TermSignal) == 0)
 				{
 					unsigned char TInc = 0;			
 						
@@ -530,9 +545,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					for (; kill(TruePID, 0) == 0; ++TInc)
 					{ /*Two hundred is ten seconds here.*/
 						
-						/*If we are not in a thread, we need to wait for the process ourselves,
-						because nobody else will do it for us.*/
-						waitpid(TruePID, NULL, WNOHANG);
+						waitpid(TruePID, NULL, WNOHANG); /*We must harvest the PID since we have occupied the primary loop.*/
 						
 						usleep(50000);
 						
@@ -569,6 +582,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				if (ExitStatus)
 				{
 					CurObj->Started = false;
+					CurObj->StartedSince = 0;
 					CurObj->ObjectPID = 0;
 				}
 				

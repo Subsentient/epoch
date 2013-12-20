@@ -120,14 +120,15 @@
 #define MEMBUS_CODE_OBJRLS_CHECK "OBJRLS_CHECK"
 #define MEMBUS_CODE_OBJRLS_ADD "OBJRLS_ADD"
 #define MEMBUS_CODE_OBJRLS_DEL "OBJRLS_DEL"
-#define MEMBUS_CODE_STATUS "OBJSTAT"
 #define MEMBUS_CODE_RUNLEVEL "RUNLEVEL"
 #define MEMBUS_CODE_GETRL "GETRL"
 #define MEMBUS_CODE_KILLOBJ "KILLOBJ"
 #define MEMBUS_CODE_SENDPID "SENDPID"
+#define MEMBUS_CODE_LSOBJS "LSOBJS"
 #define MEMBUS_CODE_RXD "RXD"
 #define MEMBUS_CODE_RXD_OPTS "ORXD"
 
+#define MEMBUS_LSOBJS_VERSION "V1.2"
 /**Types, enums, structs and whatnot**/
 
 
@@ -170,6 +171,7 @@ typedef struct _EpochObjectTable
 	unsigned char TermSignal; /*The signal we send to an object if it's stop mode is PID or PIDFILE.*/
 	Bool Enabled;
 	Bool Started;
+	unsigned long StartedSince; /*The time in UNIX seconds since it was started.*/
 	
 	struct 
 	{
@@ -208,15 +210,8 @@ struct _HaltParams
 	unsigned long TargetMonth;
 	unsigned long TargetDay;
 	unsigned long TargetYear;
+	unsigned long JobID;
 };
-
-typedef struct
-{ /*This is useful occasionally.*/
-	Bool Flag;
-	Bool Val1;
-	Bool Val2;
-	Bool Val3;
-} Trinity;
 
 struct _CTask
 {
@@ -237,7 +232,6 @@ extern Bool DisableCAD;
 extern char Hostname[MAX_LINE_SIZE];
 extern volatile struct _HaltParams HaltParams;
 extern Bool AutoMountOpts[5];
-extern volatile unsigned long RunningChildCount;
 extern Bool EnableLogging;
 extern Bool LogInMemory;
 extern Bool BlankLogOnBoot;
@@ -283,7 +277,6 @@ extern rStatus SendPowerControl(const char *MembusCode);
 extern rStatus EmulKillall5(unsigned long InSignal);
 extern void EmulWall(const char *InStream, Bool ShowUser);
 extern rStatus EmulShutdown(long ArgumentCount, const char **ArgStream);
-extern Trinity AskObjectStatus(const char *ObjectID);
 extern rStatus ObjControl(const char *ObjectID, const char *MemBusSignal);
 
 /*membus.c*/
