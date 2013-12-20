@@ -1,0 +1,209 @@
+Changelog for 1.0 RC2, in order from newest to oldest.
+
+
+commit e9ddddae4aabed344cff8a0733f0127a5648a30f
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Wed Dec 18 15:20:45 2013 -0700
+
+    Fix forever-spaced bug with alignment on non-ttys.
+
+commit 56f03fee94dcb2dad8c10012fc90f2f224afcb82
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Wed Dec 18 03:50:50 2013 -0700
+
+    Fix a really embarassing typo I claimed wasn't.
+
+commit 215463b10a8d7d2e3ed47f28edb3557f8d000be3
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Wed Dec 18 03:42:34 2013 -0700
+
+    Reap the force-killed possible job at shutdown. This is a cryptic description.
+
+commit 0728c6fe01b9ab78353a2c92c48e36d3f7e7a532
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Wed Dec 18 03:32:43 2013 -0700
+
+    Fix poweroff/halt/reboot commands not returning.
+
+commit 669f8619c380120fe73c91f0217380c648744a66
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Wed Dec 18 03:14:20 2013 -0700
+
+    Don't wait forever if the client exited for reexec.
+
+commit 2a2d31cb0dbf50f1b9ea76b6145703c454ac92cc
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Wed Dec 18 03:05:47 2013 -0700
+
+    Remove all requirements for threading, use a coroutine instead.
+
+commit fd0310b4461643e04bcbbcf345c716eb55cadeed
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Dec 16 15:35:38 2013 -0700
+
+    Warn about unicode characters in epoch.conf
+
+commit 860c97b3dc5406ca28199c2ee0997b3a95cff00a
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Dec 16 07:24:03 2013 -0700
+
+    Remove accidentally left-over debugging trick.
+
+commit b48abb8c6f76a529784e3b41dd9a21e812d7bdd7
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Dec 16 06:20:53 2013 -0700
+
+    Allow scheduled shutdowns for those who are not root.
+
+commit 08b0dd90bf218d926a89984acd922599dd0cacae
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Dec 16 06:07:16 2013 -0700
+
+    Fix missing user in EmulWall().
+
+commit e2ede8a245e94d7c579420d2226da18946e7cc46
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Dec 16 05:19:27 2013 -0700
+
+    Fix some funky code for < 20 min shutdown warnings.
+
+commit c2feec6ffb07b9cbfb7d1094b3e0d6366830204b
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Wed Dec 11 21:20:53 2013 -0700
+
+    Don't call the shell to start an object when unnecessary
+
+commit 454dca588c8ef213cdadc3d95adbbf2784ef9486
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Wed Dec 11 14:21:22 2013 -0700
+
+    Remove obsolete code from old status format.
+
+commit 84bad9ec559341977fafcecca31aaa6a86580248
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Wed Dec 11 14:12:10 2013 -0700
+
+    Enable logging by default, and turn on BlankLogOnBoot by default.
+
+commit a43c38f115c9cea19d503abc824dc6aba1eb6b08
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Wed Dec 11 13:59:19 2013 -0700
+
+    Safeguard against autorestart infinite loops.
+
+commit edb26b7def90fb6eaebbb9b6d5e1c6edb31b2acb
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Wed Dec 11 03:07:33 2013 -0700
+
+    Add times to 'epoch list' command, and then merge 'list' into 'status'.
+
+commit 34ae5fd8af7731daea6cd82220b19ed76dfcf06c
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Tue Dec 10 21:21:28 2013 -0700
+
+    Add help for new 'epoch list' command, fix C89-related warnings.
+
+commit 88948afce2b83a20a25da0565569b69e9f4593a5
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Tue Dec 10 20:47:39 2013 -0700
+
+    Fix critical bug -- make TERMSIGNAL option work.
+
+commit 0f5debc22ef121bbc12ccd6d5c0c105c2608fe3a
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Tue Dec 10 20:45:43 2013 -0700
+
+    Add very useful 'epoch list' command, updates the LSOBJS protocol.
+
+commit 61bca69f78d67f273d9a2d8bde328a7a80b2f5fd
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Tue Dec 10 01:50:07 2013 -0700
+
+    Add ability to switch runlevels with 'epoch runlevel', clean up help code a big.
+
+commit 90addf907578b6e8876cc0919332e67c220f3c1b
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Tue Dec 10 00:46:39 2013 -0700
+
+    Fix typos in buildepoch.sh
+
+commit 32ea863e364083209d7cc202b149af5ce6cce9e9
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Dec 9 21:32:36 2013 -0700
+
+    Fix exit statuses and whatnot with some of the new command framework.
+
+commit 369709e4509bd2e06d13d6b209fe51ee064d95de
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Dec 9 11:47:15 2013 -0700
+
+    Fix support for non-glibc libcs.
+
+commit e5a4e7282058df47c4afb57e93196983eb3b42c2
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Dec 9 01:35:49 2013 -0700
+
+    Make use of ObjectDescription optional, if not specified, use ObjectID instead.
+
+commit 2f51a701b0a3dba856d60d11e49de6c29161aa30
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Sun Dec 8 23:05:11 2013 -0700
+
+    Fix broken ObjectDescription send through new membus third party interface.
+
+commit 79a91bde02c6486d583879d9ec87c9b363c5f953
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Sun Dec 8 20:23:01 2013 -0700
+
+    Whitespace cannot be allowed in ObjectIDs. Ensure it isn't.
+
+commit eb302942cd1ea65b0215386c6e8f8ba5ca95f149
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Sun Dec 8 19:42:47 2013 -0700
+
+    Add untested, helpful membus interface for third party service managers.
+
+commit 0589a8c8744e670f83626b62d589ed68d778808e
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Sun Dec 8 16:00:47 2013 -0700
+
+    Rewrite some bad argument handling in HandleEpochCommand().
+
+commit 96f18012d64ae1d76ab833897101083b9754a65d
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Fri Dec 6 18:10:32 2013 -0700
+
+    Fix killing of the PrimaryLoop on shutdown.
+
+commit bc43b53b3bab803894272469e10f85a05f3f414f
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Fri Dec 6 14:08:36 2013 -0700
+
+    Make sure it's impossible to trigger a reboot when we're already shutting down. That ends badly sometimes.
+
+commit d6156a94733e0db53deb7b0d250c09c772395631
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Fri Dec 6 11:29:43 2013 -0700
+
+    When waiting for PID files, allow us to kill those tasks via CTRL-ALT-DEL.
+
+commit 71a6b8ad7d3e5d4d74fcc4a032807c56acf650ca
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Fri Dec 6 10:00:42 2013 -0700
+
+    Update version for 1.0 RC1
+
+commit a954e04844f6e1cf33e8343c0e0d00b32152da6b
+Merge: 4f8ce89 74df2f2
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Fri Dec 6 09:59:43 2013 -0700
+
+    Merge again to fix README.
+
+commit 74df2f23e7837cf9e145e18e806821f12d85ee11
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Fri Dec 6 09:59:23 2013 -0700
+
+    Fix bad info in README.
+
+End of changelog.
