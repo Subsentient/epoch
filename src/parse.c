@@ -404,6 +404,9 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		switch (CurObj->Opts.StopMode)
 		{
 			case STOP_COMMAND:
+			{
+				unsigned long Inc = 0;
+				
 				if (PrintStatus)
 				{
 					printf("%s", PrintOutStream);
@@ -412,6 +415,36 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				
 				ExitStatus = ExecuteConfigObject(CurObj, CurObj->ObjectStopCommand);
 				
+				if (!CurObj->Opts.NoStopWait)
+				{
+					CurrentTask.Node = (void*)&Inc;
+					CurrentTask.PID = 0;
+					CurrentTask.TaskName = CurObj->ObjectID;
+					CurrentTask.Set = true;
+					
+					for (; ObjectProcessRunning(CurObj) && Inc < 100000; ++Inc)
+					{ /*Sleep for ten seconds.*/
+						usleep(100);
+					}
+					
+					if (Inc == 100000)
+					{
+						char TmpBuf[MAX_LINE_SIZE];
+						
+						snprintf(TmpBuf, MAX_LINE_SIZE, "Object %s reports to have been stopped %s,\n"
+								"but the process is still running as PID %lu.\n"
+								"Add 'ObjectOptions NOSTOPWAIT' to epoch.conf to silence this warning.", CurObj->ObjectID,
+								(ExitStatus == WARNING ? "(with a warning)" : "successfully"),
+								(CurObj->Opts.HasPIDFile ? ReadPIDFile(CurObj) : CurObj->ObjectPID));
+						ExitStatus = WARNING;
+					}
+					
+					CurrentTask.Set = false;
+					CurrentTask.Node = NULL;
+					CurrentTask.TaskName = NULL;
+					CurrentTask.PID = 0;
+				}
+					
 				if (ExitStatus)
 				{
 					CurObj->ObjectPID = 0;
@@ -424,6 +457,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					PerformStatusReport(PrintOutStream, ExitStatus, true);
 				}
 				break;
+			}
 			case STOP_INVALID:
 				break;
 			case STOP_NONE:
@@ -449,48 +483,46 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					}
 					break;
 				}
-
+				
 				if (kill(CurObj->ObjectPID, CurObj->TermSignal) == 0)
 				{ /*Just send SIGTERM.*/
-					unsigned char TInc = 0;
-					
-					CurrentTask.Node = (void*)&TInc;
-					CurrentTask.PID = 0;
-					CurrentTask.TaskName = CurObj->ObjectID;
-					CurrentTask.Set = true;
-							
-					/*Give it ten seconds to terminate on it's own.*/
-					for (; kill(CurObj->ObjectPID, 0) == 0; ++TInc)
-					{ /*Two hundred is ten seconds here.*/
-						
-						waitpid(CurObj->ObjectPID, NULL, WNOHANG); /*We must harvest the PID since we have occupied the primary loop.*/
-						
-						usleep(50000);
-						
-						if (TInc > 200) /*This means we were killed via CTRL-ALT-DEL.*/
-						{
-							TInc = 0;
-							break;
-						}
-						else if (TInc == 200)
-						{ /*And this is actual failure.*/
-							break;
-						}
-					}
-					
-					if (TInc < 200)
+					if (!CurObj->Opts.NoStopWait)
 					{
-						ExitStatus = SUCCESS;
+						unsigned long TInc = 0;
+						
+						CurrentTask.Node = (void*)&TInc;
+						CurrentTask.PID = 0;
+						CurrentTask.TaskName = CurObj->ObjectID;
+						CurrentTask.Set = true;
+								
+						/*Give it ten seconds to terminate on it's own.*/
+						for (; kill(CurObj->ObjectPID, 0) == 0 && TInc < 200; ++TInc)
+						{ /*Two hundred is ten seconds here.*/
+							
+							waitpid(CurObj->ObjectPID, NULL, WNOHANG); /*We must harvest the PID since we have occupied the primary loop.*/
+							
+							usleep(50000);
+						}
+						
+						if (TInc != 200)
+						{ /*We use != instead of < because if we're killed with CTRL-ALT-DEL, then
+							this will be greater than 200.*/
+							ExitStatus = SUCCESS;
+						}
+						else
+						{
+							ExitStatus = FAILURE;
+						}
+						
+						CurrentTask.Set = false;
+						CurrentTask.Node = NULL;
+						CurrentTask.TaskName = NULL;
+						CurrentTask.PID = 0;
 					}
 					else
-					{
-						ExitStatus = FAILURE;
+					{ /*Just quit and say everything's fine.*/
+						ExitStatus = SUCCESS;
 					}
-					
-					CurrentTask.Set = false;
-					CurrentTask.Node = NULL;
-					CurrentTask.TaskName = NULL;
-					CurrentTask.PID = 0;
 				}
 				else
 				{
@@ -534,45 +566,43 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				/*Now we can actually kill the process ID.*/
 				if (kill(TruePID, CurObj->TermSignal) == 0)
 				{
-					unsigned char TInc = 0;			
+					if (!CurObj->Opts.NoStopWait)
+					{ /*If we're free to wait for a PID to stop, do so.*/
+						unsigned long TInc = 0;			
+							
+						CurrentTask.Node = (void*)&TInc;
+						CurrentTask.PID = 0;
+						CurrentTask.TaskName = CurObj->ObjectID;
+						CurrentTask.Set = true;
 						
-					CurrentTask.Node = (void*)&TInc;
-					CurrentTask.PID = 0;
-					CurrentTask.TaskName = CurObj->ObjectID;
-					CurrentTask.Set = true;
-					
-					/*Give it ten seconds to terminate on it's own.*/
-					for (; kill(TruePID, 0) == 0; ++TInc)
-					{ /*Two hundred is ten seconds here.*/
+						/*Give it ten seconds to terminate on it's own.*/
+						for (; kill(TruePID, 0) == 0 && TInc < 200; ++TInc)
+						{ /*Two hundred is ten seconds here.*/
+							
+							waitpid(TruePID, NULL, WNOHANG); /*We must harvest the PID since we have occupied the primary loop.*/
+							
+							usleep(50000);
+						}
 						
-						waitpid(TruePID, NULL, WNOHANG); /*We must harvest the PID since we have occupied the primary loop.*/
-						
-						usleep(50000);
-						
-						if (TInc > 200) /*This means we were killed via CTRL-ALT-DEL.*/
+						if (TInc != 200)
+						{ /*We use != instead of < because if we're killed with CTRL-ALT-DEL, then
+							this will be greater than 200.*/
+							ExitStatus = SUCCESS;
+						}
+						else
 						{
-							TInc = 0;
-							break;
+							ExitStatus = FAILURE;
 						}
-						else if (TInc == 200)
-						{ /*And this is actual failure.*/
-							break;
-						}
-					}
-					
-					if (TInc < 200)
-					{
-						ExitStatus = SUCCESS;
+						
+						CurrentTask.Set = false;
+						CurrentTask.Node = NULL;
+						CurrentTask.TaskName = NULL;
+						CurrentTask.PID = 0;
 					}
 					else
 					{
-						ExitStatus = FAILURE;
+						ExitStatus = SUCCESS;
 					}
-					
-					CurrentTask.Set = false;
-					CurrentTask.Node = NULL;
-					CurrentTask.TaskName = NULL;
-					CurrentTask.PID = 0;
 				}
 				else
 				{

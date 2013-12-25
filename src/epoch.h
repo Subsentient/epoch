@@ -182,10 +182,10 @@ typedef struct _EpochObjectTable
 		unsigned int HaltCmdOnly : 1; /*Run just the stop command when we halt, not the start command?*/
 		unsigned int IsService : 1; /*If true, we assume it's going to fork itself and one-up it's PID.*/
 		unsigned int RawDescription : 1; /*This inhibits insertion of "Starting", "Stopping", etc in front of descriptions.*/
-		unsigned int AutoRestart : 1;
-		unsigned int EmulNoWait : 1; /*Emulates the deprecated NOWAIT option by appending an ampersand to the end of ObjectStartCommand.*/
+		unsigned int AutoRestart : 1; /*Autorestarts a service whenever it terminates.*/
 		unsigned int ForceShell : 1; /*Forces us to start /bin/sh to run an object, even if it looks like we don't need to.*/
 		unsigned int HasPIDFile : 1; /*If StopMode == STOP_PIDFILE, we also stop it just by sending a signal to the PID in the file.*/
+		unsigned int NoStopWait: 1; /*Used to tell us not to wait for an object to actually quit.*/
 	} Opts;
 	
 	struct _RLTree *ObjectRunlevels; /*Dynamically allocated, needless to say.*/

@@ -719,14 +719,8 @@ rStatus InitConfig(void)
 				}
 				CurArg[Inc] = '\0';
 				
-				if (!strcmp(CurArg, "NOWAIT"))
-				{
-					CurObj->Opts.EmulNoWait = true;
-					snprintf(ErrBuf, sizeof ErrBuf, "Option NOWAIT is deprecated and has been partially removed.\n"
-							"Emulating NOWAIT for object %s.\nLine %lu in epoch.conf", CurObj->ObjectID, LineNum);
-					SpitWarning(ErrBuf);
-				}
-				else if (!strcmp(CurArg, "HALTONLY"))
+				
+				if (!strcmp(CurArg, "HALTONLY"))
 				{ /*Allow entries that execute on shutdown only.*/
 					CurObj->Started = true;
 					CurObj->Opts.CanStop = false;
@@ -758,6 +752,10 @@ rStatus InitConfig(void)
 								"Ignoring.", CurObj->ObjectID);
 						SpitWarning(ErrBuf);
 					#endif
+				}
+				else if (!strcmp(CurArg, "NOSTOPWAIT"))
+				{
+					CurObj->Opts.NoStopWait = true;
 				}
 				else if (!strncmp(CurArg, "TERMSIGNAL", strlen("TERMSIGNAL")))
 				{
@@ -1185,28 +1183,6 @@ rStatus InitConfig(void)
 		{
 			strncpy(ObjWorker->ObjectDescription, ObjWorker->ObjectID, strlen(ObjWorker->ObjectID) + 1);
 		}
-
-		/*NOWAIT is deprecated, so emulate it's effect with an ampersand.*/
-		if (ObjWorker->Opts.EmulNoWait)
-		{
-			unsigned long TInc = 0;
-			
-			if (*ObjWorker->ObjectStartCommand == '\0')
-			{ /*Don't bother if it's empty.*/
-				continue;
-			}
-			
-			/*Check if we already have an ampersand at the end.*/
-			
-			/*Go back behind any whitespace at the end.*/
-			for (TInc = strlen(ObjWorker->ObjectStartCommand) - 1; ObjWorker->ObjectStartCommand[TInc] == ' ' ||
-				ObjWorker->ObjectStartCommand[TInc] == '\t'; --TInc);
-			
-			if (ObjWorker->ObjectStartCommand[TInc] != '&')
-			{
-				strncat(ObjWorker->ObjectStartCommand, "&", MAX_LINE_SIZE - strlen(ObjWorker->ObjectStartCommand) - 1);
-			}
-		}
 	}
 	
 	/*This is harmless, but it's bad form and could indicate human error in writing the config file.*/
@@ -1557,7 +1533,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->Opts.RawDescription = false;
 	Worker->Opts.IsService = false;
 	Worker->Opts.AutoRestart = false;
-	Worker->Opts.EmulNoWait = false;
+	Worker->Opts.NoStopWait = false;
 	Worker->Opts.ForceShell = false;
 	Worker->Opts.HasPIDFile = false;
 	
