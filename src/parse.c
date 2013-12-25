@@ -368,6 +368,16 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				
 				if (Counter == 100000)
 				{
+					char OutBuf[MAX_LINE_SIZE];
+					
+					snprintf(OutBuf, sizeof OutBuf,CONSOLE_COLOR_YELLOW "WARNING: " CONSOLE_ENDCOLOR
+								"Object %s was successfully started%s,\n"
+								"but it's PID file did not appear within ten seconds of start.\n"
+								"Please verify that \"%s\" exists and whether this object is starting properly.",
+								CurObj->ObjectID, (ExitStatus == WARNING ? ", but with a warning" : ""),
+								CurObj->ObjectPIDFile);
+								
+					WriteLogLine(OutBuf, true);
 					ExitStatus = WARNING;
 					break;
 				}
