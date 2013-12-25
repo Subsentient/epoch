@@ -446,6 +446,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 								"Add 'ObjectOptions NOSTOPWAIT' to epoch.conf to silence this warning.", CurObj->ObjectID,
 								(ExitStatus == WARNING ? "(with a warning)" : "successfully"),
 								(CurObj->Opts.HasPIDFile ? ReadPIDFile(CurObj) : CurObj->ObjectPID));
+						WriteLogLine(TmpBuf, true);
 						ExitStatus = WARNING;
 					}
 					
