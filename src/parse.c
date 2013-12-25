@@ -437,16 +437,19 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 						usleep(100);
 					}
 					
-					if (Inc == 100000)
+					if (Inc >= 100000)
 					{
 						char TmpBuf[MAX_LINE_SIZE];
 						
-						snprintf(TmpBuf, MAX_LINE_SIZE, "Object %s reports to have been stopped %s,\n"
-								"but the process is still running as PID %lu.\n"
-								"Add 'ObjectOptions NOSTOPWAIT' to epoch.conf to silence this warning.", CurObj->ObjectID,
-								(ExitStatus == WARNING ? "(with a warning)" : "successfully"),
-								(CurObj->Opts.HasPIDFile ? ReadPIDFile(CurObj) : CurObj->ObjectPID));
-						WriteLogLine(TmpBuf, true);
+						if (Inc == 100000) /*Genuine timeout, otherwise we killed it ourselves.*/
+						{
+							snprintf(TmpBuf, MAX_LINE_SIZE, "Object %s reports to have been stopped %s,\n"
+									"but the process is still running as PID %lu.\n"
+									"Add 'ObjectOptions NOSTOPWAIT' to epoch.conf to silence this warning.", CurObj->ObjectID,
+									(ExitStatus == WARNING ? "(with a warning)" : "successfully"),
+									(CurObj->Opts.HasPIDFile ? ReadPIDFile(CurObj) : CurObj->ObjectPID));
+							WriteLogLine(TmpBuf, true);
+						}
 						ExitStatus = WARNING;
 					}
 					
@@ -515,12 +518,15 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 							usleep(50000);
 						}
 						
-						if (TInc != 200)
-						{ /*We use != instead of < because if we're killed with CTRL-ALT-DEL, then
-							this will be greater than 200.*/
+						if (TInc < 200)
+						{
 							ExitStatus = SUCCESS;
 						}
-						else
+						else if (TInc > 200)
+						{ /*Means we were killed via CTRL-ALT-DEL.*/
+							ExitStatus = WARNING;
+						}
+						else if (TInc == 200)
 						{
 							ExitStatus = FAILURE;
 						}
@@ -595,12 +601,15 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 							usleep(50000);
 						}
 						
-						if (TInc != 200)
-						{ /*We use != instead of < because if we're killed with CTRL-ALT-DEL, then
-							this will be greater than 200.*/
+						if (TInc < 200)
+						{
 							ExitStatus = SUCCESS;
 						}
-						else
+						else if (TInc > 200)
+						{ /*Means we were killed via CTRL-ALT-DEL.*/
+							ExitStatus = WARNING;
+						}
+						else if (TInc == 200)
 						{
 							ExitStatus = FAILURE;
 						}
