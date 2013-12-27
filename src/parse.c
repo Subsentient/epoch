@@ -427,6 +427,8 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				
 				if (!CurObj->Opts.NoStopWait)
 				{
+					unsigned long CurPID = 0;
+					
 					CurrentTask.Node = (void*)&Inc;
 					CurrentTask.PID = 0;
 					CurrentTask.TaskName = CurObj->ObjectID;
@@ -434,6 +436,12 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					
 					for (; ObjectProcessRunning(CurObj) && Inc < 100000; ++Inc)
 					{ /*Sleep for ten seconds.*/
+						CurPID = CurObj->Opts.HasPIDFile ? ReadPIDFile(CurObj) : CurObj->ObjectPID;
+						
+						if (!CurPID) break; /*No PID? No point.*/
+						
+						waitpid(CurPID, NULL, WNOHANG);
+						
 						usleep(100);
 					}
 					
