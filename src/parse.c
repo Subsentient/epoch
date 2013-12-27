@@ -299,7 +299,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 	char PrintOutStream[1024];
 	rStatus ExitStatus = FAILURE;
 	
-	if (IsStartingMode && *CurObj->ObjectStartCommand == '\0')
+	if (IsStartingMode && CurObj->ObjectStartCommand == NULL)
 	{ /*Don't bother with it, if it has no command.
 		For starting objects, this should not happen unless we set the option HALTONLY.*/
 		return SUCCESS;
@@ -340,7 +340,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		
 		fflush(NULL); /*Things tend to get clogged up when we don't flush.*/
 		
-		if (*CurObj->ObjectPrestartCommand != '\0')
+		if (CurObj->ObjectPrestartCommand != NULL)
 		{
 			PrestartExitStatus = ExecuteConfigObject(CurObj, CurObj->ObjectPrestartCommand);
 		}
@@ -708,7 +708,7 @@ rStatus ProcessReloadCommand(ObjTable *CurObj, Bool PrintStatus)
 	rStatus RetVal = FAILURE;
 	char StatusReportBuf[MAX_DESCRIPT_SIZE];
 	
-	if (!CurObj->ObjectReloadCommand[0])
+	if (!CurObj->ObjectReloadCommand)
 	{
 		return FAILURE;
 	}

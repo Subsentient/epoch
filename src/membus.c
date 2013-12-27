@@ -825,7 +825,7 @@ void ParseMemBus(void)
 			const char *MCode = MEMBUS_CODE_ACKNOWLEDGED, *RMsg = NULL;
 			char LogOut[MAX_LINE_SIZE];
 			
-			if (TmpObj->ObjectReloadCommand[0] == 0)
+			if (TmpObj->ObjectReloadCommand == NULL)
 			{
 				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
 				MemBus_Write(TmpBuf, true);

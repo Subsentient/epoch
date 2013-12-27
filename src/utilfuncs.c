@@ -275,7 +275,7 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 	unsigned long Inc = 0, Streamsize = 0, Countdown = 0;
 	FILE *Descriptor = NULL;
 	
-	if (*InObj->ObjectStartCommand == '\0')
+	if (InObj->ObjectStartCommand == NULL)
 	{
 		return 0;
 	}	
