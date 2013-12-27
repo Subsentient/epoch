@@ -249,7 +249,8 @@ extern rStatus InitConfig(void);
 extern void ShutdownConfig(void);
 extern rStatus ReloadConfig(void);
 extern ObjTable *LookupObjectInTable(const char *ObjectID);
-extern ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority, unsigned long ObjectPriority);
+extern ObjTable *GetObjectByPriority(const char *ObjectRunlevel, ObjTable *LastNode,
+									Bool WantStartPriority, unsigned long ObjectPriority);
 extern unsigned long GetHighestPriority(Bool WantStartPriority);
 extern rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char *Value);
 extern void ObjRL_AddRunlevel(const char *InRL, ObjTable *InObj);

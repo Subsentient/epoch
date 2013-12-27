@@ -659,6 +659,7 @@ rStatus RunAllObjects(Bool IsStartingMode)
 	unsigned long MaxPriority = GetHighestPriority(IsStartingMode);
 	unsigned long Inc = 1; /*One to skip zero.*/
 	ObjTable *CurObj = NULL;
+	ObjTable *LastNode = NULL;
 	
 	if (!MaxPriority && IsStartingMode)
 	{
@@ -670,24 +671,30 @@ rStatus RunAllObjects(Bool IsStartingMode)
 	
 	for (; Inc <= MaxPriority; ++Inc)
 	{
-		if (!(CurObj = GetObjectByPriority(IsStartingMode ? CurRunlevel : NULL, IsStartingMode, Inc)))
+		for (LastNode = NULL;
+			(CurObj = GetObjectByPriority((IsStartingMode ? CurRunlevel : NULL), LastNode, IsStartingMode, Inc));
+			LastNode = CurObj)
 		{ /*Probably set to zero or something, but we don't care if we have a gap in the priority system.*/
-			continue;
-		}
 		
-		if (!CurObj->Enabled && (IsStartingMode || CurObj->Opts.HaltCmdOnly))
-		{ /*Stop even disabled objects, but not disabled HALTONLY objects.*/
-			continue;
-		}
+			if (CurObj == (void*)-1)
+			{
+				return FAILURE;
+			}
+			
+			if (!CurObj->Enabled && (IsStartingMode || CurObj->Opts.HaltCmdOnly))
+			{ /*Stop even disabled objects, but not disabled HALTONLY objects.*/
+				continue;
+			}
 		
-		if (IsStartingMode && CurObj->Opts.HaltCmdOnly)
-		{
-			continue;
-		}
-		
-		if ((IsStartingMode ? !CurObj->Started : CurObj->Started))
-		{
-			ProcessConfigObject(CurObj, IsStartingMode, true);
+			if (IsStartingMode && CurObj->Opts.HaltCmdOnly)
+			{
+				continue;
+			}
+			
+			if ((IsStartingMode ? !CurObj->Started : CurObj->Started))
+			{
+				ProcessConfigObject(CurObj, IsStartingMode, true);
+			}
 		}
 	}
 	
@@ -726,6 +733,7 @@ rStatus SwitchRunlevels(const char *Runlevel)
 {
 	unsigned long NumInRunlevel = 0, CurPriority = 1, MaxPriority;
 	ObjTable *TObj = ObjectTable;
+	ObjTable *LastNode = NULL;
 	/*Check the runlevel has objects first.*/
 	
 	for (; TObj->Next != NULL; TObj = TObj->Next)
@@ -746,27 +754,39 @@ rStatus SwitchRunlevels(const char *Runlevel)
 	/*Stop everything not meant for this runlevel.*/
 	for (MaxPriority = GetHighestPriority(false); CurPriority <= MaxPriority; ++CurPriority)
 	{
-		TObj = GetObjectByPriority(CurRunlevel, false, CurPriority);
-		
-		if (TObj && TObj->Started && TObj->Opts.CanStop && !TObj->Opts.HaltCmdOnly &&
-			!ObjRL_CheckRunlevel(Runlevel, TObj, true))
+		for (LastNode = NULL; (TObj = GetObjectByPriority(CurRunlevel, LastNode, false, CurPriority)); LastNode = TObj)
 		{
-			ProcessConfigObject(TObj, false, true);
+			if (TObj == (void*)-1)
+			{
+				return FAILURE;
+			}
+			
+			if (TObj->Started && TObj->Opts.CanStop && !TObj->Opts.HaltCmdOnly &&
+				!ObjRL_CheckRunlevel(Runlevel, TObj, true))
+			{
+				ProcessConfigObject(TObj, false, true);
+			}
 		}
 	}
 	
 	/*Good to go, so change us to the new runlevel.*/
 	snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", Runlevel);
+	MaxPriority = GetHighestPriority(true);
 	
 	/*Now start the things that ARE meant for our runlevel.*/
-	for (CurPriority = 1, MaxPriority = GetHighestPriority(true);
-		CurPriority <= MaxPriority; ++CurPriority)
+	for (CurPriority = 1; CurPriority <= MaxPriority; ++CurPriority)
 	{
-		TObj = GetObjectByPriority(CurRunlevel, true, CurPriority);
-		
-		if (TObj && TObj->Enabled && !TObj->Started)
+		for (LastNode = NULL; (TObj = GetObjectByPriority(CurRunlevel, LastNode, true, CurPriority)); LastNode = TObj)
 		{
-			ProcessConfigObject(TObj, true, true);
+			if (TObj == (void*)-1)
+			{
+				return FAILURE;
+			}
+			
+			if (TObj->Enabled && !TObj->Started)
+			{
+				ProcessConfigObject(TObj, true, true);
+			}
 		}
 	}
 	

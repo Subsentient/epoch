@@ -1134,48 +1134,7 @@ rStatus InitConfig(void)
 			continue;
 		}
 	} while (++LineNum, (Worker = NextLine(Worker)));
-	
-	/*This code permits the usage of objects with the same priority by making them NOT
-	 * the same priority, because the rest of the object handling subsystem is too stupid
-	 * to know how to handle this, and this was easier to write.*/
-	 for (ObjWorker = ObjectTable; ObjWorker->Next != NULL; ObjWorker = ObjWorker->Next)
-	 {
-		 for (CurObj = ObjectTable; CurObj->Next != NULL; CurObj = CurObj->Next)
-		 {
-			 if (ObjWorker->ObjectStartPriority != 0 && ObjWorker != CurObj &&
-				CurObj->ObjectStartPriority == ObjWorker->ObjectStartPriority)
-			{
-				ObjTable *TWorker = ObjectTable;
-				
-				++CurObj->ObjectStartPriority;
-				for (; TWorker->Next != NULL; TWorker = TWorker->Next)
-				{
-					if (TWorker->ObjectStartPriority >= CurObj->ObjectStartPriority &&
-						CurObj != TWorker && TWorker != ObjWorker)
-					{
-						++TWorker->ObjectStartPriority;
-					}
-				}
-			}
-			
-			if (ObjWorker->ObjectStopPriority != 0 && ObjWorker != CurObj &&
-				CurObj->ObjectStopPriority == ObjWorker->ObjectStopPriority)
-			{
-				ObjTable *TWorker = ObjectTable;
-				
-				++CurObj->ObjectStopPriority;
-				for (; TWorker->Next != NULL; TWorker = TWorker->Next)
-				{
-					if (TWorker->ObjectStopPriority >= CurObj->ObjectStopPriority &&
-						CurObj != TWorker && TWorker != ObjWorker)
-					{
-						++TWorker->ObjectStopPriority;
-					}
-				}
-			}
-		}
-	}
-	
+
 	for (ObjWorker = ObjectTable; ObjWorker->Next; ObjWorker = ObjWorker->Next)
 	{
 		/*We don't need to specify a description, but if we neglect to, use the ObjectID.*/
@@ -1987,21 +1946,22 @@ static void RLInheritance_Shutdown(void)
 	RunlevelInheritance = NULL;
 }
 
-ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority, unsigned long ObjectPriority)
+ObjTable *GetObjectByPriority(const char *ObjectRunlevel, ObjTable *LastNode, Bool WantStartPriority, unsigned long ObjectPriority)
 { /*The primary lookup function to be used when executing commands.*/
-	ObjTable *Worker = ObjectTable;
+	ObjTable *Worker = LastNode ? LastNode->Next : ObjectTable;
+	unsigned long WorkerPriority = 0;
 	
 	if (!ObjectTable)
 	{
-		return NULL;
+		return (void*)-1; /*Error.*/
 	}
 	
 	for (; Worker->Next != NULL; Worker = Worker->Next)
 	{
+		WorkerPriority = (WantStartPriority ? Worker->ObjectStartPriority : Worker->ObjectStopPriority);
+		
 		if ((ObjectRunlevel == NULL || ((WantStartPriority || !Worker->Opts.HaltCmdOnly) &&
-			ObjRL_CheckRunlevel(ObjectRunlevel, Worker, true))) && 
-			/*As you can see by below, I obfuscate with efficiency!*/
-			(WantStartPriority ? Worker->ObjectStartPriority : Worker->ObjectStopPriority) == ObjectPriority)
+			ObjRL_CheckRunlevel(ObjectRunlevel, Worker, true))) && WorkerPriority == ObjectPriority)
 		{
 			return Worker;
 		}
