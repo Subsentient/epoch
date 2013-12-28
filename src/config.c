@@ -1987,19 +1987,19 @@ void ShutdownConfig(void)
 
 	for (; Worker != NULL; Worker = Temp)
 	{
-		if (Worker->ObjectID) free(Worker->ObjectID);
-		
-		if (Worker->ObjectDescription &&
-			Worker->ObjectDescription != Worker->ObjectID) free(Worker->ObjectDescription);
-			
-		if (Worker->ObjectStartCommand) free(Worker->ObjectStartCommand);
-		if (Worker->ObjectStopCommand) free(Worker->ObjectStopCommand);
-		if (Worker->ObjectReloadCommand) free(Worker->ObjectReloadCommand);
-		if (Worker->ObjectPrestartCommand) free(Worker->ObjectPrestartCommand);
-		if (Worker->ObjectPIDFile) free(Worker->ObjectPIDFile);
-		
 		if (Worker->Next)
 		{
+			if (Worker->ObjectID) free(Worker->ObjectID);
+			
+			if (Worker->ObjectDescription &&
+				Worker->ObjectDescription != Worker->ObjectID) free(Worker->ObjectDescription);
+				
+			if (Worker->ObjectStartCommand) free(Worker->ObjectStartCommand);
+			if (Worker->ObjectStopCommand) free(Worker->ObjectStopCommand);
+			if (Worker->ObjectReloadCommand) free(Worker->ObjectReloadCommand);
+			if (Worker->ObjectPrestartCommand) free(Worker->ObjectPrestartCommand);
+			if (Worker->ObjectPIDFile) free(Worker->ObjectPIDFile);
+		
 			ObjRL_ShutdownRunlevels(Worker);
 		}
 		
