@@ -2130,20 +2130,33 @@ rStatus ReloadConfig(void)
 	
 	WriteLogLine("CONFIG: Restoring object statuses and deleting backup configuration.", true);
 	
-	for (SWorker = TRoot; SWorker->Next != NULL; SWorker = Temp)
+	for (SWorker = TRoot; SWorker != NULL; SWorker = Temp)
 	{ /*Add back the Started states, so we don't forget to stop services, etc.*/
-		if ((Worker = LookupObjectInTable(SWorker->ObjectID)))
+		
+		if (SWorker->Next)
 		{
-			Worker->Started = SWorker->Started;
-			Worker->ObjectPID = SWorker->ObjectPID;
-			Worker->StartedSince = SWorker->StartedSince;
+			if ((Worker = LookupObjectInTable(SWorker->ObjectID)))
+			{
+				Worker->Started = SWorker->Started;
+				Worker->ObjectPID = SWorker->ObjectPID;
+				Worker->StartedSince = SWorker->StartedSince;
+			}
+			
+			ObjRL_ShutdownRunlevels(SWorker);
+			
+			if (SWorker->ObjectID) free(SWorker->ObjectID);
+			if (SWorker->ObjectDescription &&
+				SWorker->ObjectDescription != SWorker->ObjectID) free(SWorker->ObjectDescription);
+			if (SWorker->ObjectStartCommand) free(SWorker->ObjectStartCommand);
+			if (SWorker->ObjectStopCommand) free(SWorker->ObjectStopCommand);
+			if (SWorker->ObjectReloadCommand) free(SWorker->ObjectReloadCommand);
+			if (SWorker->ObjectPrestartCommand) free(SWorker->ObjectPrestartCommand);
+			if (SWorker->ObjectPIDFile) free(SWorker->ObjectPIDFile);
 		}
 		
-		ObjRL_ShutdownRunlevels(SWorker);
 		Temp = SWorker->Next;
 		free(SWorker);
 	}
-	free(SWorker);
 	
 	/*Release the runlevel inheritance table.*/
 	for (; RLIRoot != NULL; RLIRoot = RLIWorker[0])
