@@ -322,7 +322,8 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		
 		if (IsStartingMode && CurObj->Opts.HaltCmdOnly)
 		{
-			PerformStatusReport(PrintOutStream, FAILURE, true);
+			RenderStatusReport(PrintOutStream);
+			CompleteStatusReport(PrintOutStream, FAILURE, true);
 		}
 	}
 	
@@ -335,7 +336,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		
 		if (PrintStatus)
 		{
-			printf("%s", PrintOutStream);
+			RenderStatusReport(PrintOutStream);
 		}
 		
 		fflush(NULL); /*Things tend to get clogged up when we don't flush.*/
@@ -402,7 +403,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		
 		if (PrintStatus)
 		{
-			PerformStatusReport(PrintOutStream, ExitStatus, true);
+			CompleteStatusReport(PrintOutStream, ExitStatus, true);
 		}
 	}
 	else
@@ -419,8 +420,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				
 				if (PrintStatus)
 				{
-					printf("%s", PrintOutStream);
-					fflush(NULL);
+					RenderStatusReport(PrintOutStream);
 				}
 				
 				ExitStatus = ExecuteConfigObject(CurObj, CurObj->ObjectStopCommand);
@@ -477,7 +477,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				
 				if (PrintStatus)
 				{
-					PerformStatusReport(PrintOutStream, ExitStatus, true);
+					CompleteStatusReport(PrintOutStream, ExitStatus, true);
 				}
 				break;
 			}
@@ -493,8 +493,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 			{
 				if (PrintStatus)
 				{
-					printf("%s", PrintOutStream);
-					fflush(NULL);
+					RenderStatusReport(PrintOutStream);
 				}
 				
 				if (!CurObj->ObjectPID)
@@ -502,7 +501,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					ExitStatus = FAILURE;
 					if (PrintStatus)
 					{
-						PerformStatusReport(PrintOutStream, ExitStatus, true);
+						CompleteStatusReport(PrintOutStream, ExitStatus, true);
 					}
 					break;
 				}
@@ -564,7 +563,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				
 				if (PrintStatus)
 				{
-					PerformStatusReport(PrintOutStream, ExitStatus, true);
+					CompleteStatusReport(PrintOutStream, ExitStatus, true);
 				}
 				
 				break;
@@ -575,8 +574,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				
 				if (PrintStatus)
 				{
-					printf("%s", PrintOutStream);
-					fflush(NULL);
+					RenderStatusReport(PrintOutStream);
 				}
 				
 				if (!(TruePID = ReadPIDFile(CurObj)))
@@ -584,7 +582,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					ExitStatus = FAILURE;
 					if (PrintStatus)
 					{
-						PerformStatusReport(PrintOutStream, ExitStatus, true);
+						CompleteStatusReport(PrintOutStream, ExitStatus, true);
 					}
 					break;
 				}
@@ -647,7 +645,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				
 				if (PrintStatus)
 				{
-					PerformStatusReport(PrintOutStream, ExitStatus, true);
+					CompleteStatusReport(PrintOutStream, ExitStatus, true);
 				}
 				
 				break;
@@ -724,14 +722,14 @@ rStatus ProcessReloadCommand(ObjTable *CurObj, Bool PrintStatus)
 	if (PrintStatus)
 	{
 		snprintf(StatusReportBuf, MAX_DESCRIPT_SIZE, "Reloading %s", CurObj->ObjectID);
-		printf("%s", StatusReportBuf);
+		RenderStatusReport(StatusReportBuf);
 	}
 	
 	RetVal = ExecuteConfigObject(CurObj, CurObj->ObjectReloadCommand);
 	
 	if (PrintStatus)
 	{
-		PerformStatusReport(StatusReportBuf, RetVal, true);
+		CompleteStatusReport(StatusReportBuf, RetVal, true);
 	}
 	
 	return RetVal;

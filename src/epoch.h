@@ -79,6 +79,11 @@
 #define CONSOLE_COLOR_WHITE "\033[37m"
 #define CONSOLE_ENDCOLOR "\033[0m"
 
+/*Stuff used for status reports etc*/
+#define CONSOLE_CTL_LINEDEL "\033[K"
+#define CONSOLE_CTL_SAVESTATE "\033[s"
+#define CONSOLE_CTL_RESTORESTATE "\033[u"
+
 /*The key for the shared memory bus and related stuff.*/
 #define MEMKEY (('E' + 'P' + 'O' + 'C' + 'H') + ('W'+'h'+'i'+'t'+'e' + 'R'+'a'+'t')) * 7 /*Cool, right?*/
 
@@ -238,7 +243,6 @@ extern Bool BlankLogOnBoot;
 extern char *MemLogBuffer;
 extern struct _CTask CurrentTask;
 extern volatile BootMode CurrentBootMode;
-extern Bool AlignStatusReports;
 extern volatile signed long MemBusKey;
 extern volatile Bool BusRunning;
 
@@ -293,7 +297,8 @@ extern unsigned long MemBus_BinRead(void *OutStream_, unsigned long MaxOutSize, 
 /*console.c*/
 extern void PrintBootBanner(void);
 extern void SetBannerColor(const char *InChoice);
-extern void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog);
+extern void RenderStatusReport(const char *InReport);
+extern void CompleteStatusReport(const char *InReport, rStatus ExitStatus, Bool LogReport);
 extern void SpitWarning(const char *INWarning);
 extern void SpitError(const char *INErr);
 extern void SmallError(const char *INErr);

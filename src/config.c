@@ -410,30 +410,10 @@ rStatus InitConfig(void)
 			continue;
 		}
 		else if (!strncmp(Worker, (CurrentAttribute = "AlignStatusReports"), strlen("AlignStatusReports")))
-		{
-			if (!GetLineDelim(Worker, DelimCurr))
-			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
-
-				continue;
-			}
-			
-			if (!strcmp(DelimCurr, "true"))
-			{
-				AlignStatusReports = true;
-			}
-			else if (!strcmp(DelimCurr, "false"))
-			{
-				AlignStatusReports = false;
-			}
-			else
-			{
-				
-				AlignStatusReports = false;
-				
-				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
-			}
-			
+		{ /*Deprecated.*/
+			snprintf(ErrBuf, sizeof ErrBuf, "Attribute AlignStatusReports is deprecated and no longer has any effect.\n"
+					"epoch.conf line %lu", LineNum);
+			SpitWarning(ErrBuf);
 			continue;
 		}
 		/*This will mount /dev, /proc, /sys, /dev/pts, and /dev/shm on boot time, upon request.*/
@@ -2054,7 +2034,6 @@ rStatus ReloadConfig(void)
 	/*Do this to prevent some weird options from being changeable by a config reload.*/
 	GlobalOpts[0] = EnableLogging;
 	GlobalOpts[1] = DisableCAD;
-	GlobalOpts[2] = AlignStatusReports;
 	
 	WriteLogLine("CONFIG: Initializing new configuration.", true);
 	
@@ -2080,7 +2059,6 @@ rStatus ReloadConfig(void)
 	/*And then restore those options to their previous states.*/
 	EnableLogging = GlobalOpts[0];
 	DisableCAD = GlobalOpts[1];
-	AlignStatusReports = GlobalOpts[2];
 	
 	if (!ConfigOK) return ConfigOK;
 	

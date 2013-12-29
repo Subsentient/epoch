@@ -991,11 +991,10 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		
 		CArg = argv[2];
 		snprintf(TOut, sizeof TOut, (Enabling ? "Enabling %s" : "Disabling %s"), CArg);
-		printf("%s", TOut);
-		fflush(NULL);
+		RenderStatusReport(TOut);
 		
 		RV = ObjControl(CArg, (Enabling ? MEMBUS_CODE_OBJENABLE : MEMBUS_CODE_OBJDISABLE));
-		PerformStatusReport(TOut, RV, false);
+		CompleteStatusReport(TOut, RV, false);
 		
 		ShutdownMemBus(false);
 		return RV;
@@ -1046,8 +1045,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		}
 		
 		snprintf(TOut, sizeof TOut, "%s %s", ActionString, argv[2]);
-		printf("%s", TOut);
-		fflush(NULL);
+		RenderStatusReport(TOut);
 		
 		if (StartMode < RESTART)
 		{
@@ -1058,7 +1056,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			RV = (ObjControl(argv[2], MEMBUS_CODE_OBJSTOP) && ObjControl(argv[2], MEMBUS_CODE_OBJSTART));
 		}
 		
-		PerformStatusReport(TOut, RV, false);
+		CompleteStatusReport(TOut, RV, false);
 		
 		ShutdownMemBus(false);
 		return RV;
@@ -1099,7 +1097,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		snprintf(PossibleResponses[3], MEMBUS_SIZE/2 - 1, "%s %s", MEMBUS_CODE_BADPARAM, OutBuf);
 		
 		snprintf(StatusBuf, MAX_LINE_SIZE, "Reloading %s", argv[2]);
-		printf("%s", StatusBuf);
+		RenderStatusReport(StatusBuf);
 		
 		MemBus_Write(OutBuf, false);
 		
@@ -1119,14 +1117,14 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		}
 		else if (!strcmp(InBuf, PossibleResponses[3]))
 		{
-			PerformStatusReport(StatusBuf, (RV = FAILURE), false);
+			CompleteStatusReport(StatusBuf, (RV = FAILURE), false);
 			SpitError("We are being told that we sent a bad parameter over membus.\n"
 						"This is probably a bug. Please report to Epoch!");
 			Botched = true;
 		}
 		else
 		{
-			PerformStatusReport(StatusBuf, (RV = FAILURE), false);
+			CompleteStatusReport(StatusBuf, (RV = FAILURE), false);
 			SpitError("Bad parameter received over membus! This is probably a bug.\n"
 						"Please report to Epoch!");
 			Botched = true;
@@ -1134,7 +1132,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		
 		if (!Botched)
 		{
-			PerformStatusReport(StatusBuf, RV, false);
+			CompleteStatusReport(StatusBuf, RV, false);
 		}
 		
 		ShutdownMemBus(false);
