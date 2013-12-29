@@ -819,7 +819,8 @@ rStatus InitConfig(void)
 				continue;
 			}
 			
-			snprintf(CurObj->ObjectDescription, MAX_DESCRIPT_SIZE, "%s", DelimCurr);
+			CurObj->ObjectDescription = malloc(strlen(DelimCurr) + 1);
+			strncpy(CurObj->ObjectDescription, DelimCurr, strlen(DelimCurr) + 1);
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_DESCRIPT_SIZE)
 			{
@@ -842,7 +843,8 @@ rStatus InitConfig(void)
 				continue;
 			}
 			
-			snprintf(CurObj->ObjectStartCommand, MAX_LINE_SIZE, "%s", DelimCurr);
+			CurObj->ObjectStartCommand = malloc(strlen(DelimCurr) + 1);
+			strncpy(CurObj->ObjectStartCommand, DelimCurr, strlen(DelimCurr) + 1);
 
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
@@ -865,7 +867,8 @@ rStatus InitConfig(void)
 				continue;
 			}
 			
-			snprintf(CurObj->ObjectPrestartCommand, MAX_LINE_SIZE, "%s", DelimCurr);
+			CurObj->ObjectPrestartCommand = malloc(strlen(DelimCurr) + 1);
+			strncpy(CurObj->ObjectPrestartCommand, DelimCurr, strlen(DelimCurr) + 1);
 			
 			if (strlen(DelimCurr) + 1 >= MAX_LINE_SIZE)
 			{
@@ -887,7 +890,8 @@ rStatus InitConfig(void)
 				continue;
 			}
 			
-			snprintf(CurObj->ObjectReloadCommand, MAX_LINE_SIZE, "%s", DelimCurr);
+			CurObj->ObjectReloadCommand = malloc(strlen(DelimCurr) + 1);
+			strncpy(CurObj->ObjectReloadCommand, DelimCurr, strlen(DelimCurr) + 1);
 			
 			if (strlen(DelimCurr) + 1 >= MAX_LINE_SIZE)
 			{
@@ -927,7 +931,9 @@ rStatus InitConfig(void)
 					
 					if (*Worker != '\0')
 					{
-						snprintf(CurObj->ObjectPIDFile, MAX_LINE_SIZE, "%s", Worker);
+						CurObj->ObjectPIDFile = malloc(strlen(Worker) + 1);
+						strncpy(CurObj->ObjectPIDFile, Worker, strlen(Worker) + 1);
+						
 						CurObj->Opts.HasPIDFile = true;
 					}
 				}
@@ -943,7 +949,8 @@ rStatus InitConfig(void)
 			else
 			{
 				CurObj->Opts.StopMode = STOP_COMMAND;
-				snprintf(CurObj->ObjectStopCommand, MAX_LINE_SIZE, "%s", DelimCurr);
+				CurObj->ObjectStopCommand = malloc(strlen(DelimCurr) + 1);
+				strncpy(CurObj->ObjectStopCommand, DelimCurr, strlen(DelimCurr) + 1);
 			}
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
@@ -984,7 +991,7 @@ rStatus InitConfig(void)
 				continue;
 			}
 			
-			CurObj->ObjectStartPriority = atoi(DelimCurr);
+			CurObj->ObjectStartPriority = atol(DelimCurr);
 			
 			if (strlen(DelimCurr) >= 8)
 			{ /*An eight digit number is too high.*/
@@ -1022,7 +1029,7 @@ rStatus InitConfig(void)
 				continue;
 			}
 			
-			CurObj->ObjectStopPriority = atoi(DelimCurr);
+			CurObj->ObjectStopPriority = atol(DelimCurr);
 			
 			if (strlen(DelimCurr) >= 8)
 			{ /*An eight digit number is too high.*/
@@ -1045,7 +1052,9 @@ rStatus InitConfig(void)
 				continue;
 			}
 			
-			snprintf(CurObj->ObjectPIDFile, MAX_LINE_SIZE, "%s", DelimCurr);
+			CurObj->ObjectPIDFile = malloc(strlen(DelimCurr) + 1);
+			strncpy(CurObj->ObjectPIDFile, DelimCurr, strlen(DelimCurr) + 1);
+			
 			CurObj->Opts.HasPIDFile = true;
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
@@ -1118,9 +1127,9 @@ rStatus InitConfig(void)
 	for (ObjWorker = ObjectTable; ObjWorker->Next; ObjWorker = ObjWorker->Next)
 	{
 		/*We don't need to specify a description, but if we neglect to, use the ObjectID.*/
-		if (ObjWorker->ObjectDescription[0] == 0)
+		if (ObjWorker->ObjectDescription == NULL)
 		{
-			strncpy(ObjWorker->ObjectDescription, ObjWorker->ObjectID, strlen(ObjWorker->ObjectID) + 1);
+			ObjWorker->ObjectDescription = ObjWorker->ObjectID;
 		}
 	}
 	
@@ -1449,17 +1458,19 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->Next->Prev = Worker;
 
 	/*This is the first thing that must ever be initialized, because it's how we tell objects apart.*/
-	snprintf(Worker->ObjectID, MAX_DESCRIPT_SIZE, "%s", ObjectID);
+	/*This and all things like it are dynamically allocated to provide aggressive memory savings.*/
+	Worker->ObjectID = malloc(strlen(ObjectID) + 1);
+	strncpy(Worker->ObjectID, ObjectID, strlen(ObjectID) + 1);
 	
 	/*Initialize these to their default values. Used to test integrity before execution begins.*/
 	Worker->Started = false;
 	Worker->StartedSince = 0;
-	Worker->ObjectDescription[0] = '\0';
-	Worker->ObjectStartCommand[0] = '\0';
-	Worker->ObjectStopCommand[0] = '\0';
-	Worker->ObjectPrestartCommand[0] = '\0';
-	Worker->ObjectReloadCommand[0] = '\0';
-	Worker->ObjectPIDFile[0] = '\0';
+	Worker->ObjectDescription = NULL;
+	Worker->ObjectStartCommand = NULL;
+	Worker->ObjectStopCommand = NULL;
+	Worker->ObjectPrestartCommand = NULL;
+	Worker->ObjectReloadCommand = NULL;
+	Worker->ObjectPIDFile = NULL;
 	Worker->ObjectStartPriority = 0;
 	Worker->ObjectStopPriority = 0;
 	Worker->Opts.StopMode = STOP_NONE;
@@ -1553,14 +1564,14 @@ static rStatus ScanConfigIntegrity(void)
 	
 	for (; Worker->Next != NULL; Worker = Worker->Next)
 	{		
-		if (*Worker->ObjectStartCommand == '\0' && *Worker->ObjectStopCommand == '\0' && Worker->Opts.StopMode == STOP_COMMAND)
+		if (Worker->ObjectStartCommand == NULL && Worker->ObjectStopCommand == NULL && Worker->Opts.StopMode == STOP_COMMAND)
 		{
 			snprintf(TmpBuf, 1024, "Object %s has neither ObjectStopCommand nor ObjectStartCommand attributes.", Worker->ObjectID);
 			SpitError(TmpBuf);
 			RetState = FAILURE;
 		}
 		
-		if (!Worker->Opts.HaltCmdOnly && *Worker->ObjectStartCommand == '\0')
+		if (!Worker->Opts.HaltCmdOnly && Worker->ObjectStartCommand == NULL)
 		{
 			snprintf(TmpBuf, 1024, "Object %s has no attribute ObjectStartCommand\nand is not set to HALTONLY.\n"
 					"Disabling.", Worker->ObjectID);
@@ -1958,6 +1969,17 @@ void ShutdownConfig(void)
 	{
 		if (Worker->Next)
 		{
+			if (Worker->ObjectID) free(Worker->ObjectID);
+			
+			if (Worker->ObjectDescription &&
+				Worker->ObjectDescription != Worker->ObjectID) free(Worker->ObjectDescription);
+				
+			if (Worker->ObjectStartCommand) free(Worker->ObjectStartCommand);
+			if (Worker->ObjectStopCommand) free(Worker->ObjectStopCommand);
+			if (Worker->ObjectReloadCommand) free(Worker->ObjectReloadCommand);
+			if (Worker->ObjectPrestartCommand) free(Worker->ObjectPrestartCommand);
+			if (Worker->ObjectPIDFile) free(Worker->ObjectPIDFile);
+		
 			ObjRL_ShutdownRunlevels(Worker);
 		}
 		
@@ -1991,6 +2013,28 @@ rStatus ReloadConfig(void)
 		SWorker->Next = malloc(sizeof(ObjTable));
 		SWorker->Next->Next = NULL;
 		SWorker->Next->Prev = SWorker;
+		
+		/*Backup the dynamically allocated strings.*/
+		SWorker->ObjectID = Worker->ObjectID;
+		Worker->ObjectID = NULL;
+		
+		SWorker->ObjectDescription = Worker->ObjectDescription;
+		Worker->ObjectDescription = NULL;
+		
+		SWorker->ObjectStartCommand = Worker->ObjectStartCommand;
+		Worker->ObjectStartCommand = NULL;
+		
+		SWorker->ObjectStopCommand = Worker->ObjectStopCommand;
+		Worker->ObjectStopCommand = NULL;
+		
+		SWorker->ObjectPrestartCommand = Worker->ObjectPrestartCommand;
+		Worker->ObjectPrestartCommand = NULL;
+		
+		SWorker->ObjectReloadCommand = Worker->ObjectReloadCommand;
+		Worker->ObjectReloadCommand = NULL;
+		
+		SWorker->ObjectPIDFile = Worker->ObjectPIDFile;
+		Worker->ObjectPIDFile = NULL;
 		
 		if (!Worker->ObjectRunlevels)
 		{
@@ -2064,20 +2108,33 @@ rStatus ReloadConfig(void)
 	
 	WriteLogLine("CONFIG: Restoring object statuses and deleting backup configuration.", true);
 	
-	for (SWorker = TRoot; SWorker->Next != NULL; SWorker = Temp)
+	for (SWorker = TRoot; SWorker != NULL; SWorker = Temp)
 	{ /*Add back the Started states, so we don't forget to stop services, etc.*/
-		if ((Worker = LookupObjectInTable(SWorker->ObjectID)))
+		
+		if (SWorker->Next)
 		{
-			Worker->Started = SWorker->Started;
-			Worker->ObjectPID = SWorker->ObjectPID;
-			Worker->StartedSince = SWorker->StartedSince;
+			if ((Worker = LookupObjectInTable(SWorker->ObjectID)))
+			{
+				Worker->Started = SWorker->Started;
+				Worker->ObjectPID = SWorker->ObjectPID;
+				Worker->StartedSince = SWorker->StartedSince;
+			}
+			
+			ObjRL_ShutdownRunlevels(SWorker);
+			
+			if (SWorker->ObjectID) free(SWorker->ObjectID);
+			if (SWorker->ObjectDescription &&
+				SWorker->ObjectDescription != SWorker->ObjectID) free(SWorker->ObjectDescription);
+			if (SWorker->ObjectStartCommand) free(SWorker->ObjectStartCommand);
+			if (SWorker->ObjectStopCommand) free(SWorker->ObjectStopCommand);
+			if (SWorker->ObjectReloadCommand) free(SWorker->ObjectReloadCommand);
+			if (SWorker->ObjectPrestartCommand) free(SWorker->ObjectPrestartCommand);
+			if (SWorker->ObjectPIDFile) free(SWorker->ObjectPIDFile);
 		}
 		
-		ObjRL_ShutdownRunlevels(SWorker);
 		Temp = SWorker->Next;
 		free(SWorker);
 	}
-	free(SWorker);
 	
 	/*Release the runlevel inheritance table.*/
 	for (; RLIRoot != NULL; RLIRoot = RLIWorker[0])

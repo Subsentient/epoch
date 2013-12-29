@@ -58,7 +58,7 @@ static void SigHandler(int Signal)
 {
 	const char *ErrorM = NULL;
 	char OutMsg[MAX_LINE_SIZE * 2] = { '\0' };
-	
+	static Bool RecursiveProblem = false;
 #ifndef NO_EXECINFO
 	void *BTList[25];
 	char **BTStrings;
@@ -167,6 +167,14 @@ static void SigHandler(int Signal)
 		}
 		
 	}
+	
+	if (RecursiveProblem)
+	{
+		EmulWall("Epoch: Recursive fault detected. Sleeping forever.", false);
+		while (1) sleep(1);
+	}
+	
+	RecursiveProblem = true;
 	
 #ifndef NO_EXECINFO
 	BTSize = backtrace(BTList, 25);

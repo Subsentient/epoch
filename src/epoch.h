@@ -163,13 +163,13 @@ struct _RLTree
 	
 typedef struct _EpochObjectTable
 {
-	char ObjectID[MAX_DESCRIPT_SIZE]; /*The ASCII ID given to this item by whoever configured Epoch.*/
-	char ObjectDescription[MAX_DESCRIPT_SIZE]; /*The description of the object.*/
-	char ObjectStartCommand[MAX_LINE_SIZE]; /*The command to be executed.*/
-	char ObjectPrestartCommand[MAX_LINE_SIZE]; /*Run before ObjectStartCommand, if it exists.*/
-	char ObjectStopCommand[MAX_LINE_SIZE]; /*How to shut it down.*/
-	char ObjectReloadCommand[MAX_LINE_SIZE]; /*Used to reload an object without starting/stopping. Most services don't have this.*/
-	char ObjectPIDFile[MAX_LINE_SIZE];
+	char *ObjectID; /*The ASCII ID given to this item by whoever configured Epoch.*/
+	char *ObjectDescription; /*The description of the object.*/
+	char *ObjectStartCommand; /*The command to be executed.*/
+	char *ObjectPrestartCommand; /*Run before ObjectStartCommand, if it exists.*/
+	char *ObjectStopCommand; /*How to shut it down.*/
+	char *ObjectReloadCommand; /*Used to reload an object without starting/stopping. Most services don't have this.*/
+	char *ObjectPIDFile;
 	unsigned long ObjectStartPriority;
 	unsigned long ObjectStopPriority;
 	unsigned long ObjectPID; /*The process ID, used for shutting down.*/
