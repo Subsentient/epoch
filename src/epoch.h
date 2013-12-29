@@ -80,7 +80,6 @@
 #define CONSOLE_ENDCOLOR "\033[0m"
 
 /*Stuff used for status reports etc*/
-#define CONSOLE_CTL_LINEDEL "\033[K"
 #define CONSOLE_CTL_SAVESTATE "\033[s"
 #define CONSOLE_CTL_RESTORESTATE "\033[u"
 
