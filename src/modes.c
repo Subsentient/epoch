@@ -449,6 +449,8 @@ rStatus EmulShutdown(long ArgumentCount, const char **ArgStream)
 	
 	while (!MemBus_Read(InRecv, false)) usleep(1000); /*Wait for a response.*/
 	
+	if (ImmediateHalt) MemBus_Write(" ", false); /*Tells init it can shut down the membus.*/
+	
 	if (!ShutdownMemBus(false))
 	{
 		SpitError("Failed to shut down membus! This could spell serious issues.");
