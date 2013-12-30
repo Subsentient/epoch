@@ -707,7 +707,7 @@ rStatus ProcessReloadCommand(ObjTable *CurObj, Bool PrintStatus)
 	rStatus RetVal = FAILURE;
 	char StatusReportBuf[MAX_DESCRIPT_SIZE];
 	
-	if (!CurObj->ObjectReloadCommand)
+	if (!CurObj->ObjectReloadCommand && !CurObj->ReloadCommandSignal)
 	{
 		return FAILURE;
 	}
@@ -718,7 +718,18 @@ rStatus ProcessReloadCommand(ObjTable *CurObj, Bool PrintStatus)
 		RenderStatusReport(StatusReportBuf);
 	}
 	
-	RetVal = ExecuteConfigObject(CurObj, CurObj->ObjectReloadCommand);
+	if (CurObj->ReloadCommandSignal != 0)
+	{
+		const unsigned long PID = CurObj->Opts.HasPIDFile ? ReadPIDFile(CurObj) : CurObj->ObjectPID;
+
+		if (!PID) return FAILURE;
+		
+		RetVal = !kill(PID, CurObj->ReloadCommandSignal);
+	}
+	else
+	{
+		RetVal = ExecuteConfigObject(CurObj, CurObj->ObjectReloadCommand);
+	}
 	
 	if (PrintStatus)
 	{

@@ -900,9 +900,85 @@ rStatus InitConfig(void)
 				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
+
 			
-			CurObj->ObjectReloadCommand = malloc(strlen(DelimCurr) + 1);
-			strncpy(CurObj->ObjectReloadCommand, DelimCurr, strlen(DelimCurr) + 1);
+			if (!strncmp(DelimCurr, "SIGNAL", strlen("SIGNAL")))
+			{
+				const char *Tag = "SIGNAL";
+				const char *TWorker = &DelimCurr[strlen(Tag)];
+				
+				if (!strcmp(DelimCurr, Tag) ||
+					(TWorker[0] != ' ' && 
+					TWorker[0] != '\t')) /*No arg. Bad.*/
+				{
+					char TBuf[MAX_LINE_SIZE];
+					
+					snprintf(TBuf, sizeof TBuf, "Object \"%s\"'s reload command has 'SIGNAL' specified,\n"
+							"but syntax is not valid.", CurObj->ObjectID);
+					WriteLogLine(TBuf, true);
+					SpitWarning(TBuf);
+					continue;
+				}
+				
+				TWorker = WhitespaceArg(TWorker);
+				
+				if (AllNumeric(TWorker))
+				{
+					if (atoi(TWorker) > 255)
+					{
+						ConfigProblem(CONFIG_ELARGENUM, CurrentAttribute, NULL, LineNum);
+					}
+					CurObj->ReloadCommandSignal = (unsigned char)atoi(TWorker);
+				}
+				else if (!strcmp("SIGTERM", TWorker))
+				{
+					CurObj->ReloadCommandSignal = SIGTERM;
+				}
+				else if (!strcmp("SIGKILL", TWorker))
+				{
+					CurObj->ReloadCommandSignal = SIGKILL;
+				}
+				else if (!strcmp("SIGHUP", TWorker))
+				{
+					CurObj->ReloadCommandSignal = SIGKILL;
+				}
+				else if (!strcmp("SIGINT", TWorker))
+				{
+					CurObj->ReloadCommandSignal = SIGINT;
+				}
+				else if (!strcmp("SIGABRT", TWorker))
+				{
+					CurObj->ReloadCommandSignal = SIGABRT;
+				}
+				else if (!strcmp("SIGQUIT", TWorker))
+				{
+					CurObj->ReloadCommandSignal = SIGQUIT;
+				}
+				else if (!strcmp("SIGUSR1", TWorker))
+				{
+					CurObj->ReloadCommandSignal = SIGUSR1;
+				}
+				else if (!strcmp("SIGUSR2", TWorker))
+				{
+					CurObj->ReloadCommandSignal = SIGUSR2;
+				}
+				else
+				{
+					char TBuf[MAX_LINE_SIZE];
+					
+					snprintf(TBuf, sizeof TBuf, CONFIGWARNTXT
+							"ObjectReloadCommand starts with SIGNAL, but the argument to SIGNAL\n"
+							"is invalid. Object \"%s\" in epoch.conf line %lu", CurObj->ObjectID, LineNum);
+					SpitWarning(TBuf);
+					WriteLogLine(TBuf, true);
+					continue;
+				}
+			}
+			else
+			{
+				CurObj->ObjectReloadCommand = malloc(strlen(DelimCurr) + 1);
+				strncpy(CurObj->ObjectReloadCommand, DelimCurr, strlen(DelimCurr) + 1);
+			}
 			
 			if (strlen(DelimCurr) + 1 >= MAX_LINE_SIZE)
 			{
@@ -1497,6 +1573,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->Opts.CanStop = true;
 	Worker->ObjectPID = 0;
 	Worker->TermSignal = SIGTERM; /*This can be changed via config.*/
+	Worker->ReloadCommandSignal = 0;
 	Worker->ObjectRunlevels = NULL;
 	Worker->Enabled = 2; /*We can indeed store this in a bool you know. There's no 1 bit datatype.*/
 	Worker->Opts.HaltCmdOnly = false;
