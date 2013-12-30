@@ -45,9 +45,9 @@ static Bool FileUsable(const char *FileName)
 static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 { /*Not making static because this is probably going to be useful for other stuff.*/
 #ifdef NOMMU
-#define ForkFunc() fork()
-#else
 #define ForkFunc() vfork()
+#else
+#define ForkFunc() fork()
 #endif
 
 	pid_t LaunchPID;
