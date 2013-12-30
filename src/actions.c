@@ -313,7 +313,7 @@ void RecoverFromReexec(void)
 	/*Retrieve our important options.*/
 	while (!MemBus_BinRead(InBuf, sizeof InBuf, false)) usleep(100);
 	EnableLogging = (Bool)*(InBuf + MCodeLength);
-	
+
 	/*Retrieve the current runlevel.*/
 	while (!MemBus_BinRead(InBuf, sizeof InBuf, false)) usleep(100);
 	snprintf(CurRunlevel, sizeof CurRunlevel, "%s", InBuf + MCodeLength);
@@ -356,6 +356,7 @@ void RecoverFromReexec(void)
 	}
 		
 	FinaliseLogStartup(false); /*Bring back logging.*/
+	LogInMemory = false;
 	
 	WriteLogLine(CONSOLE_COLOR_GREEN "Re-executed Epoch.\nNow using " VERSIONSTRING
 				"\nCompiled " __DATE__ " " __TIME__ "." CONSOLE_ENDCOLOR, true);

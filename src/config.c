@@ -148,10 +148,13 @@ rStatus InitConfig(void)
 	unsigned long LineNum = 1;
 	const char *CurrentAttribute = NULL;
 	Bool LongComment = false;
-	Bool TrueLogEnable = false;
+	Bool TrueLogEnable = EnableLogging;
+	Bool PrevLogInMemory = LogInMemory;
+	
 	char ErrBuf[MAX_LINE_SIZE];
 	
 	EnableLogging = true; /*To temporarily turn on the logging system.*/
+	LogInMemory = true;
 	
 	/*Get the file size of the config file.*/
 	if (stat(CONFIGDIR CONF_NAME, &FileStat) != 0)
@@ -1261,15 +1264,13 @@ rStatus InitConfig(void)
 			const char *WarnTxt = "Noncritical configuration problems exist.\nPlease edit epoch.conf to resolve these.";
 			WriteLogLine(WarnTxt, true);
 			SpitWarning(WarnTxt);
-			
-			EnableLogging = TrueLogEnable;
-			free(ConfigStream);
-			return WARNING;
+			break;
 
 		}
 	}
 		
 	free(ConfigStream); /*Release ConfigStream, since we only use the object table now.*/
+	LogInMemory = PrevLogInMemory;
 	EnableLogging = TrueLogEnable;
 	
 	return SUCCESS;
