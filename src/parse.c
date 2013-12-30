@@ -348,8 +348,13 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		
 		ExitStatus = ExecuteConfigObject(CurObj, CurObj->ObjectStartCommand);
 		
-		if (!PrestartExitStatus && ExitStatus)
+		if (PrestartExitStatus != SUCCESS && ExitStatus)
 		{
+			char TBuf[MAX_LINE_SIZE];
+			
+			snprintf(TBuf, MAX_LINE_SIZE, "Prestart command %s for object \"%s\".",
+					PrestartExitStatus ? "returned a warning" : "failed", CurObj->ObjectID);
+			WriteLogLine(TBuf, true);
 			ExitStatus = WARNING;
 		}
 		
