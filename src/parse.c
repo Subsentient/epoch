@@ -452,18 +452,6 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					
 					if (Inc >= 100000)
 					{
-						char TmpBuf[MAX_LINE_SIZE];
-						
-						if (Inc == 100000) /*Genuine timeout, otherwise we killed it ourselves.*/
-						{
-							snprintf(TmpBuf, MAX_LINE_SIZE, "Object %s reports to have been stopped %s,\n"
-									"but the process is still running as PID %lu.\n"
-									"Add 'ObjectOptions NOSTOPWAIT' to this object's section\n"
-									"in epoch.conf to silence this warning.", CurObj->ObjectID,
-									(ExitStatus == WARNING ? "(with a warning)" : "successfully"),
-									(CurObj->Opts.HasPIDFile ? ReadPIDFile(CurObj) : CurObj->ObjectPID));
-							WriteLogLine(TmpBuf, true);
-						}
 						ExitStatus = WARNING;
 					}
 					
