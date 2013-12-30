@@ -13,6 +13,8 @@
 #include <ctype.h>
 #include "epoch.h"
 
+#define CONFIGWARNTXT "CONFIG: " CONSOLE_COLOR_YELLOW "WARNING: " CONSOLE_ENDCOLOR
+
 /*We want the only interface for this to be LookupObjectInTable().*/
 ObjTable *ObjectTable = NULL;
 
@@ -130,7 +132,7 @@ static void ConfigProblem(short Type, const char *Attribute, const char *AttribV
 			return;
 	}
 	
-	snprintf(LogBuffer, MAX_LINE_SIZE, "CONFIG: " CONSOLE_COLOR_YELLOW "WARNING: " CONSOLE_ENDCOLOR "%s\n", TmpBuf);
+	snprintf(LogBuffer, MAX_LINE_SIZE, CONFIGWARNTXT "%s\n", TmpBuf);
 	
 	SpitWarning(TmpBuf);
 	WriteLogLine(LogBuffer, true);
@@ -146,7 +148,10 @@ rStatus InitConfig(void)
 	unsigned long LineNum = 1;
 	const char *CurrentAttribute = NULL;
 	Bool LongComment = false;
+	Bool TrueLogEnable = false;
 	char ErrBuf[MAX_LINE_SIZE];
+	
+	EnableLogging = true; /*To temporarily turn on the logging system.*/
 	
 	/*Get the file size of the config file.*/
 	if (stat(CONFIGDIR CONF_NAME, &FileStat) != 0)
@@ -185,7 +190,7 @@ rStatus InitConfig(void)
 	{
 		if (*Worker > 127 || *Worker < 0)
 		{
-			SpitWarning("Non-ASCII characters detected in epoch.conf!\n"
+			SpitWarning(CONFIGWARNTXT "Non-ASCII characters detected in epoch.conf!\n"
 						"Epoch does not support Unicode or the like!");
 			break;
 		}
@@ -214,8 +219,9 @@ rStatus InitConfig(void)
 		{ /*It's probably not good to have stray multi-line comment terminators around.*/
 			if (!LongComment)
 			{
-				snprintf(ErrBuf, MAX_LINE_SIZE, "Stray multi-line comment terminator on line %lu\n", LineNum);
+				snprintf(ErrBuf, MAX_LINE_SIZE, CONFIGWARNTXT "Stray multi-line comment terminator on line %lu\n", LineNum);
 				SpitWarning(ErrBuf);
+				WriteLogLine(ErrBuf, true);
 				continue;
 			}
 			LongComment = false;
@@ -309,16 +315,16 @@ rStatus InitConfig(void)
 			
 			if (!strcmp(DelimCurr, "true"))
 			{
-				EnableLogging = true;
+				TrueLogEnable = true;
 			}
 			else if (!strcmp(DelimCurr, "false"))
 			{
-				EnableLogging = false;
+				TrueLogEnable = false;
 			}
 			else
 			{
 				
-				EnableLogging = false;
+				TrueLogEnable = false;
 				
 				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 			}
@@ -411,9 +417,10 @@ rStatus InitConfig(void)
 		}
 		else if (!strncmp(Worker, (CurrentAttribute = "AlignStatusReports"), strlen("AlignStatusReports")))
 		{ /*Deprecated.*/
-			snprintf(ErrBuf, sizeof ErrBuf, "Attribute AlignStatusReports is deprecated and no longer has any effect.\n"
+			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Attribute AlignStatusReports is deprecated and no longer has any effect.\n"
 					"epoch.conf line %lu", LineNum);
 			SpitWarning(ErrBuf);
+			WriteLogLine(ErrBuf, true);
 			continue;
 		}
 		/*This will mount /dev, /proc, /sys, /dev/pts, and /dev/shm on boot time, upon request.*/
@@ -566,8 +573,9 @@ rStatus InitConfig(void)
 				
 				if (!(TDesc = fopen(TW, "r")))
 				{
-										snprintf(ErrBuf, sizeof ErrBuf, "Failed to set hostname from file \"%s\".\n", TW);
+					snprintf(ErrBuf, sizeof ErrBuf, "Failed to set hostname from file \"%s\".\n", TW);
 					SpitWarning(ErrBuf);
+					WriteLogLine(ErrBuf, true);
 					continue;
 				}
 				
@@ -599,7 +607,9 @@ rStatus InitConfig(void)
 			/*Check for spaces and tabs in the actual hostname.*/
 			if (strstr(Hostname, " ") != NULL || strstr(Hostname, "\t") != NULL)
 			{
-				SpitWarning("Tabs and/or spaces in hostname file. Cannot set hostname.");
+				const char *const ErrString = "Tabs and/or spaces in hostname file. Cannot set hostname.";
+				SpitWarning((const char*)ErrString);
+				WriteLogLine((const char*)ErrString, true);
 				*Hostname = '\0'; /*Set the hostname back to nothing.*/
 				continue;
 			}
@@ -727,10 +737,11 @@ rStatus InitConfig(void)
 					#ifndef NOSHELL
 						CurObj->Opts.ForceShell = true;
 					#else
-						snprintf(ErrBuf, sizeof ErrBuf, "Object %s has the option FORCESHELL set,\n"
+						snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Object %s has the option FORCESHELL set,\n"
 								"but Epoch was compiled without shell support.\n"
 								"Ignoring.", CurObj->ObjectID);
 						SpitWarning(ErrBuf);
+						WriteLogLine(ErrBuf, true);
 					#endif
 				}
 				else if (!strcmp(CurArg, "NOSTOPWAIT"))
@@ -1078,12 +1089,13 @@ rStatus InitConfig(void)
 			
 			if (CurObj == LastObject)
 			{ /*We cannot have multiple runlevel attributes because it messes up config file editing.*/
-				snprintf(ErrBuf, sizeof ErrBuf, "Object %s has more than one ObjectRunlevels line.\n"
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Object %s has more than one ObjectRunlevels line.\n"
 						"This is not advised because the config file editing code is not smart enough\n"
 						"to handle multiple lines. You should put the additional runlevels on the same line.\n"
 						"Line %lu in epoch.conf",
 						CurObj->ObjectID, LineNum);
 				SpitWarning(ErrBuf);
+				WriteLogLine(ErrBuf, true);
 			}
 			LastObject = CurObj;
 			
@@ -1117,13 +1129,13 @@ rStatus InitConfig(void)
 		}
 		else
 		{ /*No big deal.*/
-						snprintf(ErrBuf, sizeof ErrBuf, "Unidentified attribute in epoch.conf on line %lu.", LineNum);
+			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Unidentified attribute in epoch.conf on line %lu.", LineNum);
 			SpitWarning(ErrBuf);
-			
+			WriteLogLine(ErrBuf, true);
 			continue;
 		}
 	} while (++LineNum, (Worker = NextLine(Worker)));
-
+	
 	for (ObjWorker = ObjectTable; ObjWorker->Next; ObjWorker = ObjWorker->Next)
 	{
 		/*We don't need to specify a description, but if we neglect to, use the ObjectID.*/
@@ -1136,8 +1148,9 @@ rStatus InitConfig(void)
 	/*This is harmless, but it's bad form and could indicate human error in writing the config file.*/
 	if (LongComment)
 	{
-				snprintf(ErrBuf, sizeof ErrBuf, "No comment terminator at end of configuration file.");
+		snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "No comment terminator at end of configuration file.");
 		SpitWarning(ErrBuf);
+		WriteLogLine(ErrBuf, true);
 	}
 	
 	PriorityAlias_Shutdown(); /*We don't need to keep this in memory.*/
@@ -1169,13 +1182,20 @@ rStatus InitConfig(void)
 		}
 		case WARNING:
 		{
-			SpitWarning("Noncritical configuration problems exist.\nPlease edit epoch.conf to resolve these.");
+			const char *WarnTxt = "Noncritical configuration problems exist.\nPlease edit epoch.conf to resolve these.";
+			WriteLogLine(WarnTxt, true);
+			SpitWarning(WarnTxt);
+			
+			EnableLogging = TrueLogEnable;
+			free(ConfigStream);
 			return WARNING;
+
 		}
 	}
 		
 	free(ConfigStream); /*Release ConfigStream, since we only use the object table now.*/
-
+	EnableLogging = TrueLogEnable;
+	
 	return SUCCESS;
 }
 

@@ -23,6 +23,7 @@
 /*Prototypes.*/
 static void MountVirtuals(void);
 static void PrimaryLoop(void);
+static void FinaliseLogStartup(Bool BlankLog);
 
 /*Globals.*/
 volatile struct _HaltParams HaltParams = { -1 };
@@ -353,8 +354,9 @@ void RecoverFromReexec(void)
 		/*Tell the client we are done.*/
 		MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_RXD, true);
 	}
-
-	LogInMemory = false; /*Nothing in here, but we need this to start our logging.*/
+		
+	FinaliseLogStartup(false); /*Bring back logging.*/
+	
 	WriteLogLine(CONSOLE_COLOR_GREEN "Re-executed Epoch.\nNow using " VERSIONSTRING
 				"\nCompiled " __DATE__ " " __TIME__ "." CONSOLE_ENDCOLOR, true);
 				
@@ -520,6 +522,35 @@ void ReexecuteEpoch(void)
 	exit(0);
 }
 
+static void FinaliseLogStartup(Bool BlankLog)
+{
+	if (MemLogBuffer != NULL)
+	{ /*Switch logging out of memory mode and write it's memory buffer to disk.*/		
+		if (EnableLogging)
+		{
+			FILE *Descriptor = fopen(LOGDIR LOGFILE_NAME, (BlankLog ? "w" : "a"));
+
+			LogInMemory = false;
+
+			if (!Descriptor)
+			{
+				SpitWarning("Cannot record logs to disk. Shutting down logging.");
+				EnableLogging = false;
+			}
+			else
+			{
+				fwrite(MemLogBuffer, 1, strlen(MemLogBuffer), Descriptor);
+				fflush(Descriptor);
+				fclose(Descriptor);
+			}
+			
+		}
+		
+		free(MemLogBuffer); /*Release the memory anyways.*/
+		MemLogBuffer = NULL;
+	}
+}
+
 void LaunchBootup(void)
 { /*Handles what would happen if we were PID 1.*/
 	
@@ -598,31 +629,11 @@ void LaunchBootup(void)
 		EmergencyShell();
 	}
 	
-	if (EnableLogging)
-	{ /*Switch logging out of memory mode and write it's memory buffer to disk.*/
-		FILE *Descriptor = fopen(LOGDIR LOGFILE_NAME, (BlankLogOnBoot ? "w" : "a"));
-		
-		LogInMemory = false;
-		
-		if (MemLogBuffer != NULL)
-		{
-			if (!Descriptor)
-			{
-				SpitWarning("Cannot record logs to disk. Shutting down logging.");
-				EnableLogging = false;
-			}
-			else
-			{
-				fwrite(MemLogBuffer, 1, strlen(MemLogBuffer), Descriptor);
-				fflush(Descriptor);
-				fclose(Descriptor);
-				
-				WriteLogLine(CONSOLE_COLOR_GREEN "Bootup complete.\n" CONSOLE_ENDCOLOR, true);
-			}
-			free(MemLogBuffer);
-		}
-	}
-	
+	FinaliseLogStartup(BlankLogOnBoot); /*Write anything in the log's memory to disk.
+		* NOTE: It's possible for data to be in here even if logging is disabled, so don't touch.*/
+					
+	WriteLogLine(CONSOLE_COLOR_GREEN "Bootup complete.\n" CONSOLE_ENDCOLOR, true);
+
 	if (!InitMemBus(true))
 	{
 		const char *MemBusErr = CONSOLE_COLOR_RED "FAILURE IN MEMBUS! "
