@@ -232,19 +232,19 @@ struct _CTask
 extern ObjTable *ObjectTable;
 extern struct _BootBanner BootBanner;
 extern char CurRunlevel[MAX_DESCRIPT_SIZE];
-extern volatile char *MemData;
+extern char *MemData;
 extern Bool DisableCAD;
 extern char Hostname[MAX_LINE_SIZE];
-extern volatile struct _HaltParams HaltParams;
+extern struct _HaltParams HaltParams;
 extern Bool AutoMountOpts[5];
 extern Bool EnableLogging;
 extern Bool LogInMemory;
 extern Bool BlankLogOnBoot;
 extern char *MemLogBuffer;
 extern struct _CTask CurrentTask;
-extern volatile BootMode CurrentBootMode;
-extern volatile signed long MemBusKey;
-extern volatile Bool BusRunning;
+extern BootMode CurrentBootMode;
+extern signed long MemBusKey;
+extern Bool BusRunning;
 
 /**Function forward declarations.*/
 

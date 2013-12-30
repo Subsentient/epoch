@@ -26,9 +26,9 @@ static void PrimaryLoop(void);
 static void FinaliseLogStartup(Bool BlankLog);
 
 /*Globals.*/
-volatile struct _HaltParams HaltParams = { -1 };
+struct _HaltParams HaltParams = { -1 };
 Bool AutoMountOpts[5] = { false, false, false, false, false };
-static volatile Bool ContinuePrimaryLoop = true;
+static Bool ContinuePrimaryLoop = true;
 
 /*Functions.*/
 

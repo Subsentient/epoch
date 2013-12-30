@@ -21,10 +21,10 @@
 #include "epoch.h"
 
 /*Memory bus uhh, static globals.*/
-volatile char *MemData = NULL;
-volatile Bool BusRunning = false;
-volatile signed long MemBusKey = MEMKEY;
-volatile int MemDescriptor = 0;
+char *MemData = NULL;
+Bool BusRunning = false;
+signed long MemBusKey = MEMKEY;
+int MemDescriptor = 0;
 
 rStatus InitMemBus(Bool ServerSide)
 { /*Fire up the memory bus.*/
@@ -96,7 +96,7 @@ rStatus InitMemBus(Bool ServerSide)
 unsigned long MemBus_BinWrite(const void *InStream_, unsigned long DataSize, Bool ServerSide)
 { /*Copies binary data of length DataSize to the membus.*/
 	const char *InStream = InStream_;
-	volatile char *BusData = NULL, *BusStatus = NULL;
+	char *BusData = NULL, *BusStatus = NULL;
 	unsigned long Inc = 0;
 	unsigned short WaitCount = 0;
 	
@@ -134,7 +134,7 @@ unsigned long MemBus_BinWrite(const void *InStream_, unsigned long DataSize, Boo
 
 unsigned long MemBus_BinRead(void *OutStream_, unsigned long MaxOutSize, Bool ServerSide)
 {
-	volatile char *BusStatus = NULL, *BusData = NULL;
+	char *BusStatus = NULL, *BusData = NULL;
 	char *OutStream = OutStream_;
 	unsigned long Inc = 0;
 	
@@ -166,8 +166,8 @@ unsigned long MemBus_BinRead(void *OutStream_, unsigned long MaxOutSize, Bool Se
 	
 rStatus MemBus_Write(const char *InStream, Bool ServerSide)
 {
-	volatile char *BusStatus = NULL;
-	volatile char *BusData = NULL;
+	char *BusStatus = NULL;
+	char *BusData = NULL;
 	unsigned short WaitCount = 0;
 	
 	if (ServerSide)
@@ -201,8 +201,8 @@ rStatus MemBus_Write(const char *InStream, Bool ServerSide)
 
 Bool MemBus_Read(char *OutStream, Bool ServerSide)
 {
-	volatile char *BusStatus = NULL;
-	volatile char *BusData = NULL;
+	char *BusStatus = NULL;
+	char *BusData = NULL;
 	
 	if (ServerSide)
 	{

@@ -19,7 +19,7 @@
 /*We store the current runlevel here.*/
 char CurRunlevel[MAX_DESCRIPT_SIZE] = { '\0' };
 struct _CTask CurrentTask = { NULL }; /*We save this for each linear task, so we can kill the process if it becomes unresponsive.*/
-volatile BootMode CurrentBootMode = BOOT_NEUTRAL;
+BootMode CurrentBootMode = BOOT_NEUTRAL;
 
 /**Function forward declarations.**/
 
