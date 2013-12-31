@@ -9,7 +9,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <signal.h>
+#include <grp.h>
+#include <pwd.h>
 #include <ctype.h>
 #include "epoch.h"
 
@@ -750,6 +753,56 @@ rStatus InitConfig(void)
 				else if (!strcmp(CurArg, "NOSTOPWAIT"))
 				{
 					CurObj->Opts.NoStopWait = true;
+				}
+				else if (!strncmp(CurArg, "USER", strlen("USER")))
+				{
+					struct passwd *UserStruct = NULL;
+					const char *TWorker = CurArg + strlen("USER");
+					
+					if (*TWorker != '=' || *(TWorker + 1) == '\0')
+					{
+						ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, CurArg, LineNum);
+						continue;
+					}
+					++TWorker;
+					
+					if (!(UserStruct = getpwnam(TWorker)))
+					{ /*getpwnam_r() is more trouble than it's worth in single-threaded Epoch.*/
+						snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT
+								"Unable to lookup requested USER \"%s\" for object \"%s\".\n"
+								"Line %lu in epoch.conf", TWorker, CurObj->ObjectID, LineNum);
+						WriteLogLine(ErrBuf, true);
+						SpitWarning(ErrBuf);
+						continue;
+					}
+					
+					CurObj->UserID = (unsigned long)UserStruct->pw_uid;
+					continue;
+				}
+				else if (!strncmp(CurArg, "GROUP", strlen("GROUP")))
+				{
+					struct group *GroupStruct = NULL;
+					const char *TWorker = CurArg + strlen("GROUP");
+					
+					if (*TWorker != '=' || *(TWorker + 1) == '\0')
+					{
+						ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, CurArg, LineNum);
+						continue;
+					}
+					++TWorker;
+					
+					if (!(GroupStruct = getgrnam(TWorker)))
+					{ /*getpwnam_r() is more trouble than it's worth in single-threaded Epoch.*/
+						snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT
+								"Unable to lookup requested GROUP \"%s\" for object \"%s\".\n"
+								"Line %lu in epoch.conf", TWorker, CurObj->ObjectID, LineNum);
+						WriteLogLine(ErrBuf, true);
+						SpitWarning(ErrBuf);
+						continue;
+					}
+					
+					CurObj->GroupID = (unsigned long)GroupStruct->gr_gid;
+					continue;
 				}
 				else if (!strncmp(CurArg, "TERMSIGNAL", strlen("TERMSIGNAL")))
 				{
@@ -1573,6 +1626,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->Opts.StopMode = STOP_NONE;
 	Worker->Opts.CanStop = true;
 	Worker->ObjectPID = 0;
+	Worker->UserID = Worker->GroupID = 0; /*Zero is root of course.*/
 	Worker->TermSignal = SIGTERM; /*This can be changed via config.*/
 	Worker->ReloadCommandSignal = 0;
 	Worker->ObjectRunlevels = NULL;

@@ -174,6 +174,8 @@ typedef struct _EpochObjectTable
 	unsigned long ObjectPID; /*The process ID, used for shutting down.*/
 	unsigned char TermSignal; /*The signal we send to an object if it's stop mode is PID or PIDFILE.*/
 	unsigned char ReloadCommandSignal; /*If the reload command sends a signal, this works.*/
+	unsigned long UserID; /*The user ID we run this as. Zero, of course, is root and we need do nothing.*/
+	unsigned long GroupID; /*Same as above, but with groups.*/
 	Bool Enabled;
 	Bool Started;
 	unsigned long StartedSince; /*The time in UNIX seconds since it was started.*/
