@@ -198,8 +198,11 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 		setsid();
 		
 		/*Set user and group if desired.*/
-		if (InObj->UserID != 0) setuid(InObj->UserID);
-		if (InObj->GroupID != 0) setgid(InObj->GroupID);
+		if (CurCmd == InObj->ObjectStartCommand)
+		{
+			if (InObj->UserID != 0) setuid(InObj->UserID);
+			if (InObj->GroupID != 0) setgid(InObj->GroupID);
+		}
 		
 #ifndef NOSHELL
 		if (ShellEnabled && (strpbrk(CurCmd, "&^$#@!()*%{}`~+|\\<>?;:'[]\"\t") != NULL || ForceShell))
