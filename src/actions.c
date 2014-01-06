@@ -639,6 +639,12 @@ void LaunchBootup(void)
 	setenv("HOME", ENVVAR_HOME, true);
 	setenv("SHELL", ENVVAR_SHELL, true);
 	
+	/*Add tiny message if we passed epochconfig= on the kernel cli.*/
+	if (strcmp(ConfigFile, CONFIGDIR CONF_NAME) != 0)
+	{
+		printf("Using configuration file \"%s\".\n\n", ConfigFile);
+	}
+	
 	/*Add tiny message if we passed runlevel= on the kernel cli.*/
 	if (*CurRunlevel != '\0')
 	{
