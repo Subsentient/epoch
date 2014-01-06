@@ -3,7 +3,7 @@
 * This software is public domain.
 * Please read the file UNLICENSE.TXT for more information.*/
 
-/**This file handles the parsing of epoch.conf, our configuration file.
+/**This file handles the parsing of our configuration file.
  * It adds everything into the object table.**/
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +20,7 @@
 
 /*We want the only interface for this to be LookupObjectInTable().*/
 ObjTable *ObjectTable = NULL;
+char ConfigFile[MAX_LINE_SIZE] = CONFIGDIR CONF_NAME;
 
 /*Used to allow for things like 'ObjectStartPriority Services', where Services == 3, for example.*/
 static struct _PriorityAliasTree
@@ -110,35 +111,35 @@ static void ConfigProblem(short Type, const char *Attribute, const char *AttribV
 	switch (Type)
 	{
 		case CONFIG_EMISSINGVAL:
-			snprintf(TmpBuf, 1024, "Missing or bad value for attribute %s in epoch.conf line %lu.\nIgnoring.",
-					Attribute, LineNum);
+			snprintf(TmpBuf, 1024, "Missing or bad value for attribute %s in %s line %lu.\nIgnoring.",
+					Attribute, ConfigFile, LineNum);
 			break;
 		case CONFIG_EBADVAL:
-			snprintf(TmpBuf, 1024, "Bad value %s for attribute %s in epoch.conf line %lu.", AttribVal, Attribute, LineNum);
+			snprintf(TmpBuf, 1024, "Bad value %s for attribute %s in %s line %lu.", AttribVal, Attribute, ConfigFile, LineNum);
 			break;
 		case CONFIG_ETRUNCATED:
-			snprintf(TmpBuf, 1024, "Attribute %s in epoch.conf line %lu has\n"
-					"abnormally long value and may have been truncated.", Attribute, LineNum);
+			snprintf(TmpBuf, 1024, "Attribute %s in %s line %lu has\n"
+					"abnormally long value and may have been truncated.", Attribute, ConfigFile, LineNum);
 			break;
 		case CONFIG_EAFTER:
 			snprintf(TmpBuf, 1024, "Attribute %s cannot be set after an ObjectID attribute; "
-					"epoch.conf line %lu. Ignoring.", Attribute, LineNum);
+					"%s line %lu. Ignoring.", Attribute, ConfigFile, LineNum);
 			break;
 		case CONFIG_EBEFORE:
 			snprintf(TmpBuf, 1024, "Attribute %s comes before any ObjectID attribute.\n"
-					"epoch.conf line %lu. Ignoring.", Attribute, LineNum);
+					"%s line %lu. Ignoring.", Attribute, ConfigFile, LineNum);
 			break;
 		case CONFIG_ELARGENUM:
-			snprintf(TmpBuf, 1024, "Attribute %s in epoch.conf line %lu has\n"
-					"abnormally high numeric value and may cause malfunctions.", Attribute, LineNum);
+			snprintf(TmpBuf, 1024, "Attribute %s in %s line %lu has\n"
+					"abnormally high numeric value and may cause malfunctions.", Attribute, ConfigFile, LineNum);
 			break;
 		case CONFIG_EPIVOTAFTER:
 			snprintf(TmpBuf, 1024, "Attribute %s cannot be set after any ObjectID attribute.\n"
-					"Line %lu in epoch.conf", Attribute, LineNum);
+					"Line %lu in %s", Attribute, LineNum, ConfigFile);
 			break;
 		case CONFIG_EPIVOTBEFORE:
 			snprintf(TmpBuf, 1024, "Attribute %s comes before any PivotPoint attribute.\n"
-					"epoch.conf line %lu. Ignoring.", Attribute, LineNum);
+					"%s line %lu. Ignoring.", Attribute, ConfigFile, LineNum);
 			break;
 		default:
 			return;
@@ -170,9 +171,9 @@ rStatus InitConfig(void)
 	LogInMemory = true;
 	
 	/*Get the file size of the config file.*/
-	if (stat(CONFIGDIR CONF_NAME, &FileStat) != 0)
+	if (stat(ConfigFile, &FileStat) != 0)
 	{ /*Failure?*/
-		SpitError("Failed to obtain information about configuration file epoch.conf.\nDoes it exist?");
+		SpitError("Failed to obtain information about configuration file.\nDoes it exist?");
 		return FAILURE;
 	}
 	else
@@ -181,7 +182,7 @@ rStatus InitConfig(void)
 		ConfigStream = malloc(FileStat.st_size + 1);
 	}
 
-	Descriptor = fopen(CONFIGDIR CONF_NAME, "r"); /*Open the configuration file.*/
+	Descriptor = fopen(ConfigFile, "r"); /*Open the configuration file.*/
 
 	/*Read the file into memory. I don't really trust fread(), but oh well.
 	 * People will whine if I use a loop instead.*/
@@ -196,7 +197,7 @@ rStatus InitConfig(void)
 	/*Empty file?*/
 	if ((*Worker == '\n' && *(Worker + 1) == '\0') || *Worker == '\0')
 	{
-		SpitError("Seems that epoch.conf is empty or corrupted.");
+		SpitError("Seems that the configuration file is empty or corrupted.");
 		free(ConfigStream);
 		return FAILURE;
 	}
@@ -206,7 +207,7 @@ rStatus InitConfig(void)
 	{
 		if (*Worker > 127 || *Worker < 0)
 		{
-			SpitWarning(CONFIGWARNTXT "Non-ASCII characters detected in epoch.conf!\n"
+			SpitWarning(CONFIGWARNTXT "Non-ASCII characters detected in configuration file!\n"
 						"Epoch does not support Unicode or the like!");
 			break;
 		}
@@ -434,7 +435,7 @@ rStatus InitConfig(void)
 		else if (!strncmp(Worker, (CurrentAttribute = "AlignStatusReports"), strlen("AlignStatusReports")))
 		{ /*Deprecated.*/
 			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Attribute AlignStatusReports is deprecated and no longer has any effect.\n"
-					"epoch.conf line %lu", LineNum);
+					"%s line %lu", ConfigFile, LineNum);
 			SpitWarning(ErrBuf);
 			WriteLogLine(ErrBuf, true);
 			continue;
@@ -648,7 +649,7 @@ rStatus InitConfig(void)
 			if (strstr(DelimCurr, " ") || strstr(DelimCurr, "\t")) /*We cannot allow whitespace.*/
 			{
 				snprintf(ErrBuf, sizeof ErrBuf, "ObjectIDs may not contain whitespace! This is a critical error.\n"
-						"Line %lu in epoch.conf.", LineNum);
+						"Line %lu in %s.", LineNum, ConfigFile);
 				SpitError(ErrBuf);
 				EmergencyShell();
 			}
@@ -780,7 +781,7 @@ rStatus InitConfig(void)
 					{ /*getpwnam_r() is more trouble than it's worth in single-threaded Epoch.*/
 						snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT
 								"Unable to lookup requested USER \"%s\" for object \"%s\".\n"
-								"Line %lu in epoch.conf", TWorker, CurObj->ObjectID, LineNum);
+								"Line %lu in %s", TWorker, CurObj->ObjectID, LineNum, ConfigFile);
 						WriteLogLine(ErrBuf, true);
 						SpitWarning(ErrBuf);
 						continue;
@@ -805,7 +806,7 @@ rStatus InitConfig(void)
 					{ /*getpwnam_r() is more trouble than it's worth in single-threaded Epoch.*/
 						snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT
 								"Unable to lookup requested GROUP \"%s\" for object \"%s\".\n"
-								"Line %lu in epoch.conf", TWorker, CurObj->ObjectID, LineNum);
+								"Line %lu in %s", TWorker, CurObj->ObjectID, LineNum, ConfigFile);
 						WriteLogLine(ErrBuf, true);
 						SpitWarning(ErrBuf);
 						continue;
@@ -1056,7 +1057,7 @@ rStatus InitConfig(void)
 					
 					snprintf(TBuf, sizeof TBuf, CONFIGWARNTXT
 							"ObjectReloadCommand starts with SIGNAL, but the argument to SIGNAL\n"
-							"is invalid. Object \"%s\" in epoch.conf line %lu", CurObj->ObjectID, LineNum);
+							"is invalid. Object \"%s\" in %s line %lu", CurObj->ObjectID, ConfigFile, LineNum);
 					SpitWarning(TBuf);
 					WriteLogLine(TBuf, true);
 					continue;
@@ -1256,8 +1257,8 @@ rStatus InitConfig(void)
 				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Object %s has more than one ObjectRunlevels line.\n"
 						"This is not advised because the config file editing code is not smart enough\n"
 						"to handle multiple lines. You should put the additional runlevels on the same line.\n"
-						"Line %lu in epoch.conf",
-						CurObj->ObjectID, LineNum);
+						"Line %lu in %s",
+						CurObj->ObjectID, LineNum, ConfigFile);
 				SpitWarning(ErrBuf);
 				WriteLogLine(ErrBuf, true);
 			}
@@ -1383,7 +1384,7 @@ rStatus InitConfig(void)
 		}
 		else
 		{ /*No big deal.*/
-			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Unidentified attribute in epoch.conf on line %lu.", LineNum);
+			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Unidentified attribute in %s on line %lu.", ConfigFile, LineNum);
 			SpitWarning(ErrBuf);
 			WriteLogLine(ErrBuf, true);
 			continue;
@@ -1415,18 +1416,18 @@ rStatus InitConfig(void)
 			break;
 		case FAILURE:
 		{ /*We failed integrity checking.*/
-			fprintf(stderr, "%s\n", "Enter \"d\" to dump epoch.conf to console or strike enter to continue.\n->");
+			fprintf(stderr, "Enter \"d\" to dump %s to console or strike enter to continue.\n-> ", ConfigFile);
 			fflush(NULL); /*Have an eerie feeling this will be necessary on some systems.*/
 			
 			if (getchar() == 'd')
 			{
-				fprintf(stderr, CONSOLE_COLOR_MAGENTA "Beginning dump of epoch.conf to console.\n" CONSOLE_ENDCOLOR);
+				fprintf(stderr, CONSOLE_COLOR_MAGENTA "Beginning dump of %s to console.\n" CONSOLE_ENDCOLOR, ConfigFile);
 				fprintf(stderr, "%s", ConfigStream);
 				fflush(NULL);
 			}
 			else
 			{
-				puts("Not dumping epoch.conf.");
+				printf("Not dumping %s.\n", ConfigFile);
 			}
 			
 			ShutdownConfig();
@@ -1436,7 +1437,7 @@ rStatus InitConfig(void)
 		}
 		case WARNING:
 		{
-			const char *WarnTxt = "Noncritical configuration problems exist.\nPlease edit epoch.conf to resolve these.";
+			const char *WarnTxt = "Noncritical configuration problems exist.\nPlease edit Epoch's configuration file to resolve these.";
 			WriteLogLine(WarnTxt, true);
 			SpitWarning(WarnTxt);
 			break;
@@ -1472,7 +1473,7 @@ static rStatus GetLineDelim(const char *InStream, char *OutStream)
 		}
 		ObjectInQuestion[IncT] = '\0';
 
-		snprintf(TmpBuf, 1024, "No parameter for attribute \"%s\" in epoch.conf.", ObjectInQuestion);
+		snprintf(TmpBuf, 1024, "No parameter for attribute \"%s\" in %s.", ObjectInQuestion, ConfigFile);
 
 		SpitError(TmpBuf);
 
@@ -1518,15 +1519,15 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 	unsigned long NumWhiteSpaces = 0;
 	Bool PresentHalfTwo = false;
 	
-	if (stat(CONFIGDIR CONF_NAME, &FileStat) != 0)
+	if (stat(ConfigFile, &FileStat) != 0)
 	{
-		SpitError("EditConfigValue(): Failed to stat " CONFIGDIR CONF_NAME ". Does the file exist?");
+		SpitError("EditConfigValue(): Failed to stat config file. Does the file exist?");
 		return FAILURE;
 	}
 	
-	if ((Descriptor = fopen(CONFIGDIR CONF_NAME, "r")) == NULL)
+	if ((Descriptor = fopen(ConfigFile, "r")) == NULL)
 	{
-		SpitError("EditConfigValue(): Failed to open " CONFIGDIR CONF_NAME ". Are permissions correct?");
+		SpitError("EditConfigValue(): Failed to open config file. Are permissions correct?");
 		return FAILURE;
 	}
 	
@@ -1691,7 +1692,7 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 	free(HalfTwo);
 	
 	/*Write the configuration back to disk.*/
-	Descriptor = fopen(CONFIGDIR CONF_NAME, "w");
+	Descriptor = fopen(ConfigFile, "w");
 	fwrite(MasterStream, 1, strlen(MasterStream), Descriptor);
 	fclose(Descriptor);
 	
@@ -2465,7 +2466,7 @@ rStatus ReloadConfig(void)
 					" Restoring previous configuration from backup.", true);
 		SpitError("ReloadConfig(): Failed to reload configuration.\n"
 					"Restoring old configuration to memory.\n"
-					"Please check epoch.conf for syntax errors.");
+					"Please check Epoch's configuration file for syntax errors.");
 		
 		ShutdownConfig();
 		

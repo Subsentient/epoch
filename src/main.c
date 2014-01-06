@@ -243,8 +243,8 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		
 		( "configreload:\n\t" CONSOLE_ENDCOLOR
 		
-		  "Enter configreload to reload the configuration file epoch.conf.\n\t"
-		  "This is useful for when you change epoch.conf\n\t"
+		  "Enter configreload to reload the configuration file from disk.\n\t"
+		  "This is useful for when you change it\n\t"
 		  "to add or remove services, change runlevels, and more."
 		),
 		
@@ -1465,7 +1465,12 @@ int main(int argc, char **argv)
 	
 	if (getpid() == 1)
 	{ /*Just us, as init. That means, begin bootup.*/
-		const char *TRunlevel = NULL;
+		const char *TRunlevel = NULL, *TConfigFile = getenv("epochconfig");
+		
+		if (TConfigFile != NULL)
+		{ /*Someone specified a config file from disk?*/
+			snprintf(ConfigFile, MAX_LINE_SIZE, "%s", TConfigFile);
+		} /**We leave this above the check for reexec so the reexecuted version can pull this in.**/
 		
 		/**Check if we are resuming from a reexec.**/
 		if (argc == 2 && !strcmp(argv[0], "!rxd") && !strcmp(argv[1], "REEXEC"))
