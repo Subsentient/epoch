@@ -2349,9 +2349,11 @@ rStatus ReloadConfig(void)
 	ObjTable *Worker = ObjectTable;
 	ObjTable *TRoot = malloc(sizeof(ObjTable)), *SWorker = TRoot, *Temp = NULL;
 	struct _RLTree *RLTemp1 = NULL, *RLTemp2 = NULL;
+	struct _PivotPoint *PivotWorker[2] = { NULL }, *PVRoot = PivotCore;
 	Bool GlobalOpts[3], ConfigOK = true;
 	struct _RunlevelInheritance *RLIRoot = NULL, *RLIWorker[2] = { NULL };
 	char RunlevelBackup[MAX_DESCRIPT_SIZE];
+	void *TempPtr = NULL, *TempPtr2 = NULL;
 	
 	WriteLogLine("CONFIG: Reloading configuration.\n", true);
 	WriteLogLine("CONFIG: Backing up current configuration.", true);
@@ -2362,9 +2364,10 @@ rStatus ReloadConfig(void)
 	for (; Worker->Next != NULL; Worker = Worker->Next, SWorker = SWorker->Next)
 	{
 		*SWorker = *Worker; /*Direct as-a-unit copy of the main list node to the backup list node.*/
+		SWorker->Prev = TempPtr;
 		SWorker->Next = malloc(sizeof(ObjTable));
 		SWorker->Next->Next = NULL;
-		SWorker->Next->Prev = SWorker;
+		TempPtr = SWorker;
 		
 		/*Backup the dynamically allocated strings.*/
 		SWorker->ObjectID = Worker->ObjectID;
@@ -2395,12 +2398,15 @@ rStatus ReloadConfig(void)
 		
 		RLTemp2 = SWorker->ObjectRunlevels = malloc(sizeof(struct _RLTree));
 		
+		TempPtr2 = NULL;
 		for (RLTemp1 = Worker->ObjectRunlevels; RLTemp1->Next; RLTemp1 = RLTemp1->Next)
 		{
 			*RLTemp2 = *RLTemp1;
+			RLTemp2->Prev = TempPtr2;
 			RLTemp2->Next = malloc(sizeof(struct _RLTree));
 			RLTemp2->Next->Next = NULL;
-			RLTemp2->Next->Prev = RLTemp2;
+			TempPtr2 = RLTemp2;
+			
 			RLTemp2 = RLTemp2->Next;
 		}
 	}
@@ -2410,18 +2416,38 @@ rStatus ReloadConfig(void)
 	{
 		RLIRoot = RLIWorker[1] = malloc(sizeof(struct _RunlevelInheritance));
 		memset(RLIWorker[1], 0, sizeof(struct _RunlevelInheritance));
+		TempPtr = NULL;
 		
 		for (RLIWorker[0] = RunlevelInheritance; RLIWorker[0]->Next; RLIWorker[0] = RLIWorker[0]->Next)
 		{
 			*RLIWorker[1] = *RLIWorker[0];
-			
+			RLIWorker[1]->Prev = TempPtr;
+			TempPtr = RLIWorker[1];
 			RLIWorker[1]->Next = malloc(sizeof(struct _RunlevelInheritance));
 			memset(RLIWorker[1]->Next, 0, sizeof(struct _RunlevelInheritance));
 			
-			RLIWorker[1]->Next->Prev = RLIWorker[1];
+			RLIWorker[1] = RLIWorker[1]->Next;
 		}
 	}
 	
+	/*Back up the PivotPoint table.*/
+	if (PivotCore != NULL)
+	{
+		PVRoot = PivotWorker[1] = malloc(sizeof(struct _PivotPoint));
+		memset(PivotWorker[1], 0, sizeof(struct _PivotPoint));
+
+		TempPtr = NULL;
+		for (PivotWorker[0] = PivotCore; PivotWorker[0]->Next; PivotWorker[0] = PivotWorker[0]->Next, PivotWorker[1] = PivotWorker[1]->Next)
+		{
+			*PivotWorker[1] = *PivotWorker[0];
+			
+			PivotWorker[1]->Prev = TempPtr;
+			PivotWorker[1]->Next = malloc(sizeof(struct _PivotPoint));
+			PivotWorker[1]->Next->Next = NULL;
+			
+			TempPtr = PivotWorker[1];
+		}
+	}
 	WriteLogLine("CONFIG: Shutting down configuration.", true);
 	
 	/*Actually do the reload of the config.*/
@@ -2440,11 +2466,12 @@ rStatus ReloadConfig(void)
 		SpitError("ReloadConfig(): Failed to reload configuration.\n"
 					"Restoring old configuration to memory.\n"
 					"Please check epoch.conf for syntax errors.");
-		ObjectTable = TRoot; /*Point ObjectTable to our new, identical copy of the old tree.*/
 		
-		/*Restore runlevel inheritance state.*/
-		RLInheritance_Shutdown();
-		RunlevelInheritance = RLIRoot;
+		ShutdownConfig();
+		
+		ObjectTable = TRoot; /*Point ObjectTable to our new, identical copy of the old tree.*/
+		RunlevelInheritance = RLIRoot; /*Restore runlevel inheritance.*/
+		PivotCore = PVRoot; /*Restore pivot_root pivotpoints.*/
 		
 		/*Restore current runlevel*/
 		snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", RunlevelBackup);
@@ -2493,6 +2520,12 @@ rStatus ReloadConfig(void)
 	{
 		RLIWorker[0] = RLIRoot->Next;
 		free(RLIRoot);
+	}
+	
+	for (PivotWorker[0] = PVRoot; PivotWorker[0]; PivotWorker[0] = PivotWorker[1])
+	{ /*Release PivotPoint backup table.*/
+		PivotWorker[1] = PivotWorker[0]->Next;
+		free(PivotWorker[0]);
 	}
 	
 	WriteLogLine("CONFIG: " CONSOLE_COLOR_GREEN "Configuration reload successful." CONSOLE_ENDCOLOR, true);
