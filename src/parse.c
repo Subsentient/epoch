@@ -224,10 +224,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 			
 			while ((Worker = WhitespaceArg(Worker))) ++NumSpaces;
 			
-			for (Worker = NCmd; Worker[strlen(Worker) - 1] == ' '; --NumSpaces)
-			{
-				Worker[strlen(Worker) - 1] = '\0';
-			}
+			Worker = NCmd;
 			
 			ArgV = malloc(sizeof(char*) * NumSpaces + 1);
 			
@@ -346,8 +343,31 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 			RenderStatusReport(PrintOutStream);
 		}
 		
-		fflush(NULL); /*Things tend to get clogged up when we don't flush.*/
+		/*fflush(NULL); *//*Things tend to get clogged up when we don't flush.*/
 		
+		
+		/*This means we are doing an equivalent pivot_root...*/
+		if (CurObj->Opts.PivotRoot)
+		{
+			char TmpBuf[MAX_LINE_SIZE];
+			const char *PivotPoint = CurObj->ObjectStartCommand + strlen("PIVOT");
+			
+			strcpy(TmpBuf, CurObj->ObjectID);
+			
+			PivotPoint = WhitespaceArg(PivotPoint);
+			
+			PerformPivotRoot(PivotPoint_Lookup(PivotPoint));
+			
+			/*Means it didn't go as planned or we didn't find it.*/
+			CompleteStatusReport(PrintOutStream, FAILURE, false);
+			
+			fprintf(stderr, CONSOLE_COLOR_RED "Failed" CONSOLE_ENDCOLOR
+					" to perform pivot_root requested by object %s. Starting emergency shell.", TmpBuf);
+			
+			EmergencyShell();
+			
+		}
+			
 		if (CurObj->ObjectPrestartCommand != NULL)
 		{
 			PrestartExitStatus = ExecuteConfigObject(CurObj, CurObj->ObjectPrestartCommand);

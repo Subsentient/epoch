@@ -192,7 +192,8 @@ typedef struct _EpochObjectTable
 		unsigned int AutoRestart : 1; /*Autorestarts a service whenever it terminates.*/
 		unsigned int ForceShell : 1; /*Forces us to start /bin/sh to run an object, even if it looks like we don't need to.*/
 		unsigned int HasPIDFile : 1; /*If StopMode == STOP_PIDFILE, we also stop it just by sending a signal to the PID in the file.*/
-		unsigned int NoStopWait: 1; /*Used to tell us not to wait for an object to actually quit.*/
+		unsigned int NoStopWait : 1; /*Used to tell us not to wait for an object to actually quit.*/
+		unsigned int PivotRoot : 1; /*Says that ObjectStartCommand is actually a PivotPoint. See actions.c.*/
 	} Opts;
 	
 	struct _RLTree *ObjectRunlevels; /*Dynamically allocated, needless to say.*/
@@ -228,6 +229,16 @@ struct _CTask
 	unsigned int Set : 1;
 };
 
+struct _PivotPoint
+{
+	char ID[MAX_DESCRIPT_SIZE];
+	char Command[MAX_LINE_SIZE];
+	char NewRoot[MAX_LINE_SIZE];
+	char OldRootDir[MAX_LINE_SIZE];
+	
+	struct _PivotPoint *Next;
+	struct _PivotPoint *Prev;
+};
 
 /**Globals go here.**/
 
@@ -247,6 +258,7 @@ extern struct _CTask CurrentTask;
 extern BootMode CurrentBootMode;
 extern signed long MemBusKey;
 extern Bool BusRunning;
+extern struct _PivotPoint *PivotCore;
 
 /**Function forward declarations.*/
 
@@ -278,6 +290,10 @@ extern void LaunchShutdown(signed long Signal);
 extern void EmergencyShell(void);
 extern void ReexecuteEpoch(void);
 extern void RecoverFromReexec(void);
+extern void PerformPivotRoot(struct _PivotPoint *PivotPoint);
+extern struct _PivotPoint *PivotPoint_Add(const char *ID);
+extern struct _PivotPoint *PivotPoint_Lookup(const char *ID);
+extern void PivotPoint_Shutdown(void);
 
 /*modes.c*/
 extern rStatus SendPowerControl(const char *MembusCode);
