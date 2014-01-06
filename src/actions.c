@@ -564,15 +564,15 @@ void PerformPivotRoot(struct _PivotPoint *PivotPoint)
 		
 	while ((Worker = WhitespaceArg(Worker))) ++NumSpaces;
 	
-	Worker = Cmd;
-	
 	Buffer = malloc(sizeof(char*) * NumSpaces + 1);
 	
-	for (Inc = 0; Inc < NumSpaces; ++Inc)
+	for (Worker = Cmd, Inc = 0; Inc < NumSpaces; ++Inc)
 	{
-		Buffer[Inc] = malloc(strlen(Cmd) + 1);
+		for (Inc2 = 0; Worker[Inc2 + cOffset] != ' ' && Worker[Inc2 + cOffset] != '\t' && Worker[Inc2 + cOffset] != '\0'; ++Inc2);
 		
-		for (Inc2 = 0; Worker[Inc2 + cOffset] != ' ' && Worker[Inc2 + cOffset] != '\0'; ++Inc2)
+		Buffer[Inc] = malloc(Inc2 + 1);
+		
+		for (Inc2 = 0; Worker[Inc2 + cOffset] != ' ' && Worker[Inc2 + cOffset] != '\t' && Worker[Inc2 + cOffset] != '\0'; ++Inc2)
 		{
 			Buffer[Inc][Inc2] = Worker[Inc2 + cOffset];
 		}

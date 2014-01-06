@@ -224,15 +224,16 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 			
 			while ((Worker = WhitespaceArg(Worker))) ++NumSpaces;
 			
-			Worker = NCmd;
-			
 			ArgV = malloc(sizeof(char*) * NumSpaces + 1);
 			
-			for (Inc = 0; Inc < NumSpaces; ++Inc)
+			for (Worker = NCmd, Inc = 0; Inc < NumSpaces; ++Inc)
 			{
-				ArgV[Inc] = malloc(strlen(NCmd) + 1);
+				/*Count how much space we need first.*/
+				for (Inc2 = 0; Worker[Inc2 + cOffset] != ' ' && Worker[Inc2 + cOffset] != '\t' && Worker[Inc2 + cOffset] != '\0'; ++Inc2);
 				
-				for (Inc2 = 0; Worker[Inc2 + cOffset] != ' ' && Worker[Inc2 + cOffset] != '\0'; ++Inc2)
+				ArgV[Inc] = malloc(Inc2 + 1);
+				
+				for (Inc2 = 0; Worker[Inc2 + cOffset] != ' ' && Worker[Inc2 + cOffset] != '\t' && Worker[Inc2 + cOffset] != '\0'; ++Inc2)
 				{
 					ArgV[Inc][Inc2] = Worker[Inc2 + cOffset];
 				}
