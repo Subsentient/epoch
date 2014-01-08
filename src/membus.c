@@ -69,6 +69,13 @@ rStatus InitMemBus(Bool ServerSide)
 			usleep(100);
 		}
 		
+		if (*MemData != MEMBUS_NOMSG && *MemData != MEMBUS_MSG)
+		{
+			SmallError("Another client is connecting to the membus. Cannot continue.");
+			BusRunning = false;
+			return FAILURE;
+		}
+		
 		CheckCode = *MemData = (*MemData == MEMBUS_MSG ? MEMBUS_CHECKALIVE_MSG : MEMBUS_CHECKALIVE_NOMSG); /*Ask server-side if they're alive.*/
 		
 		for (Inc = 0; *MemData == CheckCode; ++Inc)
@@ -84,8 +91,6 @@ rStatus InitMemBus(Bool ServerSide)
 			
 			usleep(100);
 		}
-		
-		*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NOMSG; /*Initialize client side.*/
 	}
 	/*Either the server side is alive, or we ARE the server side.*/
 	BusRunning = true;
@@ -228,8 +233,12 @@ Bool MemBus_Read(char *OutStream, Bool ServerSide)
 }
 
 Bool HandleMemBusPings(void)
-{
+{ /*If we are pinged, we must initialize the client side immediately.*/
 	if (!BusRunning) return false;
+	
+	*(MemData + MEMBUS_SIZE/2) = MEMBUS_NOMSG;
+	/*Set up the client side. We do it here to avoid
+	the clients overwriting each other and causing havoc.*/
 	
 	switch (*MemData)
 	{
@@ -863,6 +872,10 @@ void ParseMemBus(void)
 	else if (BusDataIs(MEMBUS_CODE_RXD))
 	{ /*Restart Epoch from disk, but saves object states and whatnot.
 		* Done mainly so we can unmount the filesystem after someone updates /sbin/epoch.*/
+		
+		/**We set this so when we come back we'll know if we are doing a regular reexec.**/
+		setenv("EPOCHRXDMEMBUS", "1", true);
+		
 		ReexecuteEpoch();
 	}
 	/*Something we don't understand. Send BADPARAM.*/

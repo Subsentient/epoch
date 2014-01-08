@@ -165,6 +165,12 @@ static void SigHandler(int Signal)
 			ErrorM = "Epoch has received an abort signal!";
 			break;
 		}
+		case SIGUSR2: /**We are init and being ordered to restart ourselves.**/
+		{
+			WriteLogLine(CONSOLE_COLOR_RED "Received SIGUSR2, reexecuting as requested." CONSOLE_ENDCOLOR, true);
+			ReexecuteEpoch();
+			return;
+		}
 		
 	}
 	
@@ -1467,6 +1473,8 @@ int main(int argc, char **argv)
 	{ /*Just us, as init. That means, begin bootup.*/
 		const char *TRunlevel = NULL, *TConfigFile = getenv("epochconfig");
 		
+		signal(SIGUSR2, SigHandler); /**If we receive this, we reexecute. Mostly in case something is wrong.**/
+
 		if (TConfigFile != NULL)
 		{ /*Someone specified a config file from disk?*/
 			snprintf(ConfigFile, MAX_LINE_SIZE, "%s", TConfigFile);
@@ -1475,8 +1483,12 @@ int main(int argc, char **argv)
 		/**Check if we are resuming from a reexec.**/
 		if (argc == 2 && !strcmp(argv[0], "!rxd") && !strcmp(argv[1], "REEXEC"))
 		{
+			const char *RecoverType = getenv("EPOCHRXDMEMBUS");
+			
+			if (RecoverType) unsetenv("EPOCHRXDMEMBUS");
+			
 			SetDefaultProcessTitle(argc, argv);
-			RecoverFromReexec();	
+			RecoverFromReexec(RecoverType != NULL);	
 		}
 		
 		else if (argc > 1)

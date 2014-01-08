@@ -290,7 +290,7 @@ extern void LaunchBootup(void);
 extern void LaunchShutdown(signed long Signal);
 extern void EmergencyShell(void);
 extern void ReexecuteEpoch(void);
-extern void RecoverFromReexec(void);
+extern void RecoverFromReexec(Bool ViaMemBus);
 extern void PerformPivotRoot(struct _PivotPoint *PivotPoint);
 extern struct _PivotPoint *PivotPoint_Add(const char *ID);
 extern struct _PivotPoint *PivotPoint_Lookup(const char *ID);

@@ -252,7 +252,7 @@ void EmergencyShell(void)
 	while (1) sleep(1); /*Hang forever to prevent a kernel panic.*/
 }
 
-void RecoverFromReexec(void)
+void RecoverFromReexec(Bool ViaMemBus)
 { /*This is called when we are reexecuted from ReexecuteEpoch() to receive data*/
 	pid_t ChildPID = 0;
 	ObjTable *CurObj = NULL;
@@ -343,17 +343,20 @@ void RecoverFromReexec(void)
 		SpitWarning("Cannot restart normal membus after re-exec. System is otherwise operational.");
 	}
 	
-	/*Handle pings.*/
-	for (; !HandleMemBusPings() && TInc < 100000; ++TInc)
-	{ /*Wait ten seconds.*/
-		 usleep(100);
-	}
-	
-	if (TInc < 100000)
-	{ /*Do not attempt this if we didn't receive a ping because it will only slow us down
-		with another ten second timeout.*/
-		/*Tell the client we are done.*/
-		MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_RXD, true);
+	if (ViaMemBus) /*Client probably wants confirmation.*/
+	{
+		/*Handle pings.*/
+		for (; !HandleMemBusPings() && TInc < 100000; ++TInc)
+		{ /*Wait ten seconds.*/
+			 usleep(100);
+		}
+		
+		if (TInc < 100000)
+		{ /*Do not attempt this if we didn't receive a ping because it will only slow us down
+			with another ten second timeout.*/
+			/*Tell the client we are done.*/
+			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_RXD, true);
+		}
 	}
 		
 	FinaliseLogStartup(false); /*Bring back logging.*/
