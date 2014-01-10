@@ -140,7 +140,7 @@ enum { false, true }; /*I don't want to use stdbool.*/
 typedef signed char Bool;
 
 /*How objects are stopped on shutdown.*/
-typedef enum { STOP_NONE, STOP_COMMAND, STOP_PID, STOP_PIDFILE, STOP_INVALID } StopType;
+enum _StopMode { STOP_NONE, STOP_COMMAND, STOP_PID, STOP_PIDFILE, STOP_INVALID };
 
 /*Trinary return values for functions.*/
 typedef enum { FAILURE, SUCCESS, WARNING } rStatus;
@@ -179,7 +179,7 @@ typedef struct _EpochObjectTable
 	
 	struct 
 	{
-		StopType StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
+		enum _StopMode StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
 		
 		/*This saves a tiny bit of memory to use bitfields here.*/
 		unsigned int CanStop : 1; /*Allowed to stop this without starting a shutdown?*/
