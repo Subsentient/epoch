@@ -103,6 +103,8 @@ static void PrimaryLoop(void)
 			
 			HandleMemBusPings(); /*Tell clients we are alive if they ask.*/
 			
+			CheckMemBusIntegrity(); /*See if we need to manually disconnect a dead client.*/
+			
 			ParseMemBus(); /*Check membus for new data.*/
 			
 			if (HaltParams.HaltMode != -1)
@@ -256,7 +258,7 @@ void RecoverFromReexec(Bool ViaMemBus)
 { /*This is called when we are reexecuted from ReexecuteEpoch() to receive data*/
 	pid_t ChildPID = 0;
 	ObjTable *CurObj = NULL;
-	char InBuf[MEMBUS_SIZE/2 - 1] = { '\0' };
+	char InBuf[MEMBUS_MSGSIZE] = { '\0' };
 	char *MCode = MEMBUS_CODE_RXD;
 	unsigned long MCodeLength = strlen(MCode) + 1;
 	short HPS = 0;
@@ -372,7 +374,7 @@ void ReexecuteEpoch(void)
 { /*Used when Epoch needs to be restarted after we already booted.*/
 	pid_t PID = 0;
 	FILE *TestDescriptor = fopen(EPOCH_BINARY_PATH, "rb");
-	char OutBuf[MEMBUS_SIZE/2 - 1] = { '\0' };
+	char OutBuf[MEMBUS_MSGSIZE] = { '\0' };
 	ObjTable *Worker = ObjectTable;
 	const char *MCode = MEMBUS_CODE_RXD;
 	unsigned long MCodeLength = strlen(MCode) + 1;

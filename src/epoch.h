@@ -86,11 +86,8 @@
 /*The key for the shared memory bus and related stuff.*/
 #define MEMKEY (('E' + 'P' + 'O' + 'C' + 'H') + ('W'+'h'+'i'+'t'+'e' + 'R'+'a'+'t')) * 7 /*Cool, right?*/
 
-#ifndef MEMBUS_SIZE
-#define MEMBUS_SIZE 2048
-#elif MEMBUS_SIZE < 2048
-#error "MEMBUS_SIZE cannot be below 2048!" /*This is important.*/
-#endif
+#define MEMBUS_SIZE 4096 + sizeof(long) * 2
+#define MEMBUS_MSGSIZE 2047
 
 /*The codes that are sent over the bus.*/
 
@@ -132,7 +129,7 @@
 #define MEMBUS_CODE_RXD "RXD"
 #define MEMBUS_CODE_RXD_OPTS "ORXD"
 
-#define MEMBUS_LSOBJS_VERSION "V1.2"
+#define MEMBUS_LSOBJS_VERSION "V1.3"
 /**Types, enums, structs and whatnot**/
 
 
@@ -240,12 +237,25 @@ struct _PivotPoint
 	struct _PivotPoint *Prev;
 };
 
+struct _MemBusInterface
+{
+	void *Root;
+	unsigned long *LockPID;
+	unsigned long *LockTime;
+	
+	struct
+	{
+		char *Status;
+		char *Message;
+	} Server, Client;
+};
+
 /**Globals go here.**/
 
 extern ObjTable *ObjectTable;
 extern struct _BootBanner BootBanner;
 extern char CurRunlevel[MAX_DESCRIPT_SIZE];
-extern char *MemData;
+extern struct _MemBusInterface MemBus;
 extern Bool DisableCAD;
 extern char Hostname[MAX_LINE_SIZE];
 extern struct _HaltParams HaltParams;
@@ -310,6 +320,7 @@ extern Bool MemBus_Read(char *OutStream, Bool ServerSide);
 extern void ParseMemBus(void);
 extern rStatus ShutdownMemBus(Bool ServerSide);
 extern Bool HandleMemBusPings(void);
+extern Bool CheckMemBusIntegrity(void);
 extern unsigned long MemBus_BinWrite(const void *InStream_, unsigned long DataSize, Bool ServerSide);
 extern unsigned long MemBus_BinRead(void *OutStream_, unsigned long MaxOutSize, Bool ServerSide);
 

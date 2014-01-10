@@ -18,10 +18,13 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/reboot.h>
+#include <time.h>
 #include "epoch.h"
 
 /*Memory bus uhh, static globals.*/
-char *MemData = NULL;
+
+struct _MemBusInterface MemBus;
+
 Bool BusRunning = false;
 signed long MemBusKey = MEMKEY;
 int MemDescriptor = 0;
@@ -34,34 +37,49 @@ rStatus InitMemBus(Bool ServerSide)
 	
 	if (BusRunning) return SUCCESS;
 	
-	if ((MemDescriptor = shmget((key_t)MemBusKey, MEMBUS_SIZE, (ServerSide ? (IPC_CREAT | 0660) : 0660))) < 0)
+	memset(&MemBus, 0, sizeof(struct _MemBusInterface));
+	
+	if ((MemDescriptor = shmget((key_t)MemBusKey, MEMBUS_SIZE + sizeof(long) * 2, (ServerSide ? (IPC_CREAT | 0660) : 0660))) < 0)
 	{
 		if (ServerSide) SpitError("InitMemBus(): Failed to allocate memory bus."); /*should probably use perror*/
 		else SpitError("InitMemBus(): Failed to connect to memory bus. Permissions?");
 		return FAILURE;
 	}
 	
-	if ((MemData = shmat(MemDescriptor, NULL, 0)) == (void*)-1)
+	if ((MemBus.Root = shmat(MemDescriptor, NULL, 0)) == (void*)-1)
 	{
-		SpitError("InitMemBus(): Failed to attach memory bus to char *MemData.");
-		MemData = NULL;
+		SpitError("InitMemBus(): Failed to attach memory bus to MemBus.Root");
+		memset(&MemBus, 0, sizeof(struct _MemBusInterface));
 		return FAILURE;
 	}
 	
+	/*Status.*/
+	MemBus.LockPID = MemBus.Root;
+	MemBus.LockTime = (unsigned long*) ((char*)MemBus.Root + sizeof(long));
+	
+	/*Server side.*/
+	MemBus.Server.Status = (char*)MemBus.Root + sizeof(long) * 2;
+	MemBus.Server.Message = MemBus.Server.Status + 1;
+	
+	/*Client side.*/
+	MemBus.Client.Status = (char*)MemBus.Root + sizeof(long) * 2 + MEMBUS_SIZE/2;
+	MemBus.Client.Message = MemBus.Client.Status + 1;
+	
 	if (ServerSide) /*Don't nuke messages on startup if we aren't init.*/
 	{
-		memset((void*)MemData, 0, MEMBUS_SIZE); /*Zero it out just to be neat. Probably don't really need this.*/
+		memset((void*)MemBus.Root, 0, MEMBUS_SIZE); /*Zero it out just to be neat. Probably don't really need this.*/
 		
-		*MemData = MEMBUS_NOMSG; /*Set to no message by default.*/
+		*MemBus.Server.Status = MEMBUS_NOMSG; /*Set to no message by default.*/
 	}
 	else
 	{ /*Client side stuff.*/
-		for (; *MemData != MEMBUS_NOMSG && *MemData != MEMBUS_MSG; ++Inc)
+		for (; *MemBus.Server.Status != MEMBUS_NOMSG && *MemBus.Server.Status != MEMBUS_MSG; ++Inc)
 		{ /*Wait for server-side to finish setting up it's half, if it was just starting up itself.*/
 			if (Inc == 100000) /*Ten secs.*/
 			{
 				SmallError("Cannot connect to Epoch over MemBus, stream corrupted. Aborting MemBus initialization.");
 				BusRunning = false;
+				memset(&MemBus, 0, sizeof(struct _MemBusInterface));
 				
 				return FAILURE;
 			}
@@ -69,28 +87,38 @@ rStatus InitMemBus(Bool ServerSide)
 			usleep(100);
 		}
 		
-		if (*MemData != MEMBUS_NOMSG && *MemData != MEMBUS_MSG)
+		/*Check the lock.*/
+		if (*MemBus.LockPID != 0 && *MemBus.LockPID != getpid())
 		{
-			SmallError("Another client is connecting to the membus. Cannot continue.");
+			SmallError("Another client is currently connected to the membus. Cannot continue!");
 			BusRunning = false;
+			memset(&MemBus, 0, sizeof(struct _MemBusInterface));
+
 			return FAILURE;
 		}
 		
-		CheckCode = *MemData = (*MemData == MEMBUS_MSG ? MEMBUS_CHECKALIVE_MSG : MEMBUS_CHECKALIVE_NOMSG); /*Ask server-side if they're alive.*/
+		CheckCode = *MemBus.Server.Status = (*MemBus.Server.Status == MEMBUS_MSG ? MEMBUS_CHECKALIVE_MSG : MEMBUS_CHECKALIVE_NOMSG); /*Ask server-side if they're alive.*/
 		
-		for (Inc = 0; *MemData == CheckCode; ++Inc)
+		for (Inc = 0; *MemBus.Server.Status == CheckCode; ++Inc)
 		{ /*Wait ten seconds for server-side to respond.*/
 			if (Inc == 100000)
 			{ /*Ten seconds.*/
 				SmallError("Cannot connect to Epoch over MemBus, timeout expired. Aborting MemBus initialization.");
 				
 				BusRunning = false;
-				
+				memset(&MemBus, 0, sizeof(struct _MemBusInterface));
+
 				return FAILURE;
 			}
 			
 			usleep(100);
 		}
+		
+		/*Acquire the lock.*/
+		*MemBus.LockPID = getpid();
+		*MemBus.LockTime = time(NULL);
+
+		*MemBus.Client.Status = MEMBUS_NOMSG;
 	}
 	/*Either the server side is alive, or we ARE the server side.*/
 	BusRunning = true;
@@ -107,11 +135,11 @@ unsigned long MemBus_BinWrite(const void *InStream_, unsigned long DataSize, Boo
 	
 	if (ServerSide)
 	{
-		BusStatus = &MemData[MEMBUS_SIZE/2];
+		BusStatus = MemBus.Client.Status;
 	}
 	else
 	{
-		BusStatus = MemData;
+		BusStatus = MemBus.Server.Status;
 	}
 	
 	BusData = BusStatus + 1;
@@ -127,7 +155,7 @@ unsigned long MemBus_BinWrite(const void *InStream_, unsigned long DataSize, Boo
 		}
 	}
 	
-	for (; Inc < DataSize && Inc < MEMBUS_SIZE/2 - 1; ++Inc)
+	for (; Inc < DataSize && Inc < MEMBUS_MSGSIZE; ++Inc)
 	{
 		BusData[Inc] = InStream[Inc];
 	}
@@ -145,11 +173,11 @@ unsigned long MemBus_BinRead(void *OutStream_, unsigned long MaxOutSize, Bool Se
 	
 	if (ServerSide)
 	{
-		BusStatus = MemData;
+		BusStatus = MemBus.Server.Status;
 	}
 	else
 	{
-		BusStatus = &MemData[MEMBUS_SIZE/2];
+		BusStatus = MemBus.Client.Status;
 	}
 	
 	BusData = BusStatus + 1;
@@ -159,7 +187,7 @@ unsigned long MemBus_BinRead(void *OutStream_, unsigned long MaxOutSize, Bool Se
 		return 0;
 	}
 	
-	for (; Inc < MaxOutSize && Inc < MEMBUS_SIZE/2 - 1; ++Inc)
+	for (; Inc < MaxOutSize && Inc < MEMBUS_MSGSIZE; ++Inc)
 	{
 		OutStream[Inc] = BusData[Inc];
 	}
@@ -177,11 +205,11 @@ rStatus MemBus_Write(const char *InStream, Bool ServerSide)
 	
 	if (ServerSide)
 	{
-		BusStatus = &MemData[MEMBUS_SIZE/2]; /*Clients get the second half of the block.*/
+		BusStatus = MemBus.Client.Status; /*This isn't a typo, we write to the opposite side.*/
 	}
 	else
 	{
-		BusStatus = &MemData[0];
+		BusStatus = MemBus.Server.Status;
 	}
 	
 	BusData = BusStatus + 1; /*Our actual data goes one byte after the status byte.*/
@@ -197,7 +225,7 @@ rStatus MemBus_Write(const char *InStream, Bool ServerSide)
 		}
 	}
 	
-	snprintf((char*)BusData, MEMBUS_SIZE/2 - 1, "%s", InStream);
+	snprintf((char*)BusData, MEMBUS_MSGSIZE, "%s", InStream);
 	
 	*BusStatus = MEMBUS_MSG; /*Now we sent it.*/
 	
@@ -211,11 +239,11 @@ Bool MemBus_Read(char *OutStream, Bool ServerSide)
 	
 	if (ServerSide)
 	{
-		BusStatus = &MemData[0];
+		BusStatus = MemBus.Server.Status;
 	}
 	else
 	{
-		BusStatus = &MemData[MEMBUS_SIZE/2];
+		BusStatus = MemBus.Client.Status;
 	}
 	
 	BusData = BusStatus + 1;
@@ -225,7 +253,7 @@ Bool MemBus_Read(char *OutStream, Bool ServerSide)
 		return false;
 	}
 	
-	snprintf(OutStream, MEMBUS_SIZE/2 - 1, "%s", BusData);
+	snprintf(OutStream, MEMBUS_MSGSIZE, "%s", BusData);
 	
 	*BusStatus = MEMBUS_NOMSG; /*Set back to NOMSG once we got the message.*/
 
@@ -235,19 +263,15 @@ Bool MemBus_Read(char *OutStream, Bool ServerSide)
 Bool HandleMemBusPings(void)
 { /*If we are pinged, we must initialize the client side immediately.*/
 	if (!BusRunning) return false;
-	
-	*(MemData + MEMBUS_SIZE/2) = MEMBUS_NOMSG;
-	/*Set up the client side. We do it here to avoid
-	the clients overwriting each other and causing havoc.*/
-	
-	switch (*MemData)
+
+	switch (*MemBus.Server.Status)
 	{
 		case MEMBUS_CHECKALIVE_MSG:
-			*MemData = MEMBUS_MSG;
+			*MemBus.Server.Status = MEMBUS_MSG;
 			return true;
 			break;
 		case MEMBUS_CHECKALIVE_NOMSG:
-			*MemData = MEMBUS_NOMSG;
+			*MemBus.Server.Status = MEMBUS_NOMSG;
 			return true;
 			break;
 		default:
@@ -257,10 +281,30 @@ Bool HandleMemBusPings(void)
 	return false;
 }
 
+Bool CheckMemBusIntegrity(void)
+{
+	if (!BusRunning) return true;
+	
+	if (*MemBus.LockPID == 0) return true;
+	
+	if (*MemBus.LockTime + 60 < time(NULL))
+	{ /*Anything after a minute needs to be disconnected.*/
+		*MemBus.Server.Status = MEMBUS_NOMSG;
+		*MemBus.Server.Message = MEMBUS_NOMSG;
+		*MemBus.Client.Status = MEMBUS_NOMSG;
+		*MemBus.Client.Message = '\0';
+		*MemBus.LockTime = 0;
+		*MemBus.LockPID = 0;
+		return false;
+	}
+	
+	return true;	
+}
+	
 void ParseMemBus(void)
 { /*This function handles EVERYTHING passed to us via membus. It's truly vast.*/
 #define BusDataIs(x) !strncmp(x, BusData, strlen(x))
-	char BusData[MEMBUS_SIZE/2];
+	char BusData[MEMBUS_MSGSIZE];
 
 	if (!BusRunning) return;
 	
@@ -286,7 +330,7 @@ void ParseMemBus(void)
 		unsigned long LOffset = strlen((BusDataIs(MEMBUS_CODE_OBJSTART) ? MEMBUS_CODE_OBJSTART " " : MEMBUS_CODE_OBJSTOP " "));
 		char *TWorker = BusData + LOffset;
 		ObjTable *CurObj = LookupObjectInTable(TWorker);
-		char TmpBuf[MEMBUS_SIZE/2 - 1], *MCode = MEMBUS_CODE_FAILURE;
+		char TmpBuf[MEMBUS_MSGSIZE], *MCode = MEMBUS_CODE_FAILURE;
 		rStatus DidWork;
 		
 		if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
@@ -331,7 +375,7 @@ void ParseMemBus(void)
 	}
 	else if (BusDataIs(MEMBUS_CODE_LSOBJS))
 	{ /*Done for mostly third party stuff.*/
-		char OutBuf[MEMBUS_SIZE/2 - 1];
+		char OutBuf[MEMBUS_MSGSIZE];
 		ObjTable *Worker = ObjectTable;
 		unsigned long TPID = 0;
 		
@@ -351,14 +395,14 @@ void ParseMemBus(void)
 			
 			/*We need a version for this protocol, because relevant options can change with updates.
 			 * Not all options are here, because some are not really useful.*/
-			snprintf(OutBuf, sizeof OutBuf, "%s %s %s %lu %s %lu %d %d %d %d %d %d %d %d %d %d %d %lu",
+			snprintf(OutBuf, sizeof OutBuf, "%s %s %s %lu %s %lu %d %d %d %d %d %d %d %d %d %d %d %d %d %lu",
 					MEMBUS_CODE_LSOBJS, MEMBUS_LSOBJS_VERSION, Worker->ObjectID,
 					(unsigned long)strlen(Worker->ObjectDescription),
 					Worker->ObjectDescription, TPID, (Worker->Started && !Worker->Opts.HaltCmdOnly),
 					ObjectProcessRunning(Worker), Worker->Enabled, Worker->Opts.CanStop,
 					Worker->Opts.HaltCmdOnly, Worker->Opts.IsService, Worker->Opts.AutoRestart,
-					Worker->Opts.ForceShell, Worker->Opts.RawDescription, Worker->Opts.StopMode,
-					Worker->TermSignal, Worker->StartedSince);
+					Worker->Opts.ForceShell, Worker->Opts.RawDescription, Worker->Opts.NoStopWait,
+					Worker->Opts.PivotRoot, Worker->Opts.StopMode, Worker->TermSignal, Worker->StartedSince);
 			
 			MemBus_Write(OutBuf, true);
 			
@@ -380,7 +424,7 @@ void ParseMemBus(void)
 	}					
 	else if (BusDataIs(MEMBUS_CODE_GETRL))
 	{
-		char TmpBuf[MEMBUS_SIZE/2 - 1];
+		char TmpBuf[MEMBUS_MSGSIZE];
 		
 		snprintf(TmpBuf, sizeof TmpBuf, MEMBUS_CODE_GETRL " %s", CurRunlevel);
 		MemBus_Write(TmpBuf, true);
@@ -392,7 +436,7 @@ void ParseMemBus(void)
 		char *OurSignal = EnablingThis ? MEMBUS_CODE_OBJENABLE : MEMBUS_CODE_OBJDISABLE;
 		char *TWorker = BusData + LOffset;
 		ObjTable *CurObj = LookupObjectInTable(TWorker);
-		char TmpBuf[MEMBUS_SIZE/2 - 1];
+		char TmpBuf[MEMBUS_MSGSIZE];
 		rStatus DidWork = FAILURE;
 		
 		if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
@@ -437,7 +481,7 @@ void ParseMemBus(void)
 	{
 		unsigned long LOffset = strlen(MEMBUS_CODE_RUNLEVEL " ");
 		char *TWorker = BusData + LOffset;
-		char TmpBuf[MEMBUS_SIZE/2 - 1];
+		char TmpBuf[MEMBUS_MSGSIZE];
 		
 		if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
 		{ /*No argument?*/
@@ -486,7 +530,7 @@ void ParseMemBus(void)
 		unsigned long LOffset;
 		char *TWorker = NULL;
 		ObjTable *CurObj = NULL;
-		char TmpBuf[MEMBUS_SIZE/2 - 1];
+		char TmpBuf[MEMBUS_MSGSIZE];
 		char TRL[MAX_DESCRIPT_SIZE];
 		char TID[MAX_DESCRIPT_SIZE];
 		unsigned long Inc = 0;
@@ -617,7 +661,7 @@ void ParseMemBus(void)
 	{
 		unsigned long LOffset = 0, Signal;
 		char *TWorker = NULL, *MSig = NULL;
-		char TmpBuf[MEMBUS_SIZE/2 - 1];
+		char TmpBuf[MEMBUS_MSGSIZE];
 		
 		if (BusDataIs(MEMBUS_CODE_HALT))
 		{
@@ -762,7 +806,7 @@ void ParseMemBus(void)
 	}
 	else if (BusDataIs(MEMBUS_CODE_SENDPID))
 	{
-		char TmpBuf[MEMBUS_SIZE/2 - 1];
+		char TmpBuf[MEMBUS_MSGSIZE];
 		unsigned long LOffset = strlen(MEMBUS_CODE_SENDPID " ");
 		const char *TWorker = BusData + LOffset;
 		const ObjTable *TmpObj = NULL;
@@ -789,7 +833,7 @@ void ParseMemBus(void)
 	}
 	else if (BusDataIs(MEMBUS_CODE_KILLOBJ) || BusDataIs(MEMBUS_CODE_OBJRELOAD))
 	{
-		char TmpBuf[MEMBUS_SIZE/2 - 1];
+		char TmpBuf[MEMBUS_MSGSIZE];
 		unsigned long LOffset = (BusDataIs(MEMBUS_CODE_KILLOBJ) ? strlen(MEMBUS_CODE_KILLOBJ " ")
 								: strlen(MEMBUS_CODE_OBJRELOAD " "));
 		const char *TWorker = BusData + LOffset;
@@ -881,7 +925,7 @@ void ParseMemBus(void)
 	/*Something we don't understand. Send BADPARAM.*/
 	else
 	{
-		char TmpBuf[MEMBUS_SIZE/2 - 1];
+		char TmpBuf[MEMBUS_MSGSIZE];
 		
 		snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
 		
@@ -891,16 +935,16 @@ void ParseMemBus(void)
 
 rStatus ShutdownMemBus(Bool ServerSide)
 {	
-	if (!BusRunning || !MemData)
+	if (!BusRunning || !MemBus.Root)
 	{
 		return SUCCESS;
 	}
 	
-	*(MemData + (MEMBUS_SIZE/2)) = MEMBUS_NOMSG;
+	*MemBus.Client.Status = MEMBUS_NOMSG;
 	
 	if (ServerSide)
 	{
-		*MemData = MEMBUS_NOMSG;
+		*MemBus.Server.Status = MEMBUS_NOMSG;
 	
 		if (shmctl(MemDescriptor, IPC_RMID, NULL) == -1)
 		{
@@ -908,8 +952,13 @@ rStatus ShutdownMemBus(Bool ServerSide)
 			return FAILURE;
 		}
 	}
+	else
+	{ /*Release the client lock.*/
+		*MemBus.LockPID = 0;
+		*MemBus.LockTime = 0;
+	}
 	
-	if (shmdt((void*)MemData) != 0)
+	if (shmdt(MemBus.Root) != 0)
 	{
 		SpitWarning("ShutdownMemBus(): Unable to detach membus.");
 		return FAILURE;

@@ -23,8 +23,6 @@ ShowHelp()
 	echo -e "\tDefault is /etc/epoch."
 	echo -e $Green"--logdir dir"$EndGreen":\n\tSets the directory Epoch will write system.log to."
 	echo -e "\tDefault is /var/log."
-	echo -e $Green"--membus-size"$EndGreen":\n\tTo set a size for the membus' chunk of shared memory."
-	echo -e "\t2048 or greater is recommended. Default is the maximum page size."
 	echo -e $Green"--binarypath path"$EndGreen":\n\tThe direct path to the Epoch binary. Default is /sbin/epoch."
 	echo -e $Green"--env-home value"$EndGreen":\n\tDesired environment variable for \$HOME."
 	echo -e "\tThis will be usable in Epoch start/stop commands."
@@ -54,7 +52,6 @@ ShowHelp()
 	echo -e $Green"--cc value"$EndGreen":\n\tSets \$CC to be the compiler for Epoch."
 }
 
-MEMBUS_SIZE_SET="0"
 NEED_EMPTY_CFLAGS="0"
 outdir="../built"
 
@@ -76,11 +73,6 @@ if [ "$#" != "0" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DCONFIGDIR=\"$1\""
 	
-		elif [ "$1" == "--membus-size" ]; then
-			shift
-			CFLAGS=$CFLAGS" -DMEMBUS_SIZE=$1"
-			MEMBUS_SIZE_SET="1"
-		
 		elif [ "$1" == "--binarypath" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DEPOCH_BINARY_PATH=\"$1\""
@@ -146,10 +138,6 @@ fi
 
 if [ "$LDFLAGS" == "" ]; then
 	LDFLAGS="-rdynamic"
-fi
-
-if [ "$MEMBUS_SIZE_SET" == "0" ]; then
-	CFLAGS=$CFLAGS" -DMEMBUS_SIZE=$(getconf PAGESIZE)"
 fi
 
 echo -e "\nBuilding object files.\n"
