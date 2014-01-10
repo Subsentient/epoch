@@ -290,7 +290,7 @@ Bool CheckMemBusIntegrity(void)
 	if (*MemBus.LockTime + 60 < time(NULL))
 	{ /*Anything after a minute needs to be disconnected.*/
 		*MemBus.Server.Status = MEMBUS_NOMSG;
-		*MemBus.Server.Message = MEMBUS_NOMSG;
+		*MemBus.Server.Message = '\0';
 		*MemBus.Client.Status = MEMBUS_NOMSG;
 		*MemBus.Client.Message = '\0';
 		*MemBus.LockTime = 0;
