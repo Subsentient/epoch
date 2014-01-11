@@ -211,7 +211,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 			
 			snprintf(TmpBuf, 1024, "Failed to execute %s: execlp() failure launching \"" SHELLPATH "\".", InObj->ObjectID);
 			SpitError(TmpBuf);
-			exit(1); /*Makes sure that we report failure. This is a problem.*/
+			_exit(1); /*Makes sure that we report failure. This is a problem.*/
 		}
 		else
 #endif
@@ -247,7 +247,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 			execvp(ArgV[0], ArgV);
 			
 			/*In this case, it could be a file not found, in which case, just have the child, us, exit gracefully.*/
-			exit(1);
+			_exit(1);
 			
 		}
 		/*We still around to talk about it? We were supposed to be imaged with the new command!*/
