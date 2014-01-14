@@ -615,7 +615,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		unsigned long Inc = 0, Inc2 = 0, Len = 0, PID = 0;
 		Bool Started, Running, Enabled, CanStop, HaltCmdOnly, IsService, AutoRestart, NoStopWait, PivotRoot;
 		Bool ForceShell, RawDescription;
-		StopType StopMode;
+		enum _StopMode StopMode;
 		unsigned char TermSignal = 0;
 		unsigned long StartedSince;
 		const char *const YN[2] = { CONSOLE_COLOR_RED "No" CONSOLE_ENDCOLOR,
@@ -742,7 +742,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			COpt[Inc] = '\0';
 			Worker += Inc + 1;
 			
-			StopMode = (StopType)atoi(COpt);
+			StopMode = (enum _StopMode)atoi(COpt);
 			
 			for (Inc = 0; Worker[Inc] != ' '; ++Inc)
 			{ /*Copy in TermSignal.*/

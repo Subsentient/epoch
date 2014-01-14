@@ -140,7 +140,7 @@ enum { false, true }; /*I don't want to use stdbool.*/
 typedef signed char Bool;
 
 /*How objects are stopped on shutdown.*/
-typedef enum { STOP_NONE, STOP_COMMAND, STOP_PID, STOP_PIDFILE, STOP_INVALID } StopType;
+enum _StopMode { STOP_NONE, STOP_COMMAND, STOP_PID, STOP_PIDFILE, STOP_INVALID };
 
 /*Trinary return values for functions.*/
 typedef enum { FAILURE, SUCCESS, WARNING } rStatus;
@@ -159,6 +159,12 @@ struct _RLTree
 	
 typedef struct _EpochObjectTable
 {
+	unsigned long ObjectStartPriority;
+	unsigned long ObjectStopPriority;
+	unsigned long ObjectPID; /*The process ID, used for shutting down.*/
+	unsigned long UserID; /*The user ID we run this as. Zero, of course, is root and we need do nothing.*/
+	unsigned long GroupID; /*Same as above, but with groups.*/
+	unsigned long StartedSince; /*The time in UNIX seconds since it was started.*/
 	char *ObjectID; /*The ASCII ID given to this item by whoever configured Epoch.*/
 	char *ObjectDescription; /*The description of the object.*/
 	char *ObjectStartCommand; /*The command to be executed.*/
@@ -166,20 +172,14 @@ typedef struct _EpochObjectTable
 	char *ObjectStopCommand; /*How to shut it down.*/
 	char *ObjectReloadCommand; /*Used to reload an object without starting/stopping. Most services don't have this.*/
 	char *ObjectPIDFile;
-	unsigned long ObjectStartPriority;
-	unsigned long ObjectStopPriority;
-	unsigned long ObjectPID; /*The process ID, used for shutting down.*/
 	unsigned char TermSignal; /*The signal we send to an object if it's stop mode is PID or PIDFILE.*/
 	unsigned char ReloadCommandSignal; /*If the reload command sends a signal, this works.*/
-	unsigned long UserID; /*The user ID we run this as. Zero, of course, is root and we need do nothing.*/
-	unsigned long GroupID; /*Same as above, but with groups.*/
 	Bool Enabled;
 	Bool Started;
-	unsigned long StartedSince; /*The time in UNIX seconds since it was started.*/
 	
 	struct 
 	{
-		StopType StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
+		enum _StopMode StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
 		
 		/*This saves a tiny bit of memory to use bitfields here.*/
 		unsigned int CanStop : 1; /*Allowed to stop this without starting a shutdown?*/
