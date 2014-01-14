@@ -22,7 +22,6 @@ pid_t getsid(pid_t);
 rStatus SendPowerControl(const char *MembusCode)
 { /*Client side to send a request to halt/reboot/power off/disable or enable CAD/etc.*/
 	char InitsResponse[MEMBUS_MSGSIZE], *PCode[2], *PErrMsg;
-	unsigned long cCounter = 0;
 	
 	if (!strcmp(MembusCode, MEMBUS_CODE_HALT))
 	{
@@ -66,17 +65,7 @@ rStatus SendPowerControl(const char *MembusCode)
 		return FAILURE;
 	}
 	
-	while (!MemBus_Read(InitsResponse, false))
-	{
-		usleep(100000); /*0.1 secs.*/
-		++cCounter;
-		
-		if (cCounter == 200) /*Twenty seconds.*/
-		{
-			SpitError("Failed to get reply via membus.");
-			return FAILURE;
-		}
-	}
+	while (!MemBus_Read(InitsResponse, false)) usleep(1000); /*0.001 secs.*/
 	
 	MemBus_Write(MembusCode, false); /*Tells init it can shut down the membus.*/
 	
@@ -101,7 +90,6 @@ rStatus ObjControl(const char *ObjectID, const char *MemBusSignal)
 	char RemoteResponse[MEMBUS_MSGSIZE];
 	char OutMsg[MEMBUS_MSGSIZE];
 	char PossibleResponses[4][MEMBUS_MSGSIZE];
-	unsigned long cCounter = 0;
 	
 	snprintf(OutMsg, sizeof OutMsg, "%s %s", MemBusSignal, ObjectID);
 	
@@ -110,17 +98,7 @@ rStatus ObjControl(const char *ObjectID, const char *MemBusSignal)
 		return FAILURE;
 	}
 	
-	while (!MemBus_Read(RemoteResponse, false))
-	{
-		usleep(100000); /*0.1 secs*/
-		++cCounter;
-		
-		if (cCounter == 200)
-		{ /*Extra newline because we probably are going to print in a progress report.*/
-			SpitError("\nFailed to get reply via membus.");
-			return FAILURE;
-		}
-	}
+	while (!MemBus_Read(RemoteResponse, false)) usleep(1000); /*0.001 secs*/
 	
 	snprintf(PossibleResponses[0], sizeof PossibleResponses[0], "%s %s %s",
 		MEMBUS_CODE_ACKNOWLEDGED, MemBusSignal, ObjectID);
