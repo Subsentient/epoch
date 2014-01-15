@@ -180,6 +180,7 @@ typedef struct _EpochObjectTable
 	struct 
 	{
 		enum _StopMode StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
+		unsigned long StopTimeout; /*The number of seconds we wait for a task we're stopping's PID to become unavailable.*/
 		
 		/*This saves a tiny bit of memory to use bitfields here.*/
 		unsigned int CanStop : 1; /*Allowed to stop this without starting a shutdown?*/

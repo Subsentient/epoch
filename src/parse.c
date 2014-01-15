@@ -467,7 +467,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					CurrentTask.TaskName = CurObj->ObjectID;
 					CurrentTask.Set = true;
 					
-					for (; ObjectProcessRunning(CurObj) && Inc < 100000; ++Inc)
+					for (; ObjectProcessRunning(CurObj) && Inc < CurObj->Opts.StopTimeout * 10000; ++Inc)
 					{ /*Sleep for ten seconds.*/
 						CurPID = CurObj->Opts.HasPIDFile ? ReadPIDFile(CurObj) : CurObj->ObjectPID;
 						
@@ -539,7 +539,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 						CurrentTask.Set = true;
 								
 						/*Give it ten seconds to terminate on it's own.*/
-						for (; kill(CurObj->ObjectPID, 0) == 0 && TInc < 200; ++TInc)
+						for (; kill(CurObj->ObjectPID, 0) == 0 && TInc < CurObj->Opts.StopTimeout * 200; ++TInc)
 						{ /*Two hundred is ten seconds here.*/
 							
 							waitpid(CurObj->ObjectPID, NULL, WNOHANG); /*We must harvest the PID since we have occupied the primary loop.*/
@@ -621,7 +621,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 						CurrentTask.Set = true;
 						
 						/*Give it ten seconds to terminate on it's own.*/
-						for (; kill(TruePID, 0) == 0 && TInc < 200; ++TInc)
+						for (; kill(TruePID, 0) == 0 && TInc < CurObj->Opts.StopTimeout * 200; ++TInc)
 						{ /*Two hundred is ten seconds here.*/
 							
 							waitpid(TruePID, NULL, WNOHANG); /*We must harvest the PID since we have occupied the primary loop.*/

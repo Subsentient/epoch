@@ -761,9 +761,28 @@ rStatus InitConfig(void)
 						WriteLogLine(ErrBuf, true);
 					#endif
 				}
-				else if (!strcmp(CurArg, "NOSTOPWAIT"))
+				else if (!strncmp(CurArg, "NOSTOPWAIT", strlen("STOPTIMEOUT")))
 				{
 					CurObj->Opts.NoStopWait = true;
+				}
+				else if (!strncmp(CurArg, "STOPTIMEOUT", strlen("STOPTIMEOUT")))
+				{
+					const char *TWorker = CurArg + strlen("STOPTIMEOUT");
+					
+					if (*TWorker != '=' || *(TWorker + 1) == '\0')
+					{
+						ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, CurArg, LineNum);
+						continue;
+					}
+					++TWorker;
+					
+					if (!AllNumeric(TWorker))
+					{
+						ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, CurArg, LineNum);
+						continue;
+					}
+					
+					CurObj->Opts.StopTimeout = atol(TWorker);
 				}
 				else if (!strncmp(CurArg, "USER", strlen("USER")))
 				{
@@ -1762,12 +1781,14 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->Opts.PivotRoot = false;
 	Worker->Opts.ForceShell = false;
 	Worker->Opts.HasPIDFile = false;
+	Worker->Opts.StopTimeout = 10; /*Ten seconds by default.*/
 	
 	return Worker;
 }
 
 static rStatus ScanConfigIntegrity(void)
 { /*Here we check common mistakes and problems.*/
+#define IntegrityWarn(msg) WriteLogLine(msg, true), SpitWarning(msg)
 	ObjTable *Worker = ObjectTable, *TOffender;
 	char TmpBuf[1024];
 	rStatus RetState = SUCCESS;
@@ -1852,7 +1873,7 @@ static rStatus ScanConfigIntegrity(void)
 		{
 			snprintf(TmpBuf, 1024, "Object %s has no attribute ObjectStartCommand\nand is not set to HALTONLY.\n"
 					"Disabling.", Worker->ObjectID);
-			SpitWarning(TmpBuf);
+			IntegrityWarn(TmpBuf);
 			Worker->Enabled = false;
 			Worker->Started = false;
 			RetState = WARNING;
@@ -1862,7 +1883,7 @@ static rStatus ScanConfigIntegrity(void)
 		{
 			snprintf(TmpBuf, 1024, "Object \"%s\" is set to stop via tracked PID,\n"
 					"but a PID file has been specified! Switching to STOP_PIDFILE from STOP_PID.", Worker->ObjectID);
-			SpitWarning(TmpBuf);
+			IntegrityWarn(TmpBuf);
 			Worker->Opts.StopMode = STOP_PIDFILE;
 			RetState = WARNING;
 		}
@@ -1871,7 +1892,7 @@ static rStatus ScanConfigIntegrity(void)
 		{
 			snprintf(TmpBuf, 1024, "Object \"%s\" is set to stop via PID File,\n"
 					"but no PID File attribute specified! Switching to STOP_PID.", Worker->ObjectID);
-			SpitWarning(TmpBuf);
+			IntegrityWarn(TmpBuf);
 			Worker->Opts.StopMode = STOP_PID;
 			RetState = WARNING;
 		}
@@ -1894,7 +1915,7 @@ static rStatus ScanConfigIntegrity(void)
 		{ /*We put this here instead of InitConfig() because we can't really do anything but disable.*/
 			snprintf(TmpBuf, 1024, "Object \"%s\" has HALTONLY set,\n"
 					"but stop method is PID!\nDisabling.", Worker->ObjectID);
-			SpitWarning(TmpBuf);
+			IntegrityWarn(TmpBuf);
 			Worker->Enabled = false;
 			Worker->Started = false;
 			RetState = WARNING;
@@ -1905,17 +1926,26 @@ static rStatus ScanConfigIntegrity(void)
 		{
 			snprintf(TmpBuf, 1024, "Object \"%s\" has a PivotPoint for a start command,\n"
 					"but has HALTONLY set as well. Disabling object.", Worker->ObjectID);
-			SpitWarning(TmpBuf);
+			IntegrityWarn(TmpBuf);
 			Worker->Enabled = false;
 			Worker->Started = false;
 			RetState = WARNING;
 		}
 		
+		if (Worker->Opts.NoStopWait && Worker->Opts.StopTimeout != 10)
+		{ /*Why are you setting a stop timeout and then turning off the thing that uses your new value?*/
+			snprintf(TmpBuf, 1024, "Object \"%s\" has both NOSTOPWAIT and STOPTIMEOUT options set.\n"
+					"This doesn't seem very useful.", Worker->ObjectID);
+			IntegrityWarn(TmpBuf);
+			RetState = WARNING;
+		}
+			
+		
 		if (Worker->Opts.PivotRoot && Worker->Opts.StopMode != STOP_NONE)
 		{
 			snprintf(TmpBuf, 1024, "Object \"%s\" has a PivotPoint for a start command,\n"
 					"but ObjectStopCommand is not NONE. Setting to NONE.", Worker->ObjectID);
-			SpitWarning(TmpBuf);
+			IntegrityWarn(TmpBuf);
 			
 			Worker->Opts.StopMode = STOP_NONE;
 			Worker->ObjectStopPriority = STOP_NONE;
@@ -1933,7 +1963,7 @@ static rStatus ScanConfigIntegrity(void)
 		{
 			snprintf(TmpBuf, 1024, "Object \"%s\" has a PivotPoint for a start command,\n"
 					"but a PID file has been specified. Unsetting PID file attribute.", Worker->ObjectID);
-			SpitWarning(TmpBuf);
+			IntegrityWarn(TmpBuf);
 			
 			Worker->Opts.HasPIDFile = false;
 			
