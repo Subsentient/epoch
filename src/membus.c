@@ -58,12 +58,14 @@ rStatus InitMemBus(Bool ServerSide)
 	MemBus.LockTime = (unsigned long*) ((char*)MemBus.Root + sizeof(long));
 	
 	/*Server side.*/
-	MemBus.Server.Status = (char*)MemBus.Root + sizeof(long) * 2;
-	MemBus.Server.Message = MemBus.Server.Status + 1;
+	MemBus.Server.Status = (unsigned char*)MemBus.Root + sizeof(long) * 2;
+	MemBus.Server.BinMessage = MemBus.Server.Status + 1;
+	MemBus.Server.Message = (char*)MemBus.Server.BinMessage;
 	
 	/*Client side.*/
-	MemBus.Client.Status = (char*)MemBus.Root + sizeof(long) * 2 + MEMBUS_SIZE/2;
-	MemBus.Client.Message = MemBus.Client.Status + 1;
+	MemBus.Client.Status = (unsigned char*)MemBus.Root + sizeof(long) * 2 + MEMBUS_SIZE/2;
+	MemBus.Client.BinMessage = MemBus.Client.Status + 1;
+	MemBus.Client.Message = (char*)MemBus.Client.BinMessage;
 	
 	if (ServerSide) /*Don't nuke messages on startup if we aren't init.*/
 	{
@@ -129,7 +131,7 @@ rStatus InitMemBus(Bool ServerSide)
 unsigned long MemBus_BinWrite(const void *InStream_, unsigned long DataSize, Bool ServerSide)
 { /*Copies binary data of length DataSize to the membus.*/
 	const char *InStream = InStream_;
-	char *BusData = NULL, *BusStatus = NULL;
+	unsigned char *BusData = NULL, *BusStatus = NULL;
 	unsigned long Inc = 0;
 	unsigned short WaitCount = 0;
 	
@@ -167,8 +169,8 @@ unsigned long MemBus_BinWrite(const void *InStream_, unsigned long DataSize, Boo
 
 unsigned long MemBus_BinRead(void *OutStream_, unsigned long MaxOutSize, Bool ServerSide)
 {
-	char *BusStatus = NULL, *BusData = NULL;
-	char *OutStream = OutStream_;
+	unsigned char *BusStatus = NULL, *BusData = NULL;
+	unsigned char *OutStream = OutStream_;
 	unsigned long Inc = 0;
 	
 	if (ServerSide)
@@ -199,7 +201,7 @@ unsigned long MemBus_BinRead(void *OutStream_, unsigned long MaxOutSize, Bool Se
 	
 rStatus MemBus_Write(const char *InStream, Bool ServerSide)
 {
-	char *BusStatus = NULL;
+	unsigned char *BusStatus = NULL;
 	char *BusData = NULL;
 	unsigned short WaitCount = 0;
 	
@@ -212,7 +214,7 @@ rStatus MemBus_Write(const char *InStream, Bool ServerSide)
 		BusStatus = MemBus.Server.Status;
 	}
 	
-	BusData = BusStatus + 1; /*Our actual data goes one byte after the status byte.*/
+	BusData = (char*)BusStatus + 1; /*Our actual data goes one byte after the status byte.*/
 	
 	while (*BusStatus != MEMBUS_NOMSG) /*Wait for them to finish eating their last message.*/
 	{
@@ -234,7 +236,7 @@ rStatus MemBus_Write(const char *InStream, Bool ServerSide)
 
 Bool MemBus_Read(char *OutStream, Bool ServerSide)
 {
-	char *BusStatus = NULL;
+	unsigned char *BusStatus = NULL;
 	char *BusData = NULL;
 	
 	if (ServerSide)
@@ -246,7 +248,7 @@ Bool MemBus_Read(char *OutStream, Bool ServerSide)
 		BusStatus = MemBus.Client.Status;
 	}
 	
-	BusData = BusStatus + 1;
+	BusData = (char*)BusStatus + 1;
 		
 	if (*BusStatus != MEMBUS_MSG)
 	{ /*No data? Quit.*/

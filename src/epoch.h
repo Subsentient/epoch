@@ -246,8 +246,9 @@ struct _MemBusInterface
 	
 	struct
 	{
-		char *Status;
+		unsigned char *Status;
 		char *Message;
+		unsigned char *BinMessage;
 	} Server, Client;
 };
 
