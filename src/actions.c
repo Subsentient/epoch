@@ -28,7 +28,7 @@ static void FinaliseLogStartup(Bool BlankLog);
 
 /*Globals.*/
 struct _HaltParams HaltParams = { -1 };
-Bool AutoMountOpts[5] = { false, false, false, false, false };
+Bool AutoMountOpts[5];
 static Bool ContinuePrimaryLoop = true;
 struct _PivotPoint *PivotCore;
 

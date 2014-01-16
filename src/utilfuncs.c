@@ -20,7 +20,7 @@
 Bool EnableLogging = true;
 Bool LogInMemory = true; /*This is necessary so long as we have a readonly filesystem.*/
 Bool BlankLogOnBoot = true;
-char *MemLogBuffer = NULL;
+char *MemLogBuffer;
 
 /*Days in the month, for time stuff.*/
 static const short MDays[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };

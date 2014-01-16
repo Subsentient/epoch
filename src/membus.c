@@ -25,9 +25,9 @@
 
 struct _MemBusInterface MemBus;
 
-Bool BusRunning = false;
+Bool BusRunning;
 signed long MemBusKey = MEMKEY;
-int MemDescriptor = 0;
+int MemDescriptor;
 
 rStatus InitMemBus(Bool ServerSide)
 { /*Fire up the memory bus.*/

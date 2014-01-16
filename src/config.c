@@ -19,7 +19,7 @@
 #define CONFIGWARNTXT "CONFIG: " CONSOLE_COLOR_YELLOW "WARNING: " CONSOLE_ENDCOLOR
 
 /*We want the only interface for this to be LookupObjectInTable().*/
-ObjTable *ObjectTable = NULL;
+ObjTable *ObjectTable;
 char ConfigFile[MAX_LINE_SIZE] = CONFIGDIR CONF_NAME;
 
 /*Used to allow for things like 'ObjectStartPriority Services', where Services == 3, for example.*/

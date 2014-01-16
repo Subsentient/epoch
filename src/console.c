@@ -14,7 +14,7 @@
 #include "epoch.h"
 
 /*The banner we show upon startup.*/
-struct _BootBanner BootBanner = { false, { '\0' }, { '\0' } };
+struct _BootBanner BootBanner;
 /*Should we Disable CTRL-ALT-DEL instant reboots?*/
 Bool DisableCAD = true;
 
