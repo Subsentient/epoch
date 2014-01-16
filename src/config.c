@@ -182,18 +182,37 @@ rStatus InitConfig(void)
 		ConfigStream = malloc(FileStat.st_size + 1);
 	}
 
-	Descriptor = fopen(ConfigFile, "r"); /*Open the configuration file.*/
-
+	if (!(Descriptor = fopen(ConfigFile, "r"))) /*Open the configuration file.*/
+	{
+		snprintf(ErrBuf, sizeof ErrBuf, "Unable to open configuration file \"%s\"! Permissions?", ConfigFile);
+		SpitError(ErrBuf);
+		EmergencyShell();
+	}
+	
 	/*Read the file into memory. I don't really trust fread(), but oh well.
 	 * People will whine if I use a loop instead.*/
 	fread(ConfigStream, 1, FileStat.st_size, Descriptor);
-	
-	ConfigStream[FileStat.st_size] = '\0'; /*Null terminate.*/
-	
 	fclose(Descriptor); /*Close the file.*/
 
+	ConfigStream[FileStat.st_size] = '\0'; /*Null terminate.*/
+	
 	Worker = ConfigStream;
-
+	
+	/*Check for non-ASCII characters.*/
+	while (*(unsigned char*)Worker++ != '\0')
+	{
+		if ((*(unsigned char*)Worker & 128) == 128)
+		{ /*Check for a sign bit or >= 128. Works for one's complement systems
+			too if we have signed char by default, but who uses one's complement?*/
+			SpitError("Non-ASCII characters detected in configuration file!\n"
+						"Epoch does not support Unicode or the like!");
+			EmergencyShell();
+			break;
+		}
+	}
+	
+	Worker = ConfigStream;
+	
 	/*Empty file?*/
 	if ((*Worker == '\n' && *(Worker + 1) == '\0') || *Worker == '\0')
 	{
@@ -201,19 +220,6 @@ rStatus InitConfig(void)
 		free(ConfigStream);
 		return FAILURE;
 	}
-
-	/*Check for non-ASCII characters.*/
-	while (*Worker++ != '\0')
-	{
-		if (*Worker > 127 || *Worker < 0)
-		{
-			SpitWarning(CONFIGWARNTXT "Non-ASCII characters detected in configuration file!\n"
-						"Epoch does not support Unicode or the like!");
-			break;
-		}
-	}
-	
-	Worker = ConfigStream;
 	
 	do /*This loop does most of the parsing.*/
 	{
