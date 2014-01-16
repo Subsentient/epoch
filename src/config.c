@@ -597,8 +597,8 @@ rStatus InitConfig(void)
 				}
 				
 				for (Inc = 0; (TChar = getc(TDesc)) != EOF && Inc < MAX_LINE_SIZE - 1; ++Inc)
-				{
-					THostname[Inc] = (char)TChar;
+				{ /*There is a reason for this. Just trust me.*/
+					*(unsigned char*)&THostname[Inc] = (unsigned char)TChar;
 				}
 				THostname[Inc] = '\0';
 				

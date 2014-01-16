@@ -311,7 +311,7 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 			
 			for (Inc = 0; (TChar = getc(Descriptor)) != EOF && Inc < MAX_LINE_SIZE - 1; ++Inc)
 			{
-				FileBuf[Inc] = (char)TChar;
+				*(unsigned char*)&FileBuf[Inc] = (unsigned char)TChar;
 			}
 			FileBuf[Inc] = '\0';
 			
@@ -365,7 +365,12 @@ unsigned long ReadPIDFile(const ObjTable *InObj)
 	
 	for (; (TChar = getc(PIDFileDescriptor)) != EOF && Inc < (MAX_LINE_SIZE - 1); ++Inc)
 	{
-		PIDBuf[Inc] = (char)TChar;
+		*(unsigned char*)&PIDBuf[Inc] = (unsigned char)TChar;
+		/*I bet very few people actually know that this common piece of code
+		 * can potentially cause a signal to be raised if we're built in C99 mode,
+		 * depending on the compiler. char is guaranteed not to trap, so it's better
+		 * we assign an unsigned value to it in this method than trust the compiler not
+		 * to implement a really bad option in the C99 standard.*/
 	}
 	PIDBuf[Inc] = '\0';
 	
