@@ -661,7 +661,7 @@ void ParseMemBus(void)
 	/*Power functions that close everything first.*/
 	else if (BusDataIs(MEMBUS_CODE_HALT) || BusDataIs(MEMBUS_CODE_POWEROFF) || BusDataIs(MEMBUS_CODE_REBOOT))
 	{
-		unsigned long LOffset = 0, Signal;
+	unsigned long LOffset = 0, Signal = OSCTL_LINUX_REBOOT;
 		char *TWorker = NULL, *MSig = NULL;
 		char TmpBuf[MEMBUS_MSGSIZE];
 		

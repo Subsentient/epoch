@@ -371,14 +371,13 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 
 static rStatus ProcessGenericHalt(int argc, char **argv)
 {
-	const char *CArg = argv[1];
-	signed long OSCode = -1;
-	
 	/*Figure out what we are.*/
 	if (CmdIs("poweroff") || CmdIs("halt") || CmdIs("reboot"))
 	{
 		char *GCode = NULL, *SuccessMsg = NULL, *FailMsg[2] = { NULL, NULL };
-		
+		const char *CArg = NULL;
+		signed long OSCode = -1;
+
 		if (CmdIs("poweroff"))
 		{
 			GCode = MEMBUS_CODE_POWEROFF;
@@ -439,6 +438,11 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 			
 		}
 	}
+	else
+	{
+		return FAILURE;
+	}
+	
 	return SUCCESS;
 }
 
