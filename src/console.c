@@ -34,7 +34,7 @@ void PrintBootBanner(void)
 	{ /*Now we read the file and copy it into the new array.*/
 		char *Worker, *TW;
 		FILE *TempDescriptor;
-		short TChar;
+		int TChar;
 		unsigned long Inc = 0;
 		
 		BootBanner.BannerText[Inc] = '\0';	

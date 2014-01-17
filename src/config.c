@@ -586,7 +586,7 @@ rStatus InitConfig(void)
 			{
 				FILE *TDesc;
 				unsigned long Inc = 0;
-				short TChar;
+				int TChar;
 				const char *TW = DelimCurr;
 				char THostname[MAX_LINE_SIZE];
 				
