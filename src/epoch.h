@@ -172,6 +172,7 @@ typedef struct _EpochObjectTable
 	char *ObjectStopCommand; /*How to shut it down.*/
 	char *ObjectReloadCommand; /*Used to reload an object without starting/stopping. Most services don't have this.*/
 	char *ObjectPIDFile;
+	char *ObjectWorkingDirectory; /*The working directory the object chdirs to before execution.*/
 	unsigned char TermSignal; /*The signal we send to an object if it's stop mode is PID or PIDFILE.*/
 	unsigned char ReloadCommandSignal; /*If the reload command sends a signal, this works.*/
 	Bool Enabled;

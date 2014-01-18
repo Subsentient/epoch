@@ -197,11 +197,22 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 		/*Change our session id.*/
 		setsid();
 		
-		/*Set user and group if desired.*/
 		if (CurCmd == InObj->ObjectStartCommand)
 		{
+			/*Set user and group if desired.*/
 			if (InObj->UserID != 0) setuid(InObj->UserID);
 			if (InObj->GroupID != 0) setgid(InObj->GroupID);
+			
+			/*Switch directories if desired.*/
+			if (InObj->ObjectWorkingDirectory != NULL)
+			{
+				if (chdir(InObj->ObjectWorkingDirectory) == -1)
+				{ /*Failed to chdir.*/
+					fprintf(stderr, "Epoch: Object %s " CONSOLE_COLOR_RED "failed" CONSOLE_ENDCOLOR " to chdir to \"%s\".\n",
+							InObj->ObjectID, InObj->ObjectWorkingDirectory);
+					_exit(1);
+				}
+			}
 		}
 		
 #ifndef NOSHELL

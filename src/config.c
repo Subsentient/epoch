@@ -669,6 +669,29 @@ rStatus InitConfig(void)
 
 			continue;
 		}
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectWorkingDirectory"), strlen("ObjectWorkingDirectory")))
+		{
+			if (!CurObj)
+			{
+				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (CurObj->ObjectWorkingDirectory != NULL)
+			{
+				free(CurObj->ObjectWorkingDirectory);
+			}
+			
+			CurObj->ObjectWorkingDirectory = malloc(strlen(DelimCurr) + 1);
+			
+			strncpy(CurObj->ObjectWorkingDirectory, DelimCurr, strlen(DelimCurr) + 1);	
+		}
 		else if (!strncmp(Worker, (CurrentAttribute = "ObjectEnabled"), strlen("ObjectEnabled")))
 		{
 			if (!CurObj)
@@ -1769,6 +1792,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->ObjectPrestartCommand = NULL;
 	Worker->ObjectReloadCommand = NULL;
 	Worker->ObjectPIDFile = NULL;
+	Worker->ObjectWorkingDirectory = NULL;
 	Worker->ObjectStartPriority = 0;
 	Worker->ObjectStopPriority = 0;
 	Worker->Opts.StopMode = STOP_NONE;
@@ -2368,6 +2392,7 @@ void ShutdownConfig(void)
 			if (Worker->ObjectReloadCommand) free(Worker->ObjectReloadCommand);
 			if (Worker->ObjectPrestartCommand) free(Worker->ObjectPrestartCommand);
 			if (Worker->ObjectPIDFile) free(Worker->ObjectPIDFile);
+			if (Worker->ObjectWorkingDirectory) free(Worker->ObjectWorkingDirectory);
 		
 			ObjRL_ShutdownRunlevels(Worker);
 		}
@@ -2427,6 +2452,9 @@ rStatus ReloadConfig(void)
 		
 		SWorker->ObjectPIDFile = Worker->ObjectPIDFile;
 		Worker->ObjectPIDFile = NULL;
+		
+		SWorker->ObjectWorkingDirectory = Worker->ObjectWorkingDirectory;
+		Worker->ObjectWorkingDirectory = NULL;
 		
 		if (!Worker->ObjectRunlevels)
 		{
@@ -2546,6 +2574,7 @@ rStatus ReloadConfig(void)
 			if (SWorker->ObjectReloadCommand) free(SWorker->ObjectReloadCommand);
 			if (SWorker->ObjectPrestartCommand) free(SWorker->ObjectPrestartCommand);
 			if (SWorker->ObjectPIDFile) free(SWorker->ObjectPIDFile);
+			if (SWorker->ObjectWorkingDirectory) free(SWorker->ObjectWorkingDirectory);
 		}
 		
 		Temp = SWorker->Next;
