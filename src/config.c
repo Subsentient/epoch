@@ -945,6 +945,8 @@ rStatus InitConfig(void)
 				continue;
 			}
 			
+			if (CurObj->ObjectDescription != NULL) free(CurObj->ObjectDescription);
+			
 			CurObj->ObjectDescription = malloc(strlen(DelimCurr) + 1);
 			strncpy(CurObj->ObjectDescription, DelimCurr, strlen(DelimCurr) + 1);
 			
@@ -991,6 +993,8 @@ rStatus InitConfig(void)
 				CurObj->Opts.PivotRoot = true;
 			}
 				
+			if (CurObj->ObjectStartCommand) free(CurObj->ObjectStartCommand);
+			
 			CurObj->ObjectStartCommand = malloc(strlen(DelimCurr) + 1);
 			strncpy(CurObj->ObjectStartCommand, DelimCurr, strlen(DelimCurr) + 1);
 
@@ -1014,6 +1018,8 @@ rStatus InitConfig(void)
 				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
+			
+			if (CurObj->ObjectPrestartCommand) free(CurObj->ObjectPrestartCommand);
 			
 			CurObj->ObjectPrestartCommand = malloc(strlen(DelimCurr) + 1);
 			strncpy(CurObj->ObjectPrestartCommand, DelimCurr, strlen(DelimCurr) + 1);
@@ -1113,6 +1119,8 @@ rStatus InitConfig(void)
 			}
 			else
 			{
+				if (CurObj->ObjectReloadCommand) free(CurObj->ObjectReloadCommand);
+				
 				CurObj->ObjectReloadCommand = malloc(strlen(DelimCurr) + 1);
 				strncpy(CurObj->ObjectReloadCommand, DelimCurr, strlen(DelimCurr) + 1);
 			}
@@ -1173,6 +1181,8 @@ rStatus InitConfig(void)
 			else
 			{
 				CurObj->Opts.StopMode = STOP_COMMAND;
+				
+				if (CurObj->ObjectStopCommand) free(CurObj->ObjectStopCommand);
 				CurObj->ObjectStopCommand = malloc(strlen(DelimCurr) + 1);
 				strncpy(CurObj->ObjectStopCommand, DelimCurr, strlen(DelimCurr) + 1);
 			}
@@ -1275,6 +1285,8 @@ rStatus InitConfig(void)
 				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
+			
+			if (CurObj->ObjectPIDFile) free(CurObj->ObjectPIDFile);
 			
 			CurObj->ObjectPIDFile = malloc(strlen(DelimCurr) + 1);
 			strncpy(CurObj->ObjectPIDFile, DelimCurr, strlen(DelimCurr) + 1);
