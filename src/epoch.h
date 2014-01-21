@@ -173,6 +173,7 @@ typedef struct _EpochObjectTable
 	char *ObjectReloadCommand; /*Used to reload an object without starting/stopping. Most services don't have this.*/
 	char *ObjectPIDFile; /*PID file location.*/
 	char *ObjectWorkingDirectory; /*The working directory the object chdirs to before execution.*/
+	char *ObjectHomeDirectory; /*Home folder for the user if we set a user. Usually NULL.*/
 	char *ObjectStderr; /*A file that stderr redirects to.*/
 	char *ObjectStdout; /*A file that stdout redirects to.*/
 	unsigned char TermSignal; /*The signal we send to an object if it's stop mode is PID or PIDFILE.*/

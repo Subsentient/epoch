@@ -1292,8 +1292,15 @@ rStatus InitConfig(void)
 			
 			CurObj->UserID = (unsigned long)UserStruct->pw_uid;
 			
+			if (CurObj->ObjectHomeDirectory != NULL) free(CurObj->ObjectHomeDirectory);
+			
+			CurObj->ObjectHomeDirectory = malloc(strlen(UserStruct->pw_dir) + 1);
+			
+			strncpy(CurObj->ObjectHomeDirectory, UserStruct->pw_dir, strlen(UserStruct->pw_dir) + 1);
+			
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
+				CurObj->ObjectHomeDirectory[MAX_LINE_SIZE - 1] = '\0';
 				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
 			}
 			
@@ -2496,6 +2503,7 @@ void ShutdownConfig(void)
 			if (Worker->ObjectWorkingDirectory) free(Worker->ObjectWorkingDirectory);
 			if (Worker->ObjectStdout) free(Worker->ObjectStdout);
 			if (Worker->ObjectStderr) free(Worker->ObjectStderr);
+			if (Worker->ObjectHomeDirectory) free(Worker->ObjectHomeDirectory);
 			
 			ObjRL_ShutdownRunlevels(Worker);
 		}
@@ -2558,6 +2566,9 @@ rStatus ReloadConfig(void)
 		
 		SWorker->ObjectWorkingDirectory = Worker->ObjectWorkingDirectory;
 		Worker->ObjectWorkingDirectory = NULL;
+		
+		SWorker->ObjectHomeDirectory = Worker->ObjectHomeDirectory;
+		Worker->ObjectHomeDirectory = NULL;
 		
 		SWorker->ObjectStdout = Worker->ObjectStdout;
 		Worker->ObjectStdout = NULL;
@@ -2686,6 +2697,7 @@ rStatus ReloadConfig(void)
 			if (SWorker->ObjectWorkingDirectory) free(SWorker->ObjectWorkingDirectory);
 			if (SWorker->ObjectStdout) free(SWorker->ObjectStdout);
 			if (SWorker->ObjectStderr) free(SWorker->ObjectStderr);
+			if (SWorker->ObjectHomeDirectory) free(SWorker->ObjectHomeDirectory);
 		}
 		
 		Temp = SWorker->Next;

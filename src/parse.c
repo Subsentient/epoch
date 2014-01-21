@@ -217,21 +217,13 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 		/*Change our session id.*/
 		setsid();
 		
-		if (CurCmd == InObj->ObjectStartCommand)
-		{
-			/*Set user and group if desired.*/
-			if (InObj->UserID != 0) setuid(InObj->UserID);
-			if (InObj->GroupID != 0) setgid(InObj->GroupID);
-			
-			/*Switch directories if desired.*/
-			if (InObj->ObjectWorkingDirectory != NULL)
-			{
-				if (chdir(InObj->ObjectWorkingDirectory) == -1)
-				{ /*Failed to chdir.*/
-					fprintf(stderr, "Epoch: Object %s " CONSOLE_COLOR_RED "failed" CONSOLE_ENDCOLOR " to chdir to \"%s\".\n",
-							InObj->ObjectID, InObj->ObjectWorkingDirectory);
-					_exit(1);
-				}
+		if (InObj->ObjectWorkingDirectory != NULL && CurCmd == InObj->ObjectStartCommand)
+		{ /*Switch directories if desired.*/
+			if (chdir(InObj->ObjectWorkingDirectory) == -1)
+			{ /*Failed to chdir.*/
+				fprintf(stderr, "Epoch: Object %s " CONSOLE_COLOR_RED "failed" CONSOLE_ENDCOLOR " to chdir to \"%s\".\n",
+						InObj->ObjectID, InObj->ObjectWorkingDirectory);
+				_exit(1);
 			}
 		}
 		
@@ -248,6 +240,19 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 			freopen(InObj->ObjectStderr, "a", stderr);
 		}
 		
+		/**The ordering of this is important to make the file descriptors work for an alternative stdout/stderr.**/
+		if (CurCmd == InObj->ObjectStartCommand)
+		{ /*Set user and group if desired.*/
+
+			if (InObj->UserID != 0)
+			{
+				setuid(InObj->UserID);
+				setenv("HOME", InObj->ObjectHomeDirectory, 1);
+			}
+			
+			if (InObj->GroupID != 0) setgid(InObj->GroupID);
+		}
+			
 #ifndef NOSHELL
 		if (ShellEnabled && (strpbrk(CurCmd, "&^$#@!()*%{}`~+|\\<>?;:'[]\"\t") != NULL || ForceShell))
 		{
@@ -318,10 +323,10 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 		{ /*If we specify that this is a service, one up the PID again.*/
 			++InObj->ObjectPID;
 		}
-		
+#ifndef NOMMU		
 		/*The PID is obviously going to be one greater.*/
 		if (InObj->Opts.Fork) ++InObj->ObjectPID;
-		
+#endif		
 		/*Check if the PID we found is accurate and update it if not. This method is very,
 		 * very accurate compared to the buggy morass above.*/
 		AdvancedPIDFind(InObj, true);
