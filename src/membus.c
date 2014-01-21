@@ -401,7 +401,7 @@ void ParseMemBus(void)
 					MEMBUS_CODE_LSOBJS, MEMBUS_LSOBJS_VERSION, Worker->ObjectID,
 					(unsigned long)strlen(Worker->ObjectDescription),
 					Worker->ObjectDescription, TPID, (Worker->Started && !Worker->Opts.HaltCmdOnly),
-					ObjectProcessRunning(Worker), Worker->Enabled, Worker->Opts.CanStop,
+					ObjectProcessRunning(Worker), Worker->Enabled, Worker->Opts.Persistent,
 					Worker->Opts.HaltCmdOnly, Worker->Opts.IsService, Worker->Opts.AutoRestart,
 					Worker->Opts.ForceShell, Worker->Opts.RawDescription, Worker->Opts.NoStopWait,
 					Worker->Opts.PivotRoot, Worker->Opts.StopMode, Worker->TermSignal, Worker->StartedSince);

@@ -617,7 +617,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		char *Worker = NULL;
 		char RLExpect[MEMBUS_MSGSIZE ];
 		unsigned long Inc = 0, Inc2 = 0, Len = 0, PID = 0;
-		Bool Started, Running, Enabled, CanStop, HaltCmdOnly, IsService, AutoRestart, NoStopWait, PivotRoot;
+		Bool Started, Running, Enabled, Persistent, HaltCmdOnly, IsService, AutoRestart, NoStopWait, PivotRoot;
 		Bool ForceShell, RawDescription;
 		enum _StopMode StopMode;
 		unsigned char TermSignal = 0;
@@ -630,7 +630,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		Opts[0] = &Started;
 		Opts[1] = &Running;
 		Opts[2] = &Enabled;
-		Opts[3] = &CanStop;
+		Opts[3] = &Persistent;
 		Opts[4] = &HaltCmdOnly;
 		Opts[5] = &IsService;
 		Opts[6] = &AutoRestart;
@@ -823,7 +823,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 						
 			/*Print the options.*/
 			
-			if (IsService || AutoRestart || HaltCmdOnly || !CanStop ||
+			if (IsService || AutoRestart || HaltCmdOnly || Persistent ||
 				ForceShell || RawDescription || NoStopWait || PivotRoot || TermSignal != SIGTERM)
 			{
 				printf("Options:");
@@ -831,7 +831,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 				if (IsService) printf(" SERVICE");
 				if (AutoRestart) printf(" AUTORESTART");
 				if (HaltCmdOnly) printf(" HALTONLY");
-				if (!CanStop) printf(" PERSISTENT");
+				if (Persistent) printf(" PERSISTENT");
 				if (ForceShell) printf(" FORCESHELL");
 				if (RawDescription) printf(" RAWDESCRIPTION");
 				if (TermSignal != SIGTERM) printf(" TERMSIGNAL=%u", TermSignal);

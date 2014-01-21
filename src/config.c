@@ -164,7 +164,6 @@ rStatus InitConfig(void)
 	Bool LongComment = false;
 	Bool TrueLogEnable = EnableLogging;
 	Bool PrevLogInMemory = LogInMemory;
-	
 	char ErrBuf[MAX_LINE_SIZE];
 	
 	EnableLogging = true; /*To temporarily turn on the logging system.*/
@@ -643,6 +642,71 @@ rStatus InitConfig(void)
 			}
 			
 			continue;
+		}
+		
+		else if (!strncmp(Worker, (CurrentAttribute = "GlobalStdout"), strlen("GlobalStdout")))
+		{
+			if (CurObj != NULL)
+			{
+				ConfigProblem(CONFIG_EAFTER, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			
+			if (!strcmp(DelimCurr, "LOG"))
+			{
+				const char *LogPath = LOGDIR LOGFILE_NAME;
+
+				strncpy(GlobalStdout, LOGDIR LOGFILE_NAME, strlen(LogPath) + 1);
+			}
+			else
+			{
+				strncpy(GlobalStdout, DelimCurr, strlen(DelimCurr) + 1);
+				
+				if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
+				{
+					ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+				}
+			}
+			continue;
+		}		
+		else if (!strncmp(Worker, (CurrentAttribute = "GlobalStderr"), strlen("GlobalStderr")))
+		{
+			if (CurObj != NULL)
+			{
+				ConfigProblem(CONFIG_EAFTER, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			
+			if (!strcmp(DelimCurr, "LOG"))
+			{
+				const char *LogPath = LOGDIR LOGFILE_NAME;
+
+				strncpy(GlobalStderr, LOGDIR LOGFILE_NAME, strlen(LogPath) + 1);
+			}
+			else
+			{
+				strncpy(GlobalStderr, DelimCurr, strlen(DelimCurr) + 1);
+				
+				if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
+				{
+					ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+				}
+			}
+			continue;
 		}		
 		else if (!strncmp(Worker, (CurrentAttribute = "ObjectID"), strlen("ObjectID")))
 		{ /*ASCII value used to identify this object internally, and also a kind of short name for it.*/
@@ -759,12 +823,12 @@ rStatus InitConfig(void)
 				if (!strcmp(CurArg, "HALTONLY"))
 				{ /*Allow entries that execute on shutdown only.*/
 					CurObj->Started = true;
-					CurObj->Opts.CanStop = false;
+					CurObj->Opts.Persistent = true;
 					CurObj->Opts.HaltCmdOnly = true;
 				}
 				else if (!strcmp(CurArg, "PERSISTENT"))
 				{
-					CurObj->Opts.CanStop = false;
+					CurObj->Opts.Persistent = true;
 				}
 				else if (!strcmp(CurArg, "RAWDESCRIPTION"))
 				{
@@ -812,56 +876,6 @@ rStatus InitConfig(void)
 					}
 					
 					CurObj->Opts.StopTimeout = atol(TWorker);
-				}
-				else if (!strncmp(CurArg, "USER", strlen("USER")))
-				{
-					struct passwd *UserStruct = NULL;
-					const char *TWorker = CurArg + strlen("USER");
-					
-					if (*TWorker != '=' || *(TWorker + 1) == '\0')
-					{
-						ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, CurArg, LineNum);
-						continue;
-					}
-					++TWorker;
-					
-					if (!(UserStruct = getpwnam(TWorker)))
-					{ /*getpwnam_r() is more trouble than it's worth in single-threaded Epoch.*/
-						snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT
-								"Unable to lookup requested USER \"%s\" for object \"%s\".\n"
-								"Line %lu in %s", TWorker, CurObj->ObjectID, LineNum, ConfigFile);
-						WriteLogLine(ErrBuf, true);
-						SpitWarning(ErrBuf);
-						continue;
-					}
-					
-					CurObj->UserID = (unsigned long)UserStruct->pw_uid;
-					continue;
-				}
-				else if (!strncmp(CurArg, "GROUP", strlen("GROUP")))
-				{
-					struct group *GroupStruct = NULL;
-					const char *TWorker = CurArg + strlen("GROUP");
-					
-					if (*TWorker != '=' || *(TWorker + 1) == '\0')
-					{
-						ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, CurArg, LineNum);
-						continue;
-					}
-					++TWorker;
-					
-					if (!(GroupStruct = getgrnam(TWorker)))
-					{ /*getpwnam_r() is more trouble than it's worth in single-threaded Epoch.*/
-						snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT
-								"Unable to lookup requested GROUP \"%s\" for object \"%s\".\n"
-								"Line %lu in %s", TWorker, CurObj->ObjectID, LineNum, ConfigFile);
-						WriteLogLine(ErrBuf, true);
-						SpitWarning(ErrBuf);
-						continue;
-					}
-					
-					CurObj->GroupID = (unsigned long)GroupStruct->gr_gid;
-					continue;
 				}
 				else if (!strncmp(CurArg, "TERMSIGNAL", strlen("TERMSIGNAL")))
 				{
@@ -1298,6 +1312,145 @@ rStatus InitConfig(void)
 				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
 			}
 			
+			continue;
+		}
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectUser"), strlen("ObjectUser")))
+		{
+			struct passwd *UserStruct = NULL;
+			
+			if (CurObj == NULL)
+			{
+				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!(UserStruct = getpwnam(DelimCurr)))
+			{ /*getpwnam_r() is more trouble than it's worth in single-threaded Epoch.*/
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT
+						"Unable to lookup requested USER \"%s\" for object \"%s\".\n"
+						"Line %lu in %s", DelimCurr, CurObj->ObjectID, LineNum, ConfigFile);
+				WriteLogLine(ErrBuf, true);
+				SpitWarning(ErrBuf);
+				continue;
+			}
+			
+			CurObj->UserID = (unsigned long)UserStruct->pw_uid;
+			
+			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
+			{
+				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+			}
+			
+			continue;
+		}
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectGroup"), strlen("ObjectGroup")))
+		{
+			struct group *GroupStruct = NULL;
+			
+			if (CurObj == NULL)
+			{
+				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!(GroupStruct = getgrnam(DelimCurr)))
+			{ /*getpwnam_r() is more trouble than it's worth in single-threaded Epoch.*/
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT
+						"Unable to lookup requested GROUP \"%s\" for object \"%s\".\n"
+						"Line %lu in %s", DelimCurr, CurObj->ObjectID, LineNum, ConfigFile);
+				WriteLogLine(ErrBuf, true);
+				SpitWarning(ErrBuf);
+				continue;
+			}
+			
+			CurObj->GroupID = (unsigned long)GroupStruct->gr_gid;
+			
+			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
+			{
+				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+			}
+			continue;
+		}
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStdout"), strlen("ObjectStdout")))
+		{
+			if (CurObj == NULL)
+			{
+				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (CurObj->ObjectStdout) free(CurObj->ObjectStdout);
+			
+			if (!strcmp(DelimCurr, "LOG"))
+			{
+				const char *LogPath = LOGDIR LOGFILE_NAME;
+				CurObj->ObjectStdout = malloc(strlen(LogPath) + 1);
+
+				strncpy(CurObj->ObjectStdout, LOGDIR LOGFILE_NAME, strlen(LogPath) + 1);
+			}
+			else
+			{
+				CurObj->ObjectStdout = malloc(strlen(DelimCurr) + 1);
+				strncpy(CurObj->ObjectStdout, DelimCurr, strlen(DelimCurr) + 1);
+				
+				if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
+				{
+					ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+				}
+			}
+			continue;
+		}
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStderr"), strlen("ObjectStderr")))
+		{
+			if (CurObj == NULL)
+			{
+				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (CurObj->ObjectStderr) free(CurObj->ObjectStderr);
+			
+			if (!strcmp(DelimCurr, "LOG"))
+			{
+				const char *LogPath = LOGDIR LOGFILE_NAME;
+				CurObj->ObjectStderr = malloc(strlen(LogPath) + 1);
+
+				strncpy(CurObj->ObjectStderr, LOGDIR LOGFILE_NAME, strlen(LogPath) + 1);
+			}
+			else
+			{
+				CurObj->ObjectStderr = malloc(strlen(DelimCurr) + 1);
+				strncpy(CurObj->ObjectStderr, DelimCurr, strlen(DelimCurr) + 1);
+				
+				if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
+				{
+					ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+				}
+			}
 			continue;
 		}
 		else if (!strncmp(Worker, (CurrentAttribute = "ObjectRunlevels"), strlen("ObjectRunlevels")))
@@ -1765,7 +1918,7 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 /*Adds an object to the table and, if the first run, sets up the table.*/
 static ObjTable *AddObjectToTable(const char *ObjectID)
 {
-	ObjTable *Worker = ObjectTable;
+	ObjTable *Worker = ObjectTable, *Next, *Prev;
 	
 	/*See, we actually allocate two cells initially. The base and it's node.
 	 * We always keep a free one open. This is just more convenient.*/
@@ -1790,39 +1943,25 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->Next->Next = NULL;
 	Worker->Next->Prev = Worker;
 
+	/*These are the only two variables inside that we need to save before we wipe.*/
+	Next = Worker->Next;
+	Prev = Worker->Prev;
+	
+	memset(Worker, 0, sizeof(ObjTable)); /*Set everything that is going to be zero to zero.*/
+	
+	Worker->Next = Next;
+	Worker->Prev = Prev;
+	
 	/*This is the first thing that must ever be initialized, because it's how we tell objects apart.*/
 	/*This and all things like it are dynamically allocated to provide aggressive memory savings.*/
 	Worker->ObjectID = malloc(strlen(ObjectID) + 1);
 	strncpy(Worker->ObjectID, ObjectID, strlen(ObjectID) + 1);
 	
 	/*Initialize these to their default values. Used to test integrity before execution begins.*/
-	Worker->Started = false;
-	Worker->StartedSince = 0;
-	Worker->ObjectDescription = NULL;
-	Worker->ObjectStartCommand = NULL;
-	Worker->ObjectStopCommand = NULL;
-	Worker->ObjectPrestartCommand = NULL;
-	Worker->ObjectReloadCommand = NULL;
-	Worker->ObjectPIDFile = NULL;
-	Worker->ObjectWorkingDirectory = NULL;
-	Worker->ObjectStartPriority = 0;
-	Worker->ObjectStopPriority = 0;
-	Worker->Opts.StopMode = STOP_NONE;
-	Worker->Opts.CanStop = true;
-	Worker->ObjectPID = 0;
-	Worker->UserID = Worker->GroupID = 0; /*Zero is root of course.*/
 	Worker->TermSignal = SIGTERM; /*This can be changed via config.*/
-	Worker->ReloadCommandSignal = 0;
-	Worker->ObjectRunlevels = NULL;
-	Worker->Enabled = 2; /*We can indeed store this in a bool you know. There's no 1 bit datatype.*/
-	Worker->Opts.HaltCmdOnly = false;
-	Worker->Opts.RawDescription = false;
-	Worker->Opts.IsService = false;
-	Worker->Opts.AutoRestart = false;
-	Worker->Opts.NoStopWait = false;
-	Worker->Opts.PivotRoot = false;
-	Worker->Opts.ForceShell = false;
-	Worker->Opts.HasPIDFile = false;
+	Worker->Enabled = 2; /*We can indeed store this in a bool you know.
+						There's no 1 bit datatype, and in Epoch,
+						Bool is just signed char.*/
 	Worker->Opts.StopTimeout = 10; /*Ten seconds by default.*/
 	
 	return Worker;
@@ -2405,7 +2544,9 @@ void ShutdownConfig(void)
 			if (Worker->ObjectPrestartCommand) free(Worker->ObjectPrestartCommand);
 			if (Worker->ObjectPIDFile) free(Worker->ObjectPIDFile);
 			if (Worker->ObjectWorkingDirectory) free(Worker->ObjectWorkingDirectory);
-		
+			if (Worker->ObjectStdout) free(Worker->ObjectStdout);
+			if (Worker->ObjectStderr) free(Worker->ObjectStderr);
+			
 			ObjRL_ShutdownRunlevels(Worker);
 		}
 		
@@ -2428,12 +2569,19 @@ rStatus ReloadConfig(void)
 	struct _RunlevelInheritance *RLIRoot = NULL, *RLIWorker[2] = { NULL };
 	char RunlevelBackup[MAX_DESCRIPT_SIZE];
 	void *TempPtr = NULL, *TempPtr2 = NULL;
+	char GIO[2][MAX_LINE_SIZE];
 	
 	WriteLogLine("CONFIG: Reloading configuration.\n", true);
 	WriteLogLine("CONFIG: Backing up current configuration.", true);
 	
 	/*Backup the current runlevel.*/
 	snprintf(RunlevelBackup, MAX_DESCRIPT_SIZE, "%s", CurRunlevel);
+	
+	memcpy(GIO[0], GlobalStdout, sizeof GlobalStdout);
+	memcpy(GIO[1], GlobalStderr, sizeof GlobalStderr);
+	
+	*GlobalStdout = '\0';
+	*GlobalStderr = '\0';
 	
 	for (; Worker->Next != NULL; Worker = Worker->Next, SWorker = SWorker->Next)
 	{
@@ -2467,6 +2615,12 @@ rStatus ReloadConfig(void)
 		
 		SWorker->ObjectWorkingDirectory = Worker->ObjectWorkingDirectory;
 		Worker->ObjectWorkingDirectory = NULL;
+		
+		SWorker->ObjectStdout = Worker->ObjectStdout;
+		Worker->ObjectStdout = NULL;
+		
+		SWorker->ObjectStderr = Worker->ObjectStderr;
+		Worker->ObjectStderr = NULL;
 		
 		if (!Worker->ObjectRunlevels)
 		{
@@ -2553,6 +2707,9 @@ rStatus ReloadConfig(void)
 		/*Restore current runlevel*/
 		snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", RunlevelBackup);
 		
+		memcpy(GlobalStdout, GIO[0], sizeof GIO[0]);
+		memcpy(GlobalStderr, GIO[1], sizeof GIO[1]);
+		
 		ConfigOK = false;
 	}
 	
@@ -2587,6 +2744,8 @@ rStatus ReloadConfig(void)
 			if (SWorker->ObjectPrestartCommand) free(SWorker->ObjectPrestartCommand);
 			if (SWorker->ObjectPIDFile) free(SWorker->ObjectPIDFile);
 			if (SWorker->ObjectWorkingDirectory) free(SWorker->ObjectWorkingDirectory);
+			if (SWorker->ObjectStdout) free(SWorker->ObjectStdout);
+			if (SWorker->ObjectStderr) free(SWorker->ObjectStderr);
 		}
 		
 		Temp = SWorker->Next;

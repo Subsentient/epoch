@@ -213,6 +213,26 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 					_exit(1);
 				}
 			}
+			
+			/*stdout*/
+			if (InObj->ObjectStdout != NULL)
+			{
+				freopen(InObj->ObjectStdout, "a", stdout); /*We don't deal with the return code.*/
+			}
+			else if (*GlobalStdout != '\0')
+			{
+				freopen(GlobalStdout, "a", stdout);
+			}
+			
+			/*stderr*/
+			if (InObj->ObjectStderr != NULL)
+			{
+				freopen(InObj->ObjectStderr, "a", stderr);
+			}
+			else if (*GlobalStderr != '\0')
+			{
+				freopen(GlobalStderr, "a", stderr);
+			}
 		}
 		
 #ifndef NOSHELL
@@ -810,7 +830,7 @@ rStatus SwitchRunlevels(const char *Runlevel)
 				return FAILURE;
 			}
 			
-			if (TObj->Started && TObj->Opts.CanStop && !TObj->Opts.HaltCmdOnly &&
+			if (TObj->Started && !TObj->Opts.Persistent && !TObj->Opts.HaltCmdOnly &&
 				!ObjRL_CheckRunlevel(Runlevel, TObj, true))
 			{
 				ProcessConfigObject(TObj, false, true);

@@ -171,8 +171,10 @@ typedef struct _EpochObjectTable
 	char *ObjectPrestartCommand; /*Run before ObjectStartCommand, if it exists.*/
 	char *ObjectStopCommand; /*How to shut it down.*/
 	char *ObjectReloadCommand; /*Used to reload an object without starting/stopping. Most services don't have this.*/
-	char *ObjectPIDFile;
+	char *ObjectPIDFile; /*PID file location.*/
 	char *ObjectWorkingDirectory; /*The working directory the object chdirs to before execution.*/
+	char *ObjectStderr; /*A file that stderr redirects to.*/
+	char *ObjectStdout; /*A file that stdout redirects to.*/
 	unsigned char TermSignal; /*The signal we send to an object if it's stop mode is PID or PIDFILE.*/
 	unsigned char ReloadCommandSignal; /*If the reload command sends a signal, this works.*/
 	Bool Enabled;
@@ -184,7 +186,7 @@ typedef struct _EpochObjectTable
 		unsigned long StopTimeout; /*The number of seconds we wait for a task we're stopping's PID to become unavailable.*/
 		
 		/*This saves a tiny bit of memory to use bitfields here.*/
-		unsigned int CanStop : 1; /*Allowed to stop this without starting a shutdown?*/
+		unsigned int Persistent : 1; /*Allowed to stop this without starting a shutdown?*/
 		unsigned int HaltCmdOnly : 1; /*Run just the stop command when we halt, not the start command?*/
 		unsigned int IsService : 1; /*If true, we assume it's going to fork itself and one-up it's PID.*/
 		unsigned int RawDescription : 1; /*This inhibits insertion of "Starting", "Stopping", etc in front of descriptions.*/
@@ -273,6 +275,8 @@ extern signed long MemBusKey;
 extern Bool BusRunning;
 extern struct _PivotPoint *PivotCore;
 extern char ConfigFile[MAX_LINE_SIZE];
+extern char GlobalStdout[MAX_LINE_SIZE];
+extern char GlobalStderr[MAX_LINE_SIZE];
 
 /**Function forward declarations.*/
 
