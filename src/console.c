@@ -17,8 +17,6 @@
 struct _BootBanner BootBanner;
 /*Should we Disable CTRL-ALT-DEL instant reboots?*/
 Bool DisableCAD = true;
-char GlobalStdout[MAX_LINE_SIZE], GlobalStderr[MAX_LINE_SIZE];
-
 
 static const char *const ExitStrings[] = { CONSOLE_COLOR_RED "FAIL" CONSOLE_ENDCOLOR,
 							CONSOLE_COLOR_GREEN "Done" CONSOLE_ENDCOLOR, 

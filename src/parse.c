@@ -233,26 +233,19 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 					_exit(1);
 				}
 			}
-			
-			/*stdout*/
-			if (InObj->ObjectStdout != NULL)
-			{
-				freopen(InObj->ObjectStdout, "a", stdout); /*We don't deal with the return code.*/
-			}
-			else if (*GlobalStdout != '\0')
-			{
-				freopen(GlobalStdout, "a", stdout);
-			}
-			
-			/*stderr*/
-			if (InObj->ObjectStderr != NULL)
-			{
-				freopen(InObj->ObjectStderr, "a", stderr);
-			}
-			else if (*GlobalStderr != '\0')
-			{
-				freopen(GlobalStderr, "a", stderr);
-			}
+		}
+		
+		
+		/*stdout*/
+		if (InObj->ObjectStdout != NULL)
+		{
+			freopen(InObj->ObjectStdout, "a", stdout); /*We don't deal with the return code.*/
+		}
+		
+		/*stderr*/
+		if (InObj->ObjectStderr != NULL)
+		{
+			freopen(InObj->ObjectStderr, "a", stderr);
 		}
 		
 #ifndef NOSHELL

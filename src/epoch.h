@@ -278,8 +278,6 @@ extern signed long MemBusKey;
 extern Bool BusRunning;
 extern struct _PivotPoint *PivotCore;
 extern char ConfigFile[MAX_LINE_SIZE];
-extern char GlobalStdout[MAX_LINE_SIZE];
-extern char GlobalStderr[MAX_LINE_SIZE];
 
 /**Function forward declarations.*/
 

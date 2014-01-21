@@ -643,71 +643,6 @@ rStatus InitConfig(void)
 			
 			continue;
 		}
-		
-		else if (!strncmp(Worker, (CurrentAttribute = "GlobalStdout"), strlen("GlobalStdout")))
-		{
-			if (CurObj != NULL)
-			{
-				ConfigProblem(CONFIG_EAFTER, CurrentAttribute, NULL, LineNum);
-				continue;
-			}
-			
-			if (!GetLineDelim(Worker, DelimCurr))
-			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
-				continue;
-			}
-			
-			
-			if (!strcmp(DelimCurr, "LOG"))
-			{
-				const char *LogPath = LOGDIR LOGFILE_NAME;
-
-				strncpy(GlobalStdout, LOGDIR LOGFILE_NAME, strlen(LogPath) + 1);
-			}
-			else
-			{
-				strncpy(GlobalStdout, DelimCurr, strlen(DelimCurr) + 1);
-				
-				if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
-				{
-					ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
-				}
-			}
-			continue;
-		}		
-		else if (!strncmp(Worker, (CurrentAttribute = "GlobalStderr"), strlen("GlobalStderr")))
-		{
-			if (CurObj != NULL)
-			{
-				ConfigProblem(CONFIG_EAFTER, CurrentAttribute, NULL, LineNum);
-				continue;
-			}
-			
-			if (!GetLineDelim(Worker, DelimCurr))
-			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
-				continue;
-			}
-			
-			
-			if (!strcmp(DelimCurr, "LOG"))
-			{
-				const char *LogPath = LOGDIR LOGFILE_NAME;
-
-				strncpy(GlobalStderr, LOGDIR LOGFILE_NAME, strlen(LogPath) + 1);
-			}
-			else
-			{
-				strncpy(GlobalStderr, DelimCurr, strlen(DelimCurr) + 1);
-				
-				if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
-				{
-					ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
-				}
-			}
-			continue;
-		}		
 		else if (!strncmp(Worker, (CurrentAttribute = "ObjectID"), strlen("ObjectID")))
 		{ /*ASCII value used to identify this object internally, and also a kind of short name for it.*/
 			if (!GetLineDelim(Worker, DelimCurr))
@@ -2584,19 +2519,12 @@ rStatus ReloadConfig(void)
 	struct _RunlevelInheritance *RLIRoot = NULL, *RLIWorker[2] = { NULL };
 	char RunlevelBackup[MAX_DESCRIPT_SIZE];
 	void *TempPtr = NULL, *TempPtr2 = NULL;
-	char GIO[2][MAX_LINE_SIZE];
 	
 	WriteLogLine("CONFIG: Reloading configuration.\n", true);
 	WriteLogLine("CONFIG: Backing up current configuration.", true);
 	
 	/*Backup the current runlevel.*/
 	snprintf(RunlevelBackup, MAX_DESCRIPT_SIZE, "%s", CurRunlevel);
-	
-	memcpy(GIO[0], GlobalStdout, sizeof GlobalStdout);
-	memcpy(GIO[1], GlobalStderr, sizeof GlobalStderr);
-	
-	*GlobalStdout = '\0';
-	*GlobalStderr = '\0';
 	
 	for (; Worker->Next != NULL; Worker = Worker->Next, SWorker = SWorker->Next)
 	{
@@ -2721,9 +2649,6 @@ rStatus ReloadConfig(void)
 		
 		/*Restore current runlevel*/
 		snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", RunlevelBackup);
-		
-		memcpy(GlobalStdout, GIO[0], sizeof GIO[0]);
-		memcpy(GlobalStderr, GIO[1], sizeof GIO[1]);
 		
 		ConfigOK = false;
 	}
