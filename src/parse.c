@@ -326,6 +326,9 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 			++InObj->ObjectPID;
 		}
 		
+		/*The PID is obviously going to be one greater.*/
+		if (InObj->Opts.Fork) ++InObj->ObjectPID;
+		
 		/*Check if the PID we found is accurate and update it if not. This method is very,
 		 * very accurate compared to the buggy morass above.*/
 		AdvancedPIDFind(InObj, true);
