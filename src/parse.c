@@ -248,6 +248,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 			{
 				setuid(InObj->UserID);
 				setenv("HOME", InObj->ObjectHomeDirectory, 1);
+				if (!InObj->ObjectWorkingDirectory) chdir(InObj->ObjectHomeDirectory);
 			}
 			
 			if (InObj->GroupID != 0) setgid(InObj->GroupID);
