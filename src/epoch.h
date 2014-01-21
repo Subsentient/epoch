@@ -195,6 +195,9 @@ typedef struct _EpochObjectTable
 		unsigned int HasPIDFile : 1; /*If StopMode == STOP_PIDFILE, we also stop it just by sending a signal to the PID in the file.*/
 		unsigned int NoStopWait : 1; /*Used to tell us not to wait for an object to actually quit.*/
 		unsigned int PivotRoot : 1; /*Says that ObjectStartCommand is actually a PivotPoint. See actions.c.*/
+#ifndef NOMMU
+		unsigned int Fork : 1; /*Essentially do the same thing (with an Epoch twist) as Command& in sh.*/
+#endif
 	} Opts;
 	
 	struct _RLTree *ObjectRunlevels; /*Dynamically allocated, needless to say.*/

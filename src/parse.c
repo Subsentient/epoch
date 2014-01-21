@@ -194,6 +194,26 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 		
 		sigprocmask(SIG_UNBLOCK, &Sig2, NULL); /*Unblock signals.*/
 		
+#ifndef NOMMU /*Can't do this because vfork() blocks the parent.*/
+		/*If we are supposed to spawn off as a daemon, do this.*/
+		if (InObj->Opts.Fork && CurCmd == InObj->ObjectStartCommand)
+		{
+			pid_t Subchild = 0;
+			
+			signal(SIGCHLD, SIG_IGN); /*We don't care about the child's exit code.*/
+			
+			/*Failure.*/
+			if ((Subchild = fork()) == -1) _exit(1);
+				
+			if (Subchild == 0)
+			{ /*Child of the child. PID 1 is now a grandfather.*/
+				signal(SIGCHLD, SIG_DFL);
+			}
+			
+			if (Subchild > 0) _exit(0); /*parent is not needed.*/
+		}
+#endif /*NOMMU*/
+
 		/*Change our session id.*/
 		setsid();
 		

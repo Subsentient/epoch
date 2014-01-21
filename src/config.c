@@ -832,6 +832,17 @@ rStatus InitConfig(void)
 				{
 					CurObj->Opts.Persistent = true;
 				}
+				else if (!strcmp(CurArg, "FORK"))
+				{
+			#ifndef NOMMU
+					CurObj->Opts.Fork = true;
+			#else
+					snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Object \"%s\" has specified the FORK option,\n"
+							"but this is not supported on NOMMU builds.", CurObj->ObjectID);
+					SpitWarning(ErrBuf);
+					WriteLogLine(ErrBuf, true);
+			#endif /*NOMMU*/
+				}
 				else if (!strcmp(CurArg, "RAWDESCRIPTION"))
 				{
 					CurObj->Opts.RawDescription = true;
