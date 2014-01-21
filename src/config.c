@@ -724,6 +724,8 @@ rStatus InitConfig(void)
 				EmergencyShell();
 			}
 			
+			DelimCurr[MAX_DESCRIPT_SIZE - 1] = '\0'; /*Chop it off to prevent overflow.*/
+			
 			CurObj = AddObjectToTable(DelimCurr); /*Sets this as our current object.*/
 
 			if ((strlen(DelimCurr) + 1) >= MAX_DESCRIPT_SIZE)
@@ -961,6 +963,8 @@ rStatus InitConfig(void)
 			
 			if (CurObj->ObjectDescription != NULL) free(CurObj->ObjectDescription);
 			
+			DelimCurr[MAX_DESCRIPT_SIZE - 1] = '\0'; /*Chop it off to prevent overflow.*/
+
 			CurObj->ObjectDescription = malloc(strlen(DelimCurr) + 1);
 			strncpy(CurObj->ObjectDescription, DelimCurr, strlen(DelimCurr) + 1);
 			
