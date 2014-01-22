@@ -23,7 +23,7 @@ Bool BlankLogOnBoot = true;
 char *MemLogBuffer;
 
 /*Days in the month, for time stuff.*/
-static const short MDays[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+static const unsigned char MDays[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
 Bool AllNumeric(const char *InStream)
 { /*Is the string all numbers?*/

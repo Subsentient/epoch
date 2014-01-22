@@ -12,6 +12,8 @@
 #include <unistd.h>
 #include <time.h>
 #include <signal.h>
+#include <grp.h>
+#include <pwd.h>
 #include <sys/reboot.h>
 #include <sys/shm.h>
 
@@ -613,31 +615,17 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 	{
 		char OutBuf[MEMBUS_MSGSIZE], InBuf[MEMBUS_MSGSIZE];
 		char ObjectID[MAX_DESCRIPT_SIZE], ObjectDescription[MAX_DESCRIPT_SIZE];
-		char LenC[32] = { '\0' }, COpt[32];
 		char *Worker = NULL;
 		char RLExpect[MEMBUS_MSGSIZE ];
-		unsigned long Inc = 0, Inc2 = 0, Len = 0, PID = 0;
-		Bool Started, Running, Enabled, Persistent, HaltCmdOnly, IsService, AutoRestart, NoStopWait, PivotRoot;
-		Bool ForceShell, RawDescription;
+		unsigned long PID = 0;
+		Bool Started = false, Running = false, Enabled = false, PivotRoot = false, Persistent = false;
 		enum _StopMode StopMode;
-		unsigned char TermSignal = 0;
-		unsigned long StartedSince;
+		unsigned char TermSignal = 0, ReloadCommandSignal = 0, *BinWorker = NULL;
+		unsigned long StartedSince, UserID, GroupID, Inc = 0, StopTimeout;
+		Bool HaltCmdOnly = false, IsService = false, AutoRestart = false, NoStopWait = false;
+		Bool ForceShell = false, RawDescription = false, Fork = false;
 		const char *const YN[2] = { CONSOLE_COLOR_RED "No" CONSOLE_ENDCOLOR,
 									CONSOLE_COLOR_GREEN "Yes" CONSOLE_ENDCOLOR };
-		Bool *Opts[11] = { NULL };
-		
-		/*You know, there are some things about C89 I really hate.*/
-		Opts[0] = &Started;
-		Opts[1] = &Running;
-		Opts[2] = &Enabled;
-		Opts[3] = &Persistent;
-		Opts[4] = &HaltCmdOnly;
-		Opts[5] = &IsService;
-		Opts[6] = &AutoRestart;
-		Opts[7] = &ForceShell;
-		Opts[8] = &RawDescription;
-		Opts[9] = &NoStopWait;
-		Opts[10] = &PivotRoot;
 		
 		if (argc > 3)
 		{
@@ -663,7 +651,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		
 		MemBus_Write(OutBuf, false);
 		
-		while (!MemBus_Read(InBuf, false)) usleep(100);
+		while (!MemBus_BinRead(InBuf, MEMBUS_MSGSIZE, false)) usleep(100);
 
 		if (!strcmp(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_LSOBJS, InBuf))
 		{
@@ -692,81 +680,79 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 				return FAILURE;
 			}
 			
-			Worker += strlen(MEMBUS_LSOBJS_VERSION " ");
+			Worker += strlen(MEMBUS_LSOBJS_VERSION) + 1;
 			
-			/*Copy in the ObjectID.*/
-			for (Inc = 0; Worker[Inc] != ' '; ++Inc)
-			{
+			BinWorker = (void*)Worker;
+			
+			Started = *BinWorker++;
+			Running = *BinWorker++;
+			Enabled = *BinWorker++;
+			PivotRoot = *BinWorker++;
+			TermSignal = *BinWorker++;
+			ReloadCommandSignal = *BinWorker++;
+
+			memcpy(&UserID, BinWorker, sizeof(long));
+			memcpy(&GroupID, (BinWorker += sizeof(long)), sizeof(long));
+			
+			memcpy(&StopMode, (BinWorker += sizeof(long)), sizeof(enum _StopMode));
+			memcpy(&PID, (BinWorker += sizeof(enum _StopMode)), sizeof(long));
+			
+			memcpy(&StartedSince, (BinWorker += sizeof(long)), sizeof(long));
+			memcpy(&StopTimeout, BinWorker + sizeof(long), sizeof(long));
+
+			while (!MemBus_BinRead(InBuf, MEMBUS_MSGSIZE, false)) usleep(100);
+			
+			for (Worker = InBuf, Inc = 0; Worker[Inc] != ' '; ++Inc)
+			{ /*Get ObjectID*/
 				ObjectID[Inc] = Worker[Inc];
 			}
 			ObjectID[Inc] = '\0';
+			
 			Worker += Inc + 1;
 			
-			for (Inc = 0; Worker[Inc] != ' '; ++Inc)
-			{ /*Get length of the ObjectDescription.*/
-				LenC[Inc] = Worker[Inc];
-			}
-			LenC[Inc] = '\0';
-			Worker += Inc + 1;
+			/*Get ObjectDescription.*/
+			strncpy(ObjectDescription, Worker, strlen(Worker) + 1);
 			
-			Len = atol(LenC);
+			/*Retrieve the options.*/
+			while (!MemBus_BinRead(InBuf, MEMBUS_MSGSIZE, false)) usleep(100);
 			
-			for (Inc = 0; Inc < Len; ++Inc)
-			{ /*Copy in the ObjectDescription.*/
-				ObjectDescription[Inc] = Worker[Inc];
-			}
-			ObjectDescription[Inc] = '\0';
-			Worker += Inc + 1;
-			
-			for (Inc = 0; Worker[Inc] != ' '; ++Inc)
-			{ /*Copy in the PID by reusing LenC.*/
-				LenC[Inc] = Worker[Inc];
-			}
-			LenC[Inc] = '\0';
-			Worker += Inc + 1;
-			
-			PID = atol(LenC);
-			
-			for (Inc2 = 0; Inc2 < 11; ++Inc2)
-			{ /*Convenient way to loop through and set all options.*/
-				for (Inc = 0; Worker[Inc] != ' '; ++Inc)
+			for (Worker = InBuf; *Worker != 0; ++Worker)
+			{
+				if (*(unsigned char*)Worker >= COPT_MAX) continue; /*If we don't understand.*/
+
+				switch (*(unsigned char*)Worker)
 				{
-					COpt[Inc] = Worker[Inc];
+					case COPT_HALTONLY:
+						HaltCmdOnly = true;
+						break;
+					case COPT_PERSISTENT:
+						Persistent = true;
+						break;
+					case COPT_FORK:
+						Fork = true;
+						break;
+					case COPT_SERVICE:
+						IsService = true;
+						break;
+					case COPT_AUTORESTART:
+						AutoRestart = true;
+						break;
+					case COPT_FORCESHELL:
+						ForceShell = true;
+						break;
+					case COPT_NOSTOPWAIT:
+						NoStopWait = true;
+						break;
+					default:
+						break;
 				}
-				COpt[Inc] = '\0';
-				Worker += Inc + 1;
-			
-				*Opts[Inc2] = (Bool)atoi(COpt);
 			}
-			
-			for (Inc = 0; Worker[Inc] != ' '; ++Inc)
-			{ /*Copy in StopMode.*/
-				COpt[Inc] = Worker[Inc];
-			}
-			COpt[Inc] = '\0';
-			Worker += Inc + 1;
-			
-			StopMode = (enum _StopMode)atoi(COpt);
-			
-			for (Inc = 0; Worker[Inc] != ' '; ++Inc)
-			{ /*Copy in TermSignal.*/
-				COpt[Inc] = Worker[Inc];
-			}
-			COpt[Inc] = '\0';
-			Worker += Inc + 1;
-			
-			TermSignal = (unsigned char)atoi(COpt);
-			
-			for (Inc = 0; Worker[Inc] != '\0'; ++Inc)
-			{ /*Copy in StartedSince.*/
-				COpt[Inc] = Worker[Inc];
-			}
-			COpt[Inc] = '\0';
-			
-			StartedSince = atol(COpt);
-			
+		
+		
 			printf("ObjectID: %s\nObjectDescription: %s\nEnabled: %s | Started: %s | Running: %s | Stop mode: ",
-					ObjectID, ObjectDescription, YN[Enabled], YN[Started], YN[Running]);
+					ObjectID, ObjectDescription, YN[Enabled],
+					HaltCmdOnly ? CONSOLE_COLOR_YELLOW "N/A" CONSOLE_ENDCOLOR : YN[Started],
+					HaltCmdOnly ? CONSOLE_COLOR_YELLOW "N/A" CONSOLE_ENDCOLOR : YN[Running]);
 			
 			if (StopMode == STOP_COMMAND) printf("Command");
 			else if (StopMode == STOP_NONE) printf("None");
@@ -796,13 +782,33 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 				printf("Started since %s, for total of %lu mins.\n", TimeBuf, Offset);
 			}
 			
+			if (IsService || AutoRestart || HaltCmdOnly || Persistent || Fork || StopTimeout != 10 || 
+				ForceShell || RawDescription || NoStopWait || PivotRoot || TermSignal != SIGTERM)
+			{
+				printf("Options:");
+				
+				if (IsService) printf(" SERVICE");
+				if (AutoRestart) printf(" AUTORESTART");
+				if (HaltCmdOnly) printf(" HALTONLY");
+				if (Persistent) printf(" PERSISTENT");
+				if (ForceShell) printf(" FORCESHELL");
+				if (Fork) printf(" FORK");
+				if (RawDescription) printf(" RAWDESCRIPTION");
+				if (TermSignal != SIGTERM) printf(" TERMSIGNAL=%u", TermSignal);
+				if (NoStopWait) printf(" NOSTOPWAIT");
+				if (PivotRoot) printf(" <PivotPoint>");
+				if (StopTimeout != 10) printf(" STOPTIMEOUT=%lu", StopTimeout);
+				
+				putchar('\n');
+			}
+			
 			snprintf(RLExpect, sizeof RLExpect, "%s %s %s", MEMBUS_CODE_LSOBJS, MEMBUS_LSOBJS_VERSION, ObjectID);
 			
-			/*Done with this, now read.*/
-			while (!MemBus_Read(InBuf, false)) usleep(100);
+			/*Done with this, now read runlevels.*/
+			while (!MemBus_BinRead(InBuf, MEMBUS_MSGSIZE, false)) usleep(100);
 			
 			while (!strncmp(InBuf, RLExpect, strlen(RLExpect)))
-			{
+			{ /*Also causes the next object to be read.*/
 				if (!FoundRL && !HaltCmdOnly)
 				{
 					printf("Runlevels:");
@@ -816,35 +822,30 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 					printf(" %s", Worker);
 				}
 				
-				while (!MemBus_Read(InBuf, false)) usleep(100);
+				while (!MemBus_BinRead(InBuf, MEMBUS_MSGSIZE, false)) usleep(100);
 			}
 			
 			if (FoundRL) putchar('\n');
-						
-			/*Print the options.*/
 			
-			if (IsService || AutoRestart || HaltCmdOnly || Persistent ||
-				ForceShell || RawDescription || NoStopWait || PivotRoot || TermSignal != SIGTERM)
+			if (UserID || GroupID)
 			{
-				printf("Options:");
+				struct passwd *UserStruct = getpwuid(UserID);
+				struct group *GroupStruct = getgrgid(GroupID);
 				
-				if (IsService) printf(" SERVICE");
-				if (AutoRestart) printf(" AUTORESTART");
-				if (HaltCmdOnly) printf(" HALTONLY");
-				if (Persistent) printf(" PERSISTENT");
-				if (ForceShell) printf(" FORCESHELL");
-				if (RawDescription) printf(" RAWDESCRIPTION");
-				if (TermSignal != SIGTERM) printf(" TERMSIGNAL=%u", TermSignal);
-				if (NoStopWait) printf(" NOSTOPWAIT");
-				if (PivotRoot) printf(" <PivotPoint>");
-				
-				putchar('\n');
+				if (UserStruct && GroupStruct)
+				{
+					printf("User: %s\nGroup: %s\n", UserStruct->pw_name, GroupStruct->gr_name);
+				}
 			}
 			
 			if (argc == 2)
 			{
 				puts("-------");
 			}
+			
+			/*Clear these for the next object.*/
+			HaltCmdOnly = IsService = AutoRestart = NoStopWait = false;
+			ForceShell = Fork  = RawDescription = false;
 		}
 		
 		ShutdownMemBus(false);

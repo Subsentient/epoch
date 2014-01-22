@@ -129,7 +129,7 @@
 #define MEMBUS_CODE_RXD "RXD"
 #define MEMBUS_CODE_RXD_OPTS "ORXD"
 
-#define MEMBUS_LSOBJS_VERSION "V1.3"
+#define MEMBUS_LSOBJS_VERSION "V2"
 /**Types, enums, structs and whatnot**/
 
 
@@ -142,6 +142,9 @@ typedef signed char Bool;
 /*How objects are stopped on shutdown.*/
 enum _StopMode { STOP_NONE, STOP_COMMAND, STOP_PID, STOP_PIDFILE, STOP_INVALID };
 
+enum { COPT_HALTONLY = 1, COPT_PERSISTENT, COPT_FORK, COPT_SERVICE, COPT_AUTORESTART,
+		COPT_FORCESHELL, COPT_NOSTOPWAIT, COPT_STOPTIMEOUT, COPT_TERMSIGNAL, COPT_MAX };
+		
 /*Trinary return values for functions.*/
 typedef enum { FAILURE, SUCCESS, WARNING } rStatus;
 

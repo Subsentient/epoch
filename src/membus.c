@@ -378,16 +378,20 @@ void ParseMemBus(void)
 	else if (BusDataIs(MEMBUS_CODE_LSOBJS))
 	{ /*Done for mostly third party stuff.*/
 		char OutBuf[MEMBUS_MSGSIZE];
+		unsigned char *BinWorker = (void*)OutBuf;
 		ObjTable *Worker = ObjectTable;
 		unsigned long TPID = 0;
+		const unsigned long Length = strlen(MEMBUS_CODE_LSOBJS " " MEMBUS_LSOBJS_VERSION) + 1;
 		
 		for (; Worker->Next; Worker = Worker->Next)
 		{
 			const struct _RLTree *RLWorker = Worker->ObjectRunlevels;
 			
-			if (strlen(BusData) > strlen(MEMBUS_CODE_LSOBJS) && strcmp(BusData + strlen(MEMBUS_CODE_LSOBJS " "), Worker->ObjectID) != 0)
-			{
-				continue;
+			
+			if (strlen(BusData) > strlen(MEMBUS_CODE_LSOBJS) &&
+				strcmp(BusData + strlen(MEMBUS_CODE_LSOBJS " "), Worker->ObjectID) != 0)
+			{ /*Allow for getting status of just one object.*/
+					continue;
 			}
 			
 			if (!Worker->Opts.HasPIDFile || !(TPID = ReadPIDFile(Worker)))
@@ -397,16 +401,49 @@ void ParseMemBus(void)
 			
 			/*We need a version for this protocol, because relevant options can change with updates.
 			 * Not all options are here, because some are not really useful.*/
-			snprintf(OutBuf, sizeof OutBuf, "%s %s %s %lu %s %lu %d %d %d %d %d %d %d %d %d %d %d %d %d %lu",
-					MEMBUS_CODE_LSOBJS, MEMBUS_LSOBJS_VERSION, Worker->ObjectID,
-					(unsigned long)strlen(Worker->ObjectDescription),
-					Worker->ObjectDescription, TPID, (Worker->Started && !Worker->Opts.HaltCmdOnly),
-					ObjectProcessRunning(Worker), Worker->Enabled, Worker->Opts.Persistent,
-					Worker->Opts.HaltCmdOnly, Worker->Opts.IsService, Worker->Opts.AutoRestart,
-					Worker->Opts.ForceShell, Worker->Opts.RawDescription, Worker->Opts.NoStopWait,
-					Worker->Opts.PivotRoot, Worker->Opts.StopMode, Worker->TermSignal, Worker->StartedSince);
+						
+			strncpy(OutBuf, MEMBUS_CODE_LSOBJS " " MEMBUS_LSOBJS_VERSION, Length);
+			
+			BinWorker = (unsigned char*)OutBuf + Length;
+			
+			*BinWorker++ = (Worker->Started && !Worker->Opts.HaltCmdOnly);
+			*BinWorker++ = ObjectProcessRunning(Worker);
+			*BinWorker++ = Worker->Enabled;
+			*BinWorker++ = Worker->Opts.PivotRoot;
+			*BinWorker++ = Worker->TermSignal;
+			*BinWorker++ = Worker->ReloadCommandSignal;
+			
+			memcpy(BinWorker, &Worker->UserID, sizeof(long));
+			memcpy((BinWorker += sizeof(long)), &Worker->GroupID, sizeof(long));
+			
+			memcpy((BinWorker += sizeof(long)), &Worker->Opts.StopMode, sizeof(enum _StopMode));
+			memcpy((BinWorker += sizeof(enum _StopMode)), &TPID, sizeof(long));
+			
+			memcpy((BinWorker += sizeof(long)), &Worker->StartedSince, sizeof(long));
+			memcpy(BinWorker + sizeof(long), &Worker->Opts.StopTimeout, sizeof(long));
+			
+			
+			MemBus_BinWrite(OutBuf, MEMBUS_MSGSIZE, true);
+			
+			snprintf(OutBuf, sizeof OutBuf, "%s %s", Worker->ObjectID, Worker->ObjectDescription);
 			
 			MemBus_Write(OutBuf, true);
+			
+			*OutBuf = '\0';
+			
+			BinWorker = (void*)OutBuf;
+			/*Write it over binary now.*/
+			if (Worker->Opts.HaltCmdOnly) *BinWorker++ = COPT_HALTONLY;
+			if (Worker->Opts.Persistent) *BinWorker++ = COPT_PERSISTENT;
+			if (Worker->Opts.Fork) *BinWorker++ = COPT_FORK;
+			if (Worker->Opts.IsService) *BinWorker++ = COPT_SERVICE;
+			if (Worker->Opts.AutoRestart) *BinWorker++ = COPT_AUTORESTART;
+			if (Worker->Opts.ForceShell) *BinWorker++ = COPT_FORCESHELL;
+			if (Worker->Opts.NoStopWait) *BinWorker++ = COPT_NOSTOPWAIT;
+	
+			*BinWorker = 0;
+			
+			MemBus_BinWrite(OutBuf, MEMBUS_MSGSIZE, true);
 			
 			if (RLWorker)
 			{
