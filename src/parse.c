@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <pwd.h>
 #include <ctype.h>
 #include <time.h>
 #include "epoch.h"
@@ -246,9 +247,20 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 
 			if (InObj->UserID != 0)
 			{
+				struct passwd *UserStruct = getpwuid(InObj->UserID);
+				
+				if (!UserStruct) _exit(1);
+				
 				setuid(InObj->UserID);
-				setenv("HOME", InObj->ObjectHomeDirectory, 1);
-				if (!InObj->ObjectWorkingDirectory) chdir(InObj->ObjectHomeDirectory);
+				
+				setenv("HOME", UserStruct->pw_dir, 1);
+				setenv("USER", UserStruct->pw_name, 1);
+				setenv("SHELL", UserStruct->pw_shell, 1);
+				
+				if (!InObj->ObjectWorkingDirectory) chdir(UserStruct->pw_dir);
+				
+				
+				
 			}
 			
 			if (InObj->GroupID != 0) setgid(InObj->GroupID);
