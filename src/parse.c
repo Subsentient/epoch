@@ -421,13 +421,20 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		if (CurObj->Opts.PivotRoot)
 		{
 			char TmpBuf[MAX_LINE_SIZE];
-			const char *PivotPoint = CurObj->ObjectStartCommand + strlen("PIVOT");
+			struct _PivotPoint *PivotPoint = PivotPoint_Lookup(CurObj->ObjectStartCommand);
 			
+			
+			if (!PivotPoint)
+			{
+				fprintf(stderr, CONSOLE_COLOR_RED "Failed" CONSOLE_ENDCOLOR
+						" to lookup requested pivot point \"%s\" for object \"%s\"!",
+						CurObj->ObjectStartCommand, CurObj->ObjectID);
+				EmergencyShell();
+			}
+						
 			strcpy(TmpBuf, CurObj->ObjectID);
-			
-			PivotPoint = WhitespaceArg(PivotPoint);
-			
-			PerformPivotRoot(PivotPoint_Lookup(PivotPoint));
+
+			PerformPivotRoot(PivotPoint);
 			
 			/*Means it didn't go as planned or we didn't find it.*/
 			CompleteStatusReport(PrintOutStream, FAILURE, false);
