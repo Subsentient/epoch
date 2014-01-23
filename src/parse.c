@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <pwd.h>
+#include <grp.h>
 #include <ctype.h>
 #include <time.h>
 #include "epoch.h"
@@ -251,6 +252,11 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 				
 				if (!UserStruct) _exit(1);
 				
+				initgroups(UserStruct->pw_name, UserStruct->pw_gid);
+				endgrent();
+				
+				if (!InObj->GroupID) setgid(UserStruct->pw_gid);
+
 				setuid(InObj->UserID);
 				
 				setenv("HOME", UserStruct->pw_dir, 1);
@@ -258,7 +264,6 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 				setenv("SHELL", UserStruct->pw_shell, 1);
 				
 				if (!InObj->ObjectWorkingDirectory) chdir(UserStruct->pw_dir);
-				
 				
 				
 			}
