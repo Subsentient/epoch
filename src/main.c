@@ -832,10 +832,8 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 				struct passwd *UserStruct = getpwuid(UserID);
 				struct group *GroupStruct = getgrgid(GroupID);
 				
-				if (UserStruct && GroupStruct)
-				{
-					printf("User: %s\nGroup: %s\n", UserStruct->pw_name, GroupStruct->gr_name);
-				}
+				if (UserStruct) printf("User: %s\n", UserStruct->pw_name);
+				if (GroupStruct && GroupID != 0) printf("Group: %s\n", GroupStruct->gr_name);
 			}
 			
 			if (argc == 2)
