@@ -1469,6 +1469,14 @@ rStatus InitConfig(void)
 				continue;
 			}
 			
+			if (strpbrk(DelimCurr, " \t") != NULL)
+			{
+				snprintf(ErrBuf, sizeof ErrBuf, "PivotPointID attribute contains whitespace! This is illegal!\n"
+						"Line %lu in %s", LineNum, ConfigFile);
+				SpitError(ErrBuf);
+				EmergencyShell();
+			}
+			
 			CurPivot = PivotPoint_Add(DelimCurr);
 			
 			continue;
