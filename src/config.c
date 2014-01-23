@@ -1407,7 +1407,6 @@ rStatus InitConfig(void)
 		{ /*Runlevel.*/
 			char *TWorker;
 			char TRL[MAX_DESCRIPT_SIZE], *TRL2;
-			static const ObjTable *LastObject = NULL;
 			
 			if (!CurObj)
 			{
@@ -1415,7 +1414,7 @@ rStatus InitConfig(void)
 				continue;
 			}
 			
-			if (CurObj == LastObject)
+			if (CurObj->ObjectRunlevels != NULL)
 			{ /*We cannot have multiple runlevel attributes because it messes up config file editing.*/
 				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Object %s has more than one ObjectRunlevels line.\n"
 						"This is not advised because the config file editing code is not smart enough\n"
@@ -1425,7 +1424,6 @@ rStatus InitConfig(void)
 				SpitWarning(ErrBuf);
 				WriteLogLine(ErrBuf, true);
 			}
-			LastObject = CurObj;
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
