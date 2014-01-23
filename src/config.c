@@ -645,18 +645,21 @@ rStatus InitConfig(void)
 		}
 		else if (!strncmp(Worker, (CurrentAttribute = "ObjectID"), strlen("ObjectID")))
 		{ /*ASCII value used to identify this object internally, and also a kind of short name for it.*/
+			char *Temp = NULL;
+			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 
-			if (strstr(DelimCurr, " ") || strstr(DelimCurr, "\t")) /*We cannot allow whitespace.*/
+			if ((Temp = strpbrk(DelimCurr, " \t")) != NULL) /*We cannot allow whitespace.*/
 			{
-				snprintf(ErrBuf, sizeof ErrBuf, "ObjectIDs may not contain whitespace! This is a critical error.\n"
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "ObjectIDs may not contain whitespace! Truncating up to occurence of whitespace\n"
 						"Line %lu in %s.", LineNum, ConfigFile);
-				SpitError(ErrBuf);
-				EmergencyShell();
+				SpitWarning(ErrBuf);
+				WriteLogLine(ErrBuf, true);
+				*Temp = '\0';
 			}
 			
 			DelimCurr[MAX_DESCRIPT_SIZE - 1] = '\0'; /*Chop it off to prevent overflow.*/
@@ -923,6 +926,9 @@ rStatus InitConfig(void)
 		}
 		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStartCommand"), strlen("ObjectStartCommand")))
 		{ /*What we execute to start it.*/
+			const char *TWorker = DelimCurr;
+			char *Temp = NULL;
+
 			if (!CurObj)
 			{
 				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
@@ -937,17 +943,17 @@ rStatus InitConfig(void)
 			
 			if (!strncmp("PIVOT", DelimCurr, strlen("PIVOT")))
 			{
-				const char *Worker = DelimCurr + strlen("PIVOT");
+				TWorker += strlen("PIVOT");
 				
-				if (*Worker != ' ' && *Worker != '\t')
+				if (*TWorker != ' ' && *TWorker != '\t')
 				{
 					ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 					continue;
 				}
 				
-				while (*Worker == ' ' || *Worker == '\t') ++Worker;
+				while (*TWorker == ' ' || *TWorker == '\t') ++TWorker;
 				
-				if (*Worker == '\0')
+				if (*TWorker == '\0')
 				{
 					ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 					continue;
@@ -959,8 +965,18 @@ rStatus InitConfig(void)
 				
 			if (CurObj->ObjectStartCommand) free(CurObj->ObjectStartCommand);
 			
-			CurObj->ObjectStartCommand = malloc(strlen(DelimCurr) + 1);
-			strncpy(CurObj->ObjectStartCommand, DelimCurr, strlen(DelimCurr) + 1);
+			if (CurObj->Opts.PivotRoot && (Temp = strpbrk(TWorker, " \t")) != NULL)
+			{
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Object \"%s\"'s ObjectStartCommand atrribute specifies Pivot Point, \n"
+						"but whitespace detected in Pivot Point ID! Truncating to start of whitespace.\n"
+						"Line %lu in %s", CurObj->ObjectID, LineNum, ConfigFile);
+				SpitWarning(ErrBuf);
+				WriteLogLine(ErrBuf, true);
+				*Temp = '\0';
+			}
+			
+			CurObj->ObjectStartCommand = malloc(strlen(TWorker) + 1);
+			strncpy(CurObj->ObjectStartCommand, TWorker, strlen(TWorker) + 1);
 
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
@@ -1454,7 +1470,9 @@ rStatus InitConfig(void)
 
 		}
 		else if (!strncmp(Worker, (CurrentAttribute = "PivotPointID"), strlen("PivotPointID")))
-		{			
+		{	
+			char *Temp = NULL;
+					
 			if (CurObj != NULL)
 			{
 				ConfigProblem(CONFIG_EPIVOTAFTER, CurrentAttribute, NULL, LineNum);
@@ -1467,12 +1485,14 @@ rStatus InitConfig(void)
 				continue;
 			}
 			
-			if (strpbrk(DelimCurr, " \t") != NULL)
+			if ((Temp = strpbrk(DelimCurr, " \t")) != NULL)
 			{
-				snprintf(ErrBuf, sizeof ErrBuf, "PivotPointID attribute contains whitespace! This is illegal!\n"
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "PivotPointID attribute contains whitespace! This is illegal!\n"
+						"Truncating up to point of whitespace's occurence.\n"
 						"Line %lu in %s", LineNum, ConfigFile);
-				SpitError(ErrBuf);
-				EmergencyShell();
+				SpitWarning(ErrBuf);
+				WriteLogLine(ErrBuf, true);
+				*Temp = '\0';
 			}
 			
 			CurPivot = PivotPoint_Add(DelimCurr);
