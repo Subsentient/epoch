@@ -316,6 +316,7 @@ extern void PerformPivotRoot(struct _PivotPoint *PivotPoint);
 extern struct _PivotPoint *PivotPoint_Add(const char *ID);
 extern struct _PivotPoint *PivotPoint_Lookup(const char *ID);
 extern void PivotPoint_Shutdown(void);
+extern void FinaliseLogStartup(Bool BlankLog);
 
 /*modes.c*/
 extern rStatus SendPowerControl(const char *MembusCode);

@@ -24,7 +24,6 @@
 /*Prototypes.*/
 static void MountVirtuals(void);
 static void PrimaryLoop(void);
-static void FinaliseLogStartup(Bool BlankLog);
 
 /*Globals.*/
 struct _HaltParams HaltParams = { -1 };
@@ -602,7 +601,7 @@ void PerformPivotRoot(struct _PivotPoint *PivotPoint)
 	EmergencyShell();
 }
 
-static void FinaliseLogStartup(Bool BlankLog)
+void FinaliseLogStartup(Bool BlankLog)
 {
 	if (MemLogBuffer != NULL)
 	{ /*Switch logging out of memory mode and write it's memory buffer to disk.*/		

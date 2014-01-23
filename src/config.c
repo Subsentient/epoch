@@ -2677,6 +2677,8 @@ rStatus ReloadConfig(void)
 		snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", RunlevelBackup);
 		
 		ConfigOK = false;
+		
+		FinaliseLogStartup(false); /*Write any logs to disk.*/
 	}
 	
 	/*And then restore those options to their previous states.*/
@@ -2733,6 +2735,8 @@ rStatus ReloadConfig(void)
 	
 	WriteLogLine("CONFIG: " CONSOLE_COLOR_GREEN "Configuration reload successful." CONSOLE_ENDCOLOR, true);
 	puts(CONSOLE_COLOR_GREEN "Epoch: Configuration reloaded." CONSOLE_ENDCOLOR);
+	
+	FinaliseLogStartup(false); /*Clean up logs in memory.*/
 	
 	return SUCCESS;
 }
