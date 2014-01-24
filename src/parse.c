@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <pwd.h>
+#include <grp.h>
 #include <ctype.h>
 #include <time.h>
 #include "epoch.h"
@@ -17,9 +19,9 @@
 /**Globals**/
 
 /*We store the current runlevel here.*/
-char CurRunlevel[MAX_DESCRIPT_SIZE] = { '\0' };
-struct _CTask CurrentTask = { NULL }; /*We save this for each linear task, so we can kill the process if it becomes unresponsive.*/
-volatile BootMode CurrentBootMode = BOOT_NEUTRAL;
+char CurRunlevel[MAX_DESCRIPT_SIZE];
+struct _CTask CurrentTask; /*We save this for each linear task, so we can kill the process if it becomes unresponsive.*/
+BootMode CurrentBootMode;
 
 /**Function forward declarations.**/
 
@@ -45,9 +47,9 @@ static Bool FileUsable(const char *FileName)
 static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 { /*Not making static because this is probably going to be useful for other stuff.*/
 #ifdef NOMMU
-#define ForkFunc() fork()
-#else
 #define ForkFunc() vfork()
+#else
+#define ForkFunc() fork()
 #endif
 
 	pid_t LaunchPID;
@@ -60,6 +62,15 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	Bool ForceShell = InObj->Opts.ForceShell;
 	static Bool DidWarn = false;
 	const char *ShellPath = "/bin/sh";
+	
+	if (CurCmd == NULL)
+	{
+		const char *ErrMsg = "NULL value passed to ExecuteConfigObject()! This is likely a bug.";
+		SpitError(ErrMsg);
+		WriteLogLine(ErrMsg, true);
+		
+		return FAILURE;
+	}
 	
 	/*Check how we should handle PIDs for each shell. In order to get the PID, exit status,
 	* and support shell commands, we need to jump through a bunch of hoops.*/
@@ -194,9 +205,81 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 		
 		sigprocmask(SIG_UNBLOCK, &Sig2, NULL); /*Unblock signals.*/
 		
+#ifndef NOMMU /*Can't do this because vfork() blocks the parent.*/
+		/*If we are supposed to spawn off as a daemon, do this.*/
+		if (InObj->Opts.Fork && CurCmd == InObj->ObjectStartCommand)
+		{
+			pid_t Subchild = 0;
+			
+			signal(SIGCHLD, SIG_IGN); /*We don't care about the child's exit code.*/
+			
+			/*Failure.*/
+			if ((Subchild = fork()) == -1) _exit(1);
+				
+			if (Subchild == 0)
+			{ /*Child of the child. PID 1 is now a grandfather.*/
+				signal(SIGCHLD, SIG_DFL);
+			}
+			
+			if (Subchild > 0) _exit(0); /*parent is not needed.*/
+		}
+#endif /*NOMMU*/
+
 		/*Change our session id.*/
 		setsid();
 		
+		if (InObj->ObjectWorkingDirectory != NULL && CurCmd == InObj->ObjectStartCommand)
+		{ /*Switch directories if desired.*/
+			if (chdir(InObj->ObjectWorkingDirectory) == -1)
+			{ /*Failed to chdir.*/
+				fprintf(stderr, "Epoch: Object %s " CONSOLE_COLOR_RED "failed" CONSOLE_ENDCOLOR " to chdir to \"%s\".\n",
+						InObj->ObjectID, InObj->ObjectWorkingDirectory);
+				_exit(1);
+			}
+		}
+		
+		
+		/*stdout*/
+		if (InObj->ObjectStdout != NULL)
+		{
+			freopen(InObj->ObjectStdout, "a", stdout); /*We don't deal with the return code.*/
+		}
+		
+		/*stderr*/
+		if (InObj->ObjectStderr != NULL)
+		{
+			freopen(InObj->ObjectStderr, "a", stderr);
+		}
+		
+		/**The ordering of this is important to make the file descriptors work for an alternative stdout/stderr.**/
+		if (CurCmd == InObj->ObjectStartCommand)
+		{ /*Set user and group if desired.*/
+
+			if (InObj->UserID != 0)
+			{
+				struct passwd *UserStruct = getpwuid(InObj->UserID);
+				
+				if (!UserStruct) _exit(1);
+				
+				initgroups(UserStruct->pw_name, UserStruct->pw_gid);
+				endgrent();
+				
+				if (!InObj->GroupID) setgid(UserStruct->pw_gid);
+
+				setuid(InObj->UserID);
+				
+				setenv("HOME", UserStruct->pw_dir, 1);
+				setenv("USER", UserStruct->pw_name, 1);
+				setenv("SHELL", UserStruct->pw_shell, 1);
+				
+				if (!InObj->ObjectWorkingDirectory) chdir(UserStruct->pw_dir);
+				
+				
+			}
+			
+			if (InObj->GroupID != 0) setgid(InObj->GroupID);
+		}
+			
 #ifndef NOSHELL
 		if (ShellEnabled && (strpbrk(CurCmd, "&^$#@!()*%{}`~+|\\<>?;:'[]\"\t") != NULL || ForceShell))
 		{
@@ -204,7 +287,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 			
 			snprintf(TmpBuf, 1024, "Failed to execute %s: execlp() failure launching \"" SHELLPATH "\".", InObj->ObjectID);
 			SpitError(TmpBuf);
-			exit(1); /*Makes sure that we report failure. This is a problem.*/
+			_exit(1); /*Makes sure that we report failure. This is a problem.*/
 		}
 		else
 #endif
@@ -217,18 +300,16 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 			
 			while ((Worker = WhitespaceArg(Worker))) ++NumSpaces;
 			
-			for (Worker = NCmd; Worker[strlen(Worker) - 1] == ' '; --NumSpaces)
-			{
-				Worker[strlen(Worker) - 1] = '\0';
-			}
-			
 			ArgV = malloc(sizeof(char*) * NumSpaces + 1);
 			
-			for (Inc = 0; Inc < NumSpaces; ++Inc)
+			for (Worker = NCmd, Inc = 0; Inc < NumSpaces; ++Inc)
 			{
-				ArgV[Inc] = malloc(strlen(NCmd) + 1);
+				/*Count how much space we need first.*/
+				for (Inc2 = 0; Worker[Inc2 + cOffset] != ' ' && Worker[Inc2 + cOffset] != '\t' && Worker[Inc2 + cOffset] != '\0'; ++Inc2);
 				
-				for (Inc2 = 0; Worker[Inc2 + cOffset] != ' ' && Worker[Inc2 + cOffset] != '\0'; ++Inc2)
+				ArgV[Inc] = malloc(Inc2 + 1);
+				
+				for (Inc2 = 0; Worker[Inc2 + cOffset] != ' ' && Worker[Inc2 + cOffset] != '\t' && Worker[Inc2 + cOffset] != '\0'; ++Inc2)
 				{
 					ArgV[Inc][Inc2] = Worker[Inc2 + cOffset];
 				}
@@ -242,7 +323,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 			execvp(ArgV[0], ArgV);
 			
 			/*In this case, it could be a file not found, in which case, just have the child, us, exit gracefully.*/
-			exit(1);
+			_exit(1);
 			
 		}
 		/*We still around to talk about it? We were supposed to be imaged with the new command!*/
@@ -269,7 +350,10 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 		{ /*If we specify that this is a service, one up the PID again.*/
 			++InObj->ObjectPID;
 		}
-		
+#ifndef NOMMU		
+		/*The PID is obviously going to be one greater.*/
+		if (InObj->Opts.Fork) ++InObj->ObjectPID;
+#endif		
 		/*Check if the PID we found is accurate and update it if not. This method is very,
 		 * very accurate compared to the buggy morass above.*/
 		AdvancedPIDFind(InObj, true);
@@ -299,9 +383,15 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 	char PrintOutStream[1024];
 	rStatus ExitStatus = FAILURE;
 	
-	if (IsStartingMode && *CurObj->ObjectStartCommand == '\0')
+	if (IsStartingMode && CurObj->ObjectStartCommand == NULL)
 	{ /*Don't bother with it, if it has no command.
 		For starting objects, this should not happen unless we set the option HALTONLY.*/
+		return SUCCESS;
+	}
+	
+	if (!IsStartingMode && CurObj->Opts.HaltCmdOnly &&
+		!CurObj->ObjectStopCommand && CurObj->Opts.StopMode == STOP_COMMAND)
+	{ /*This can happen too.*/
 		return SUCCESS;
 	}
 	
@@ -322,7 +412,8 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		
 		if (IsStartingMode && CurObj->Opts.HaltCmdOnly)
 		{
-			PerformStatusReport(PrintOutStream, FAILURE, true);
+			RenderStatusReport(PrintOutStream);
+			CompleteStatusReport(PrintOutStream, FAILURE, true);
 		}
 	}
 	
@@ -335,20 +426,57 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		
 		if (PrintStatus)
 		{
-			printf("%s", PrintOutStream);
+			RenderStatusReport(PrintOutStream);
 		}
 		
-		fflush(NULL); /*Things tend to get clogged up when we don't flush.*/
+		/*fflush(NULL); *//*Things tend to get clogged up when we don't flush.*/
 		
-		if (*CurObj->ObjectPrestartCommand != '\0')
+		
+		/*This means we are doing an equivalent pivot_root...*/
+		if (CurObj->Opts.PivotRoot)
+		{
+			unsigned long Inc = 0;
+			char NewRoot[MAX_LINE_SIZE], OldRootDir[MAX_LINE_SIZE], *Worker = CurObj->ObjectStartCommand;
+				
+			for (; *Worker != ' ' && *Worker != '\t' && *Worker != '\0' && Inc < MAX_LINE_SIZE - 1; ++Inc, ++Worker)
+			{
+				NewRoot[Inc] = *Worker;
+			}
+			NewRoot[Inc] = '\0';
+			
+			Worker = WhitespaceArg(Worker);
+			
+			snprintf(OldRootDir, sizeof OldRootDir, "%s", Worker);
+			
+			PerformPivotRoot(NewRoot, OldRootDir);
+			
+			CompleteStatusReport(PrintOutStream, SUCCESS, true);
+			return SUCCESS;
+		}
+		else if (CurObj->Opts.Exec)
+		{ /*We are supposed to replace ourselves with this.*/
+			
+			PerformExec(CurObj->ObjectStartCommand);
+			
+			CompleteStatusReport(PrintOutStream, FAILURE, true);
+			return FAILURE;
+		}
+			
+			
+		if (CurObj->ObjectPrestartCommand != NULL)
 		{
 			PrestartExitStatus = ExecuteConfigObject(CurObj, CurObj->ObjectPrestartCommand);
 		}
 		
 		ExitStatus = ExecuteConfigObject(CurObj, CurObj->ObjectStartCommand);
 		
-		if (!PrestartExitStatus && ExitStatus)
+		if (PrestartExitStatus != SUCCESS && ExitStatus)
 		{
+			char TBuf[MAX_LINE_SIZE];
+			
+			snprintf(TBuf, MAX_LINE_SIZE, "Prestart command %s for object \"%s\".",
+					PrestartExitStatus ? "returned a warning" : "failed", CurObj->ObjectID);
+			WriteLogLine(TBuf, true);
 			ExitStatus = WARNING;
 		}
 		
@@ -368,6 +496,16 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				
 				if (Counter == 100000)
 				{
+					char OutBuf[MAX_LINE_SIZE];
+					
+					snprintf(OutBuf, sizeof OutBuf,CONSOLE_COLOR_YELLOW "WARNING: " CONSOLE_ENDCOLOR
+								"Object %s was successfully started%s,\n"
+								"but it's PID file did not appear within ten seconds of start.\n"
+								"Please verify that \"%s\" exists and whether this object is starting properly.",
+								CurObj->ObjectID, (ExitStatus == WARNING ? ", but with a warning" : ""),
+								CurObj->ObjectPIDFile);
+								
+					WriteLogLine(OutBuf, true);
 					ExitStatus = WARNING;
 					break;
 				}
@@ -392,7 +530,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		
 		if (PrintStatus)
 		{
-			PerformStatusReport(PrintOutStream, ExitStatus, true);
+			CompleteStatusReport(PrintOutStream, ExitStatus, true);
 		}
 	}
 	else
@@ -404,14 +542,47 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		switch (CurObj->Opts.StopMode)
 		{
 			case STOP_COMMAND:
+			{
+				unsigned long Inc = 0;
+				
 				if (PrintStatus)
 				{
-					printf("%s", PrintOutStream);
-					fflush(NULL);
+					RenderStatusReport(PrintOutStream);
 				}
 				
 				ExitStatus = ExecuteConfigObject(CurObj, CurObj->ObjectStopCommand);
 				
+				if (!CurObj->Opts.NoStopWait)
+				{
+					unsigned long CurPID = 0;
+					
+					CurrentTask.Node = (void*)&Inc;
+					CurrentTask.PID = 0;
+					CurrentTask.TaskName = CurObj->ObjectID;
+					CurrentTask.Set = true;
+					
+					for (; ObjectProcessRunning(CurObj) && Inc < CurObj->Opts.StopTimeout * 10000; ++Inc)
+					{ /*Sleep for ten seconds.*/
+						CurPID = CurObj->Opts.HasPIDFile ? ReadPIDFile(CurObj) : CurObj->ObjectPID;
+						
+						if (!CurPID) break; /*No PID? No point.*/
+						
+						waitpid(CurPID, NULL, WNOHANG);
+						
+						usleep(100);
+					}
+					
+					if (Inc >= 100000)
+					{
+						ExitStatus = WARNING;
+					}
+					
+					CurrentTask.Set = false;
+					CurrentTask.Node = NULL;
+					CurrentTask.TaskName = NULL;
+					CurrentTask.PID = 0;
+				}
+					
 				if (ExitStatus)
 				{
 					CurObj->ObjectPID = 0;
@@ -421,9 +592,10 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				
 				if (PrintStatus)
 				{
-					PerformStatusReport(PrintOutStream, ExitStatus, true);
+					CompleteStatusReport(PrintOutStream, ExitStatus, true);
 				}
 				break;
+			}
 			case STOP_INVALID:
 				break;
 			case STOP_NONE:
@@ -436,8 +608,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 			{
 				if (PrintStatus)
 				{
-					printf("%s", PrintOutStream);
-					fflush(NULL);
+					RenderStatusReport(PrintOutStream);
 				}
 				
 				if (!CurObj->ObjectPID)
@@ -445,52 +616,53 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					ExitStatus = FAILURE;
 					if (PrintStatus)
 					{
-						PerformStatusReport(PrintOutStream, ExitStatus, true);
+						CompleteStatusReport(PrintOutStream, ExitStatus, true);
 					}
 					break;
 				}
-
+				
 				if (kill(CurObj->ObjectPID, CurObj->TermSignal) == 0)
 				{ /*Just send SIGTERM.*/
-					unsigned char TInc = 0;
-					
-					CurrentTask.Node = (void*)&TInc;
-					CurrentTask.PID = 0;
-					CurrentTask.TaskName = CurObj->ObjectID;
-					CurrentTask.Set = true;
+					if (!CurObj->Opts.NoStopWait)
+					{
+						unsigned long TInc = 0;
+						
+						CurrentTask.Node = (void*)&TInc;
+						CurrentTask.PID = 0;
+						CurrentTask.TaskName = CurObj->ObjectID;
+						CurrentTask.Set = true;
+								
+						/*Give it ten seconds to terminate on it's own.*/
+						for (; kill(CurObj->ObjectPID, 0) == 0 && TInc < CurObj->Opts.StopTimeout * 200; ++TInc)
+						{ /*Two hundred is ten seconds here.*/
 							
-					/*Give it ten seconds to terminate on it's own.*/
-					for (; kill(CurObj->ObjectPID, 0) == 0; ++TInc)
-					{ /*Two hundred is ten seconds here.*/
+							waitpid(CurObj->ObjectPID, NULL, WNOHANG); /*We must harvest the PID since we have occupied the primary loop.*/
+							
+							usleep(50000);
+						}
 						
-						waitpid(CurObj->ObjectPID, NULL, WNOHANG); /*We must harvest the PID since we have occupied the primary loop.*/
-						
-						usleep(50000);
-						
-						if (TInc > 200) /*This means we were killed via CTRL-ALT-DEL.*/
+						if (TInc < 200)
 						{
-							TInc = 0;
-							break;
+							ExitStatus = SUCCESS;
+						}
+						else if (TInc > 200)
+						{ /*Means we were killed via CTRL-ALT-DEL.*/
+							ExitStatus = WARNING;
 						}
 						else if (TInc == 200)
-						{ /*And this is actual failure.*/
-							break;
+						{
+							ExitStatus = FAILURE;
 						}
-					}
-					
-					if (TInc < 200)
-					{
-						ExitStatus = SUCCESS;
+						
+						CurrentTask.Set = false;
+						CurrentTask.Node = NULL;
+						CurrentTask.TaskName = NULL;
+						CurrentTask.PID = 0;
 					}
 					else
-					{
-						ExitStatus = FAILURE;
+					{ /*Just quit and say everything's fine.*/
+						ExitStatus = SUCCESS;
 					}
-					
-					CurrentTask.Set = false;
-					CurrentTask.Node = NULL;
-					CurrentTask.TaskName = NULL;
-					CurrentTask.PID = 0;
 				}
 				else
 				{
@@ -506,7 +678,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				
 				if (PrintStatus)
 				{
-					PerformStatusReport(PrintOutStream, ExitStatus, true);
+					CompleteStatusReport(PrintOutStream, ExitStatus, true);
 				}
 				
 				break;
@@ -517,8 +689,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				
 				if (PrintStatus)
 				{
-					printf("%s", PrintOutStream);
-					fflush(NULL);
+					RenderStatusReport(PrintOutStream);
 				}
 				
 				if (!(TruePID = ReadPIDFile(CurObj)))
@@ -526,7 +697,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					ExitStatus = FAILURE;
 					if (PrintStatus)
 					{
-						PerformStatusReport(PrintOutStream, ExitStatus, true);
+						CompleteStatusReport(PrintOutStream, ExitStatus, true);
 					}
 					break;
 				}
@@ -534,45 +705,46 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				/*Now we can actually kill the process ID.*/
 				if (kill(TruePID, CurObj->TermSignal) == 0)
 				{
-					unsigned char TInc = 0;			
+					if (!CurObj->Opts.NoStopWait)
+					{ /*If we're free to wait for a PID to stop, do so.*/
+						unsigned long TInc = 0;			
+							
+						CurrentTask.Node = (void*)&TInc;
+						CurrentTask.PID = 0;
+						CurrentTask.TaskName = CurObj->ObjectID;
+						CurrentTask.Set = true;
 						
-					CurrentTask.Node = (void*)&TInc;
-					CurrentTask.PID = 0;
-					CurrentTask.TaskName = CurObj->ObjectID;
-					CurrentTask.Set = true;
-					
-					/*Give it ten seconds to terminate on it's own.*/
-					for (; kill(TruePID, 0) == 0; ++TInc)
-					{ /*Two hundred is ten seconds here.*/
+						/*Give it ten seconds to terminate on it's own.*/
+						for (; kill(TruePID, 0) == 0 && TInc < CurObj->Opts.StopTimeout * 200; ++TInc)
+						{ /*Two hundred is ten seconds here.*/
+							
+							waitpid(TruePID, NULL, WNOHANG); /*We must harvest the PID since we have occupied the primary loop.*/
+							
+							usleep(50000);
+						}
 						
-						waitpid(TruePID, NULL, WNOHANG); /*We must harvest the PID since we have occupied the primary loop.*/
-						
-						usleep(50000);
-						
-						if (TInc > 200) /*This means we were killed via CTRL-ALT-DEL.*/
+						if (TInc < 200)
 						{
-							TInc = 0;
-							break;
+							ExitStatus = SUCCESS;
+						}
+						else if (TInc > 200)
+						{ /*Means we were killed via CTRL-ALT-DEL.*/
+							ExitStatus = WARNING;
 						}
 						else if (TInc == 200)
-						{ /*And this is actual failure.*/
-							break;
+						{
+							ExitStatus = FAILURE;
 						}
-					}
-					
-					if (TInc < 200)
-					{
-						ExitStatus = SUCCESS;
+						
+						CurrentTask.Set = false;
+						CurrentTask.Node = NULL;
+						CurrentTask.TaskName = NULL;
+						CurrentTask.PID = 0;
 					}
 					else
 					{
-						ExitStatus = FAILURE;
+						ExitStatus = SUCCESS;
 					}
-					
-					CurrentTask.Set = false;
-					CurrentTask.Node = NULL;
-					CurrentTask.TaskName = NULL;
-					CurrentTask.PID = 0;
 				}
 				else
 				{
@@ -588,7 +760,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				
 				if (PrintStatus)
 				{
-					PerformStatusReport(PrintOutStream, ExitStatus, true);
+					CompleteStatusReport(PrintOutStream, ExitStatus, true);
 				}
 				
 				break;
@@ -608,6 +780,7 @@ rStatus RunAllObjects(Bool IsStartingMode)
 	unsigned long MaxPriority = GetHighestPriority(IsStartingMode);
 	unsigned long Inc = 1; /*One to skip zero.*/
 	ObjTable *CurObj = NULL;
+	ObjTable *LastNode = NULL;
 	
 	if (!MaxPriority && IsStartingMode)
 	{
@@ -619,24 +792,30 @@ rStatus RunAllObjects(Bool IsStartingMode)
 	
 	for (; Inc <= MaxPriority; ++Inc)
 	{
-		if (!(CurObj = GetObjectByPriority(IsStartingMode ? CurRunlevel : NULL, IsStartingMode, Inc)))
+		for (LastNode = NULL;
+			(CurObj = GetObjectByPriority((IsStartingMode ? CurRunlevel : NULL), LastNode, IsStartingMode, Inc));
+			LastNode = CurObj)
 		{ /*Probably set to zero or something, but we don't care if we have a gap in the priority system.*/
-			continue;
-		}
 		
-		if (!CurObj->Enabled && (IsStartingMode || CurObj->Opts.HaltCmdOnly))
-		{ /*Stop even disabled objects, but not disabled HALTONLY objects.*/
-			continue;
-		}
+			if (CurObj == (void*)-1)
+			{
+				return FAILURE;
+			}
+			
+			if (!CurObj->Enabled && (IsStartingMode || CurObj->Opts.HaltCmdOnly))
+			{ /*Stop even disabled objects, but not disabled HALTONLY objects.*/
+				continue;
+			}
 		
-		if (IsStartingMode && CurObj->Opts.HaltCmdOnly)
-		{
-			continue;
-		}
-		
-		if ((IsStartingMode ? !CurObj->Started : CurObj->Started))
-		{
-			ProcessConfigObject(CurObj, IsStartingMode, true);
+			if (IsStartingMode && CurObj->Opts.HaltCmdOnly)
+			{
+				continue;
+			}
+			
+			if ((IsStartingMode ? !CurObj->Started : CurObj->Started))
+			{
+				ProcessConfigObject(CurObj, IsStartingMode, true);
+			}
 		}
 	}
 	
@@ -650,7 +829,7 @@ rStatus ProcessReloadCommand(ObjTable *CurObj, Bool PrintStatus)
 	rStatus RetVal = FAILURE;
 	char StatusReportBuf[MAX_DESCRIPT_SIZE];
 	
-	if (!CurObj->ObjectReloadCommand[0])
+	if (!CurObj->ObjectReloadCommand && !CurObj->ReloadCommandSignal)
 	{
 		return FAILURE;
 	}
@@ -658,14 +837,25 @@ rStatus ProcessReloadCommand(ObjTable *CurObj, Bool PrintStatus)
 	if (PrintStatus)
 	{
 		snprintf(StatusReportBuf, MAX_DESCRIPT_SIZE, "Reloading %s", CurObj->ObjectID);
-		printf("%s", StatusReportBuf);
+		RenderStatusReport(StatusReportBuf);
 	}
 	
-	RetVal = ExecuteConfigObject(CurObj, CurObj->ObjectReloadCommand);
+	if (CurObj->ReloadCommandSignal != 0)
+	{
+		const unsigned long PID = CurObj->Opts.HasPIDFile ? ReadPIDFile(CurObj) : CurObj->ObjectPID;
+
+		if (!PID) return FAILURE;
+		
+		RetVal = !kill(PID, CurObj->ReloadCommandSignal);
+	}
+	else
+	{
+		RetVal = ExecuteConfigObject(CurObj, CurObj->ObjectReloadCommand);
+	}
 	
 	if (PrintStatus)
 	{
-		PerformStatusReport(StatusReportBuf, RetVal, true);
+		CompleteStatusReport(StatusReportBuf, RetVal, true);
 	}
 	
 	return RetVal;
@@ -675,6 +865,7 @@ rStatus SwitchRunlevels(const char *Runlevel)
 {
 	unsigned long NumInRunlevel = 0, CurPriority = 1, MaxPriority;
 	ObjTable *TObj = ObjectTable;
+	ObjTable *LastNode = NULL;
 	/*Check the runlevel has objects first.*/
 	
 	for (; TObj->Next != NULL; TObj = TObj->Next)
@@ -695,27 +886,39 @@ rStatus SwitchRunlevels(const char *Runlevel)
 	/*Stop everything not meant for this runlevel.*/
 	for (MaxPriority = GetHighestPriority(false); CurPriority <= MaxPriority; ++CurPriority)
 	{
-		TObj = GetObjectByPriority(CurRunlevel, false, CurPriority);
-		
-		if (TObj && TObj->Started && TObj->Opts.CanStop && !TObj->Opts.HaltCmdOnly &&
-			!ObjRL_CheckRunlevel(Runlevel, TObj, true))
+		for (LastNode = NULL; (TObj = GetObjectByPriority(CurRunlevel, LastNode, false, CurPriority)); LastNode = TObj)
 		{
-			ProcessConfigObject(TObj, false, true);
+			if (TObj == (void*)-1)
+			{
+				return FAILURE;
+			}
+			
+			if (TObj->Started && !TObj->Opts.Persistent && !TObj->Opts.HaltCmdOnly &&
+				!ObjRL_CheckRunlevel(Runlevel, TObj, true))
+			{
+				ProcessConfigObject(TObj, false, true);
+			}
 		}
 	}
 	
 	/*Good to go, so change us to the new runlevel.*/
 	snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", Runlevel);
+	MaxPriority = GetHighestPriority(true);
 	
 	/*Now start the things that ARE meant for our runlevel.*/
-	for (CurPriority = 1, MaxPriority = GetHighestPriority(true);
-		CurPriority <= MaxPriority; ++CurPriority)
+	for (CurPriority = 1; CurPriority <= MaxPriority; ++CurPriority)
 	{
-		TObj = GetObjectByPriority(CurRunlevel, true, CurPriority);
-		
-		if (TObj && TObj->Enabled && !TObj->Started)
+		for (LastNode = NULL; (TObj = GetObjectByPriority(CurRunlevel, LastNode, true, CurPriority)); LastNode = TObj)
 		{
-			ProcessConfigObject(TObj, true, true);
+			if (TObj == (void*)-1)
+			{
+				return FAILURE;
+			}
+			
+			if (TObj->Enabled && !TObj->Started)
+			{
+				ProcessConfigObject(TObj, true, true);
+			}
 		}
 	}
 	

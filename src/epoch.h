@@ -79,14 +79,15 @@
 #define CONSOLE_COLOR_WHITE "\033[37m"
 #define CONSOLE_ENDCOLOR "\033[0m"
 
+/*Stuff used for status reports etc*/
+#define CONSOLE_CTL_SAVESTATE "\033[s"
+#define CONSOLE_CTL_RESTORESTATE "\033[u"
+
 /*The key for the shared memory bus and related stuff.*/
 #define MEMKEY (('E' + 'P' + 'O' + 'C' + 'H') + ('W'+'h'+'i'+'t'+'e' + 'R'+'a'+'t')) * 7 /*Cool, right?*/
 
-#ifndef MEMBUS_SIZE
-#define MEMBUS_SIZE 2048
-#elif MEMBUS_SIZE < 2048
-#error "MEMBUS_SIZE cannot be below 2048!" /*This is important.*/
-#endif
+#define MEMBUS_SIZE 4096 + sizeof(long) * 2
+#define MEMBUS_MSGSIZE 2047
 
 /*The codes that are sent over the bus.*/
 
@@ -128,7 +129,7 @@
 #define MEMBUS_CODE_RXD "RXD"
 #define MEMBUS_CODE_RXD_OPTS "ORXD"
 
-#define MEMBUS_LSOBJS_VERSION "V1.2"
+#define MEMBUS_LSOBJS_VERSION "V2"
 /**Types, enums, structs and whatnot**/
 
 
@@ -139,8 +140,12 @@ enum { false, true }; /*I don't want to use stdbool.*/
 typedef signed char Bool;
 
 /*How objects are stopped on shutdown.*/
-typedef enum { STOP_NONE, STOP_COMMAND, STOP_PID, STOP_PIDFILE, STOP_INVALID } StopType;
+enum _StopMode { STOP_NONE, STOP_COMMAND, STOP_PID, STOP_PIDFILE, STOP_INVALID };
 
+enum { COPT_HALTONLY = 1, COPT_PERSISTENT, COPT_FORK, COPT_SERVICE, COPT_AUTORESTART,
+		COPT_FORCESHELL, COPT_NOSTOPWAIT, COPT_STOPTIMEOUT, COPT_TERMSIGNAL,
+		COPT_PIVOTROOT, COPT_EXEC, COPT_MAX };
+		
 /*Trinary return values for functions.*/
 typedef enum { FAILURE, SUCCESS, WARNING } rStatus;
 
@@ -158,34 +163,46 @@ struct _RLTree
 	
 typedef struct _EpochObjectTable
 {
-	char ObjectID[MAX_DESCRIPT_SIZE]; /*The ASCII ID given to this item by whoever configured Epoch.*/
-	char ObjectDescription[MAX_DESCRIPT_SIZE]; /*The description of the object.*/
-	char ObjectStartCommand[MAX_LINE_SIZE]; /*The command to be executed.*/
-	char ObjectPrestartCommand[MAX_LINE_SIZE]; /*Run before ObjectStartCommand, if it exists.*/
-	char ObjectStopCommand[MAX_LINE_SIZE]; /*How to shut it down.*/
-	char ObjectReloadCommand[MAX_LINE_SIZE]; /*Used to reload an object without starting/stopping. Most services don't have this.*/
-	char ObjectPIDFile[MAX_LINE_SIZE];
 	unsigned long ObjectStartPriority;
 	unsigned long ObjectStopPriority;
 	unsigned long ObjectPID; /*The process ID, used for shutting down.*/
+	unsigned long UserID; /*The user ID we run this as. Zero, of course, is root and we need do nothing.*/
+	unsigned long GroupID; /*Same as above, but with groups.*/
+	unsigned long StartedSince; /*The time in UNIX seconds since it was started.*/
+	char *ObjectID; /*The ASCII ID given to this item by whoever configured Epoch.*/
+	char *ObjectDescription; /*The description of the object.*/
+	char *ObjectStartCommand; /*The command to be executed.*/
+	char *ObjectPrestartCommand; /*Run before ObjectStartCommand, if it exists.*/
+	char *ObjectStopCommand; /*How to shut it down.*/
+	char *ObjectReloadCommand; /*Used to reload an object without starting/stopping. Most services don't have this.*/
+	char *ObjectPIDFile; /*PID file location.*/
+	char *ObjectWorkingDirectory; /*The working directory the object chdirs to before execution.*/
+	char *ObjectStderr; /*A file that stderr redirects to.*/
+	char *ObjectStdout; /*A file that stdout redirects to.*/
 	unsigned char TermSignal; /*The signal we send to an object if it's stop mode is PID or PIDFILE.*/
+	unsigned char ReloadCommandSignal; /*If the reload command sends a signal, this works.*/
 	Bool Enabled;
 	Bool Started;
-	unsigned long StartedSince; /*The time in UNIX seconds since it was started.*/
 	
 	struct 
 	{
-		StopType StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
+		enum _StopMode StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
+		unsigned long StopTimeout; /*The number of seconds we wait for a task we're stopping's PID to become unavailable.*/
 		
 		/*This saves a tiny bit of memory to use bitfields here.*/
-		unsigned int CanStop : 1; /*Allowed to stop this without starting a shutdown?*/
+		unsigned int Persistent : 1; /*Allowed to stop this without starting a shutdown?*/
 		unsigned int HaltCmdOnly : 1; /*Run just the stop command when we halt, not the start command?*/
 		unsigned int IsService : 1; /*If true, we assume it's going to fork itself and one-up it's PID.*/
 		unsigned int RawDescription : 1; /*This inhibits insertion of "Starting", "Stopping", etc in front of descriptions.*/
-		unsigned int AutoRestart : 1;
-		unsigned int EmulNoWait : 1; /*Emulates the deprecated NOWAIT option by appending an ampersand to the end of ObjectStartCommand.*/
+		unsigned int AutoRestart : 1; /*Autorestarts a service whenever it terminates.*/
 		unsigned int ForceShell : 1; /*Forces us to start /bin/sh to run an object, even if it looks like we don't need to.*/
 		unsigned int HasPIDFile : 1; /*If StopMode == STOP_PIDFILE, we also stop it just by sending a signal to the PID in the file.*/
+		unsigned int NoStopWait : 1; /*Used to tell us not to wait for an object to actually quit.*/
+		unsigned int PivotRoot : 1; /*Says that ObjectStartCommand is actually used to pivot_root. See actions.c.*/
+		unsigned int Exec : 1; /*Says that we are gerbils.*/
+#ifndef NOMMU
+		unsigned int Fork : 1; /*Essentially do the same thing (with an Epoch twist) as Command& in sh.*/
+#endif
 	} Opts;
 	
 	struct _RLTree *ObjectRunlevels; /*Dynamically allocated, needless to say.*/
@@ -221,26 +238,39 @@ struct _CTask
 	unsigned int Set : 1;
 };
 
+struct _MemBusInterface
+{
+	void *Root;
+	unsigned long *LockPID;
+	unsigned long *LockTime;
+	
+	struct
+	{
+		unsigned char *Status;
+		char *Message;
+		unsigned char *BinMessage;
+	} Server, Client;
+};
 
 /**Globals go here.**/
 
 extern ObjTable *ObjectTable;
 extern struct _BootBanner BootBanner;
 extern char CurRunlevel[MAX_DESCRIPT_SIZE];
-extern volatile char *MemData;
+extern struct _MemBusInterface MemBus;
 extern Bool DisableCAD;
 extern char Hostname[MAX_LINE_SIZE];
-extern volatile struct _HaltParams HaltParams;
+extern struct _HaltParams HaltParams;
 extern Bool AutoMountOpts[5];
 extern Bool EnableLogging;
 extern Bool LogInMemory;
 extern Bool BlankLogOnBoot;
 extern char *MemLogBuffer;
 extern struct _CTask CurrentTask;
-extern volatile BootMode CurrentBootMode;
-extern Bool AlignStatusReports;
-extern volatile signed long MemBusKey;
-extern volatile Bool BusRunning;
+extern BootMode CurrentBootMode;
+extern signed long MemBusKey;
+extern Bool BusRunning;
+extern char ConfigFile[MAX_LINE_SIZE];
 
 /**Function forward declarations.*/
 
@@ -249,7 +279,8 @@ extern rStatus InitConfig(void);
 extern void ShutdownConfig(void);
 extern rStatus ReloadConfig(void);
 extern ObjTable *LookupObjectInTable(const char *ObjectID);
-extern ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority, unsigned long ObjectPriority);
+extern ObjTable *GetObjectByPriority(const char *ObjectRunlevel, ObjTable *LastNode,
+									Bool WantStartPriority, unsigned long ObjectPriority);
 extern unsigned long GetHighestPriority(Bool WantStartPriority);
 extern rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char *Value);
 extern void ObjRL_AddRunlevel(const char *InRL, ObjTable *InObj);
@@ -270,7 +301,11 @@ extern void LaunchBootup(void);
 extern void LaunchShutdown(signed long Signal);
 extern void EmergencyShell(void);
 extern void ReexecuteEpoch(void);
-extern void RecoverFromReexec(void);
+extern void RecoverFromReexec(Bool ViaMemBus);
+extern void PerformPivotRoot(const char *NewRoot, const char *OldRootDir);
+extern void FinaliseLogStartup(Bool BlankLog);
+extern void PerformExec(const char *Cmd_);
+
 
 /*modes.c*/
 extern rStatus SendPowerControl(const char *MembusCode);
@@ -286,13 +321,15 @@ extern Bool MemBus_Read(char *OutStream, Bool ServerSide);
 extern void ParseMemBus(void);
 extern rStatus ShutdownMemBus(Bool ServerSide);
 extern Bool HandleMemBusPings(void);
+extern Bool CheckMemBusIntegrity(void);
 extern unsigned long MemBus_BinWrite(const void *InStream_, unsigned long DataSize, Bool ServerSide);
 extern unsigned long MemBus_BinRead(void *OutStream_, unsigned long MaxOutSize, Bool ServerSide);
 
 /*console.c*/
 extern void PrintBootBanner(void);
 extern void SetBannerColor(const char *InChoice);
-extern void PerformStatusReport(const char *InStream, rStatus State, Bool WriteToLog);
+extern void RenderStatusReport(const char *InReport);
+extern void CompleteStatusReport(const char *InReport, rStatus ExitStatus, Bool LogReport);
 extern void SpitWarning(const char *INWarning);
 extern void SpitError(const char *INErr);
 extern void SmallError(const char *INErr);

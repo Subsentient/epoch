@@ -17,6 +17,7 @@
 #include <sys/stat.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <sys/syscall.h>
 #include <signal.h>
 #include "epoch.h"
 
@@ -25,12 +26,11 @@ static void MountVirtuals(void);
 static void PrimaryLoop(void);
 
 /*Globals.*/
-volatile struct _HaltParams HaltParams = { -1 };
-Bool AutoMountOpts[5] = { false, false, false, false, false };
-static volatile Bool ContinuePrimaryLoop = true;
+struct _HaltParams HaltParams = { -1 };
+Bool AutoMountOpts[5];
+static Bool ContinuePrimaryLoop = true;
 
 /*Functions.*/
-
 static void MountVirtuals(void)
 {
 	enum { MVIRT_PROC, MVIRT_SYSFS, MVIRT_DEVFS, MVIRT_PTS, MVIRT_SHM };
@@ -100,6 +100,8 @@ static void PrimaryLoop(void)
 			LoopStepper = 0;
 			
 			HandleMemBusPings(); /*Tell clients we are alive if they ask.*/
+			
+			CheckMemBusIntegrity(); /*See if we need to manually disconnect a dead client.*/
 			
 			ParseMemBus(); /*Check membus for new data.*/
 			
@@ -250,11 +252,11 @@ void EmergencyShell(void)
 	while (1) sleep(1); /*Hang forever to prevent a kernel panic.*/
 }
 
-void RecoverFromReexec(void)
+void RecoverFromReexec(Bool ViaMemBus)
 { /*This is called when we are reexecuted from ReexecuteEpoch() to receive data*/
 	pid_t ChildPID = 0;
 	ObjTable *CurObj = NULL;
-	char InBuf[MEMBUS_SIZE/2 - 1] = { '\0' };
+	char InBuf[MEMBUS_MSGSIZE] = { '\0' };
 	char *MCode = MEMBUS_CODE_RXD;
 	unsigned long MCodeLength = strlen(MCode) + 1;
 	short HPS = 0;
@@ -309,11 +311,10 @@ void RecoverFromReexec(void)
 	memcpy((void*)&HaltParams.TargetYear, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
 	memcpy((void*)&HaltParams.JobID, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
 	
-	/*Retrieve our trinity of important options.*/
+	/*Retrieve our important options.*/
 	while (!MemBus_BinRead(InBuf, sizeof InBuf, false)) usleep(100);
 	EnableLogging = (Bool)*(InBuf + MCodeLength);
-	AlignStatusReports = (Bool)*(InBuf + MCodeLength + 1);
-	
+
 	/*Retrieve the current runlevel.*/
 	while (!MemBus_BinRead(InBuf, sizeof InBuf, false)) usleep(100);
 	snprintf(CurRunlevel, sizeof CurRunlevel, "%s", InBuf + MCodeLength);
@@ -342,20 +343,25 @@ void RecoverFromReexec(void)
 		SpitWarning("Cannot restart normal membus after re-exec. System is otherwise operational.");
 	}
 	
-	/*Handle pings.*/
-	for (; !HandleMemBusPings() && TInc < 100000; ++TInc)
-	{ /*Wait ten seconds.*/
-		 usleep(100);
+	if (ViaMemBus) /*Client probably wants confirmation.*/
+	{
+		/*Handle pings.*/
+		for (; !HandleMemBusPings() && TInc < 100000; ++TInc)
+		{ /*Wait ten seconds.*/
+			 usleep(100);
+		}
+		
+		if (TInc < 100000)
+		{ /*Do not attempt this if we didn't receive a ping because it will only slow us down
+			with another ten second timeout.*/
+			/*Tell the client we are done.*/
+			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_RXD, true);
+		}
 	}
+		
+	FinaliseLogStartup(false); /*Bring back logging.*/
+	LogInMemory = false;
 	
-	if (TInc < 100000)
-	{ /*Do not attempt this if we didn't receive a ping because it will only slow us down
-		with another ten second timeout.*/
-		/*Tell the client we are done.*/
-		MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_RXD, true);
-	}
-
-	LogInMemory = false; /*Nothing in here, but we need this to start our logging.*/
 	WriteLogLine(CONSOLE_COLOR_GREEN "Re-executed Epoch.\nNow using " VERSIONSTRING
 				"\nCompiled " __DATE__ " " __TIME__ "." CONSOLE_ENDCOLOR, true);
 				
@@ -366,7 +372,7 @@ void ReexecuteEpoch(void)
 { /*Used when Epoch needs to be restarted after we already booted.*/
 	pid_t PID = 0;
 	FILE *TestDescriptor = fopen(EPOCH_BINARY_PATH, "rb");
-	char OutBuf[MEMBUS_SIZE/2 - 1] = { '\0' };
+	char OutBuf[MEMBUS_MSGSIZE] = { '\0' };
 	ObjTable *Worker = ObjectTable;
 	const char *MCode = MEMBUS_CODE_RXD;
 	unsigned long MCodeLength = strlen(MCode) + 1;
@@ -508,8 +514,7 @@ void ReexecuteEpoch(void)
 	
 	/*Misc. global options. We don't include all because only some are used after initial boot.*/
 	*(OutBuf + MCodeLength) = (char)EnableLogging;
-	*(OutBuf + MCodeLength + 1) = (char)AlignStatusReports;
-	MemBus_BinWrite(OutBuf, MCodeLength + 3, true);
+	MemBus_BinWrite(OutBuf, MCodeLength + 1, true);
 	
 	/*The current runlevel is very important.*/
 	strncpy(OutBuf + MCodeLength, CurRunlevel, strlen(CurRunlevel) + 1);
@@ -520,6 +525,121 @@ void ReexecuteEpoch(void)
 	ShutdownConfig();
 	
 	exit(0);
+}
+
+void PerformExec(const char *Cmd)
+{
+	unsigned long Inc = 0, NumSpaces = 1, cOffset = 0, Inc2 = 0;
+	char **Buffer = NULL;
+	const char *Worker = Cmd;
+
+	if (!Cmd)
+	{
+		const char *ErrMsg ="NULL value passed to PerformExec()! This is likely a bug. Please report.";
+		SpitError(ErrMsg);
+		WriteLogLine(ErrMsg, true);
+		return;
+	}
+		
+	while ((Worker = WhitespaceArg(Worker))) ++NumSpaces;
+	
+	Buffer = malloc(sizeof(char*) * NumSpaces + 1);
+	
+	for (Worker = Cmd, Inc = 0; Inc < NumSpaces; ++Inc)
+	{
+		for (Inc2 = 0; Worker[Inc2 + cOffset] != ' ' && Worker[Inc2 + cOffset] != '\t' && Worker[Inc2 + cOffset] != '\0'; ++Inc2);
+		
+		Buffer[Inc] = malloc(Inc2 + 1);
+		
+		for (Inc2 = 0; Worker[Inc2 + cOffset] != ' ' && Worker[Inc2 + cOffset] != '\t' && Worker[Inc2 + cOffset] != '\0'; ++Inc2)
+		{
+			Buffer[Inc][Inc2] = Worker[Inc2 + cOffset];
+		}
+		Buffer[Inc][Inc2] = '\0';
+		
+		cOffset += Inc2 + 1;
+	}
+	
+	Buffer[NumSpaces] = NULL;
+	
+	sync();
+	
+	ShutdownMemBus(true);
+
+	for (Inc = 1; Inc < NSIG; ++Inc)
+	{ /*Reset signal handlers.*/
+		signal(Inc, SIG_DFL);
+	}
+
+	execvp(Buffer[0], Buffer); /*Perform the exec.*/
+	
+	SpitError("exec() failed! Starting emergency shell.");
+	EmergencyShell();
+}
+
+void PerformPivotRoot(const char *NewRoot, const char *OldRootDir)
+{ /*Switch to a new root fs.*/
+	if (!NewRoot || !OldRootDir)
+	{ /*Safety first.*/
+		if (NewRoot == NULL)
+		{
+			const char *ErrMsg = "NULL NewRoot passed to PerformPivotRoot()! This is likely a bug, please report.";
+			SpitError(ErrMsg);
+			WriteLogLine(ErrMsg, true);
+		}
+		
+		if (OldRootDir == NULL)
+		{
+			const char *ErrMsg = "NULL OldRootDir passed to PerformPivotRoot()! This is likely a bug, please report.";
+			SpitError(ErrMsg);
+			WriteLogLine(ErrMsg, true);
+		}
+		
+		return;
+	}
+	
+	/*Sync to be safe.*/
+	sync();
+
+	/*pivot_root now.*/
+	if (syscall(SYS_pivot_root, NewRoot, OldRootDir) != 0)
+	{
+		SpitError("Failed to pivot_root()!");
+		EmergencyShell();
+	}
+
+	chdir("/"); /*Reset working directory*/
+}
+
+
+
+void FinaliseLogStartup(Bool BlankLog)
+{
+	if (MemLogBuffer != NULL)
+	{ /*Switch logging out of memory mode and write it's memory buffer to disk.*/		
+		if (EnableLogging)
+		{
+			FILE *Descriptor = fopen(LOGDIR LOGFILE_NAME, (BlankLog ? "w" : "a"));
+
+			LogInMemory = false;
+
+			if (!Descriptor)
+			{
+				SpitWarning("Cannot record logs to disk. Shutting down logging.");
+				EnableLogging = false;
+			}
+			else
+			{
+				fwrite(MemLogBuffer, 1, strlen(MemLogBuffer), Descriptor);
+				fflush(Descriptor);
+				fclose(Descriptor);
+			}
+			
+		}
+		
+		free(MemLogBuffer); /*Release the memory anyways.*/
+		MemLogBuffer = NULL;
+	}
 }
 
 void LaunchBootup(void)
@@ -534,6 +654,12 @@ void LaunchBootup(void)
 	setenv("PATH", ENVVAR_PATH, true);
 	setenv("HOME", ENVVAR_HOME, true);
 	setenv("SHELL", ENVVAR_SHELL, true);
+	
+	/*Add tiny message if we passed epochconfig= on the kernel cli.*/
+	if (strcmp(ConfigFile, CONFIGDIR CONF_NAME) != 0)
+	{
+		printf("Using configuration file \"%s\".\n\n", ConfigFile);
+	}
 	
 	/*Add tiny message if we passed runlevel= on the kernel cli.*/
 	if (*CurRunlevel != '\0')
@@ -600,31 +726,11 @@ void LaunchBootup(void)
 		EmergencyShell();
 	}
 	
-	if (EnableLogging)
-	{ /*Switch logging out of memory mode and write it's memory buffer to disk.*/
-		FILE *Descriptor = fopen(LOGDIR LOGFILE_NAME, (BlankLogOnBoot ? "w" : "a"));
-		
-		LogInMemory = false;
-		
-		if (MemLogBuffer != NULL)
-		{
-			if (!Descriptor)
-			{
-				SpitWarning("Cannot record logs to disk. Shutting down logging.");
-				EnableLogging = false;
-			}
-			else
-			{
-				fwrite(MemLogBuffer, 1, strlen(MemLogBuffer), Descriptor);
-				fflush(Descriptor);
-				fclose(Descriptor);
-				
-				WriteLogLine(CONSOLE_COLOR_GREEN "Bootup complete.\n" CONSOLE_ENDCOLOR, true);
-			}
-			free(MemLogBuffer);
-		}
-	}
-	
+	FinaliseLogStartup(BlankLogOnBoot); /*Write anything in the log's memory to disk.
+		* NOTE: It's possible for data to be in here even if logging is disabled, so don't touch.*/
+					
+	WriteLogLine(CONSOLE_COLOR_GREEN "Bootup complete.\n" CONSOLE_ENDCOLOR, true);
+
 	if (!InitMemBus(true))
 	{
 		const char *MemBusErr = CONSOLE_COLOR_RED "FAILURE IN MEMBUS! "

@@ -21,8 +21,7 @@ pid_t getsid(pid_t);
 
 rStatus SendPowerControl(const char *MembusCode)
 { /*Client side to send a request to halt/reboot/power off/disable or enable CAD/etc.*/
-	char InitsResponse[MEMBUS_SIZE/2 - 1], *PCode[2], *PErrMsg;
-	unsigned long cCounter = 0;
+	char InitsResponse[MEMBUS_MSGSIZE], *PCode[2], *PErrMsg;
 	
 	if (!strcmp(MembusCode, MEMBUS_CODE_HALT))
 	{
@@ -66,17 +65,7 @@ rStatus SendPowerControl(const char *MembusCode)
 		return FAILURE;
 	}
 	
-	while (!MemBus_Read(InitsResponse, false))
-	{
-		usleep(100000); /*0.1 secs.*/
-		++cCounter;
-		
-		if (cCounter == 200) /*Twenty seconds.*/
-		{
-			SpitError("Failed to get reply via membus.");
-			return FAILURE;
-		}
-	}
+	while (!MemBus_Read(InitsResponse, false)) usleep(1000); /*0.001 secs.*/
 	
 	MemBus_Write(MembusCode, false); /*Tells init it can shut down the membus.*/
 	
@@ -98,10 +87,9 @@ rStatus SendPowerControl(const char *MembusCode)
 
 rStatus ObjControl(const char *ObjectID, const char *MemBusSignal)
 { /*Start and stop or disable services.*/
-	char RemoteResponse[MEMBUS_SIZE/2 - 1];
-	char OutMsg[MEMBUS_SIZE/2 - 1];
-	char PossibleResponses[4][MEMBUS_SIZE/2 - 1];
-	unsigned long cCounter = 0;
+	char RemoteResponse[MEMBUS_MSGSIZE];
+	char OutMsg[MEMBUS_MSGSIZE];
+	char PossibleResponses[4][MEMBUS_MSGSIZE];
 	
 	snprintf(OutMsg, sizeof OutMsg, "%s %s", MemBusSignal, ObjectID);
 	
@@ -110,17 +98,7 @@ rStatus ObjControl(const char *ObjectID, const char *MemBusSignal)
 		return FAILURE;
 	}
 	
-	while (!MemBus_Read(RemoteResponse, false))
-	{
-		usleep(100000); /*0.1 secs*/
-		++cCounter;
-		
-		if (cCounter == 200)
-		{ /*Extra newline because we probably are going to print in a progress report.*/
-			SpitError("\nFailed to get reply via membus.");
-			return FAILURE;
-		}
-	}
+	while (!MemBus_Read(RemoteResponse, false)) usleep(1000); /*0.001 secs*/
 	
 	snprintf(PossibleResponses[0], sizeof PossibleResponses[0], "%s %s %s",
 		MEMBUS_CODE_ACKNOWLEDGED, MemBusSignal, ObjectID);
@@ -298,8 +276,8 @@ rStatus EmulShutdown(long ArgumentCount, const char **ArgStream)
 	const char **TPtr = ArgStream + 1; /*Skip past the equivalent of argv[0].*/
 	unsigned long TargetHr = 0, TargetMin = 0;
 	const char *THalt = NULL;
-	char PossibleResponses[3][MEMBUS_SIZE/2 - 1];
-	char TmpBuf[MEMBUS_SIZE/2 - 1], InRecv[MEMBUS_SIZE/2 - 1], TimeFormat[32];
+	char PossibleResponses[3][MEMBUS_MSGSIZE];
+	char TmpBuf[MEMBUS_MSGSIZE], InRecv[MEMBUS_MSGSIZE], TimeFormat[32];
 	short Inc = 0;
 	short TimeIsSet = 0, HaltModeSet = 0;
 	Bool AbortingShutdown = false, ImmediateHalt = false;
@@ -430,9 +408,9 @@ rStatus EmulShutdown(long ArgumentCount, const char **ArgStream)
 		snprintf(TmpBuf, sizeof TmpBuf, "%s", THalt);
 	}
 	
-	snprintf(PossibleResponses[0], MEMBUS_SIZE/2 - 1, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, TmpBuf);
-	snprintf(PossibleResponses[1], MEMBUS_SIZE/2 - 1, "%s %s", MEMBUS_CODE_FAILURE, TmpBuf);
-	snprintf(PossibleResponses[2], MEMBUS_SIZE/2 - 1, "%s %s", MEMBUS_CODE_BADPARAM, TmpBuf);
+	snprintf(PossibleResponses[0], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, TmpBuf);
+	snprintf(PossibleResponses[1], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_FAILURE, TmpBuf);
+	snprintf(PossibleResponses[2], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_BADPARAM, TmpBuf);
 	
 	if (!InitMemBus(false))
 	{
@@ -448,6 +426,8 @@ rStatus EmulShutdown(long ArgumentCount, const char **ArgStream)
 	}
 	
 	while (!MemBus_Read(InRecv, false)) usleep(1000); /*Wait for a response.*/
+	
+	if (ImmediateHalt) MemBus_Write(" ", false); /*Tells init it can shut down the membus.*/
 	
 	if (!ShutdownMemBus(false))
 	{

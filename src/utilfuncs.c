@@ -20,10 +20,10 @@
 Bool EnableLogging = true;
 Bool LogInMemory = true; /*This is necessary so long as we have a readonly filesystem.*/
 Bool BlankLogOnBoot = true;
-char *MemLogBuffer = NULL;
+char *MemLogBuffer;
 
 /*Days in the month, for time stuff.*/
-static const short MDays[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+static const unsigned char MDays[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
 Bool AllNumeric(const char *InStream)
 { /*Is the string all numbers?*/
@@ -275,7 +275,7 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 	unsigned long Inc = 0, Streamsize = 0, Countdown = 0;
 	FILE *Descriptor = NULL;
 	
-	if (*InObj->ObjectStartCommand == '\0')
+	if (InObj->ObjectStartCommand == NULL)
 	{
 		return 0;
 	}	
@@ -299,7 +299,7 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 	{
 		if (AllNumeric(DirPtr->d_name) && atol(DirPtr->d_name) >= InObj->ObjectPID)
 		{
-			short TChar;
+			int TChar;
 			
 			snprintf(FileName, sizeof FileName, "/proc/%s/cmdline", DirPtr->d_name);
 			
@@ -311,7 +311,7 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 			
 			for (Inc = 0; (TChar = getc(Descriptor)) != EOF && Inc < MAX_LINE_SIZE - 1; ++Inc)
 			{
-				FileBuf[Inc] = (char)TChar;
+				*(unsigned char*)&FileBuf[Inc] = (unsigned char)TChar;
 			}
 			FileBuf[Inc] = '\0';
 			
@@ -356,7 +356,7 @@ unsigned long ReadPIDFile(const ObjTable *InObj)
 	FILE *PIDFileDescriptor = fopen(InObj->ObjectPIDFile, "r");
 	char PIDBuf[MAX_LINE_SIZE], *TW = NULL, *TW2 = NULL;
 	unsigned long InPID = 0, Inc = 0;
-	short TChar;
+	int TChar;
 	
 	if (!PIDFileDescriptor)
 	{
@@ -365,7 +365,12 @@ unsigned long ReadPIDFile(const ObjTable *InObj)
 	
 	for (; (TChar = getc(PIDFileDescriptor)) != EOF && Inc < (MAX_LINE_SIZE - 1); ++Inc)
 	{
-		PIDBuf[Inc] = (char)TChar;
+		*(unsigned char*)&PIDBuf[Inc] = (unsigned char)TChar;
+		/*I bet very few people actually know that this common piece of code
+		 * can potentially cause a signal to be raised if we're built in C99 mode,
+		 * depending on the compiler. char is guaranteed not to trap, so it's better
+		 * we assign an unsigned value to it in this method than trust the compiler not
+		 * to implement a really bad option in the C99 standard.*/
 	}
 	PIDBuf[Inc] = '\0';
 	

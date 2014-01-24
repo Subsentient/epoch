@@ -3,18 +3,24 @@
 * This software is public domain.
 * Please read the file UNLICENSE.TXT for more information.*/
 
-/**This file handles the parsing of epoch.conf, our configuration file.
+/**This file handles the parsing of our configuration file.
  * It adds everything into the object table.**/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <signal.h>
+#include <grp.h>
+#include <pwd.h>
 #include <ctype.h>
 #include "epoch.h"
 
+#define CONFIGWARNTXT "CONFIG: " CONSOLE_COLOR_YELLOW "WARNING: " CONSOLE_ENDCOLOR
+
 /*We want the only interface for this to be LookupObjectInTable().*/
-ObjTable *ObjectTable = NULL;
+ObjTable *ObjectTable;
+char ConfigFile[MAX_LINE_SIZE] = CONFIGDIR CONF_NAME;
 
 /*Used to allow for things like 'ObjectStartPriority Services', where Services == 3, for example.*/
 static struct _PriorityAliasTree
@@ -54,7 +60,8 @@ static Bool RLInheritance_Check(const char *Inheriter, const char *Inherited);
 static void RLInheritance_Shutdown(void);
 
 /*Used for error handling in InitConfig() by ConfigProblem().*/
-enum { CONFIG_EMISSINGVAL = 1, CONFIG_EBADVAL, CONFIG_ETRUNCATED, CONFIG_EAFTER, CONFIG_EBEFORE, CONFIG_ELARGENUM };
+enum { CONFIG_EMISSINGVAL = 1, CONFIG_EBADVAL, CONFIG_ETRUNCATED, CONFIG_EAFTER,
+	CONFIG_EBEFORE, CONFIG_ELARGENUM };
 
 /*Actual functions.*/
 static char *NextLine(const char *InStream)
@@ -104,33 +111,33 @@ static void ConfigProblem(short Type, const char *Attribute, const char *AttribV
 	switch (Type)
 	{
 		case CONFIG_EMISSINGVAL:
-			snprintf(TmpBuf, 1024, "Missing or bad value for attribute %s in epoch.conf line %lu.\nIgnoring.",
-					Attribute, LineNum);
+			snprintf(TmpBuf, 1024, "Missing or bad value for attribute %s in %s line %lu.\nIgnoring.",
+					Attribute, ConfigFile, LineNum);
 			break;
 		case CONFIG_EBADVAL:
-			snprintf(TmpBuf, 1024, "Bad value %s for attribute %s in epoch.conf line %lu.", AttribVal, Attribute, LineNum);
+			snprintf(TmpBuf, 1024, "Bad value %s for attribute %s in %s line %lu.", AttribVal, Attribute, ConfigFile, LineNum);
 			break;
 		case CONFIG_ETRUNCATED:
-			snprintf(TmpBuf, 1024, "Attribute %s in epoch.conf line %lu has\n"
-					"abnormally long value and may have been truncated.", Attribute, LineNum);
+			snprintf(TmpBuf, 1024, "Attribute %s in %s line %lu has\n"
+					"abnormally long value and may have been truncated.", Attribute, ConfigFile, LineNum);
 			break;
 		case CONFIG_EAFTER:
 			snprintf(TmpBuf, 1024, "Attribute %s cannot be set after an ObjectID attribute; "
-					"epoch.conf line %lu. Ignoring.", Attribute, LineNum);
+					"%s line %lu. Ignoring.", Attribute, ConfigFile, LineNum);
 			break;
 		case CONFIG_EBEFORE:
 			snprintf(TmpBuf, 1024, "Attribute %s comes before any ObjectID attribute.\n"
-					"epoch.conf line %lu. Ignoring.", Attribute, LineNum);
+					"%s line %lu. Ignoring.", Attribute, ConfigFile, LineNum);
 			break;
 		case CONFIG_ELARGENUM:
-			snprintf(TmpBuf, 1024, "Attribute %s in epoch.conf line %lu has\n"
-					"abnormally high numeric value and may cause malfunctions.", Attribute, LineNum);
+			snprintf(TmpBuf, 1024, "Attribute %s in %s line %lu has\n"
+					"abnormally high numeric value and may cause malfunctions.", Attribute, ConfigFile, LineNum);
 			break;
 		default:
 			return;
 	}
 	
-	snprintf(LogBuffer, MAX_LINE_SIZE, "CONFIG: " CONSOLE_COLOR_YELLOW "WARNING: " CONSOLE_ENDCOLOR "%s\n", TmpBuf);
+	snprintf(LogBuffer, MAX_LINE_SIZE, CONFIGWARNTXT "%s\n", TmpBuf);
 	
 	SpitWarning(TmpBuf);
 	WriteLogLine(LogBuffer, true);
@@ -146,12 +153,17 @@ rStatus InitConfig(void)
 	unsigned long LineNum = 1;
 	const char *CurrentAttribute = NULL;
 	Bool LongComment = false;
+	Bool TrueLogEnable = EnableLogging;
+	Bool PrevLogInMemory = LogInMemory;
 	char ErrBuf[MAX_LINE_SIZE];
 	
+	EnableLogging = true; /*To temporarily turn on the logging system.*/
+	LogInMemory = true;
+	
 	/*Get the file size of the config file.*/
-	if (stat(CONFIGDIR CONF_NAME, &FileStat) != 0)
+	if (stat(ConfigFile, &FileStat) != 0)
 	{ /*Failure?*/
-		SpitError("Failed to obtain information about configuration file epoch.conf.\nDoes it exist?");
+		SpitError("Failed to obtain information about configuration file.\nDoes it exist?");
 		return FAILURE;
 	}
 	else
@@ -160,38 +172,44 @@ rStatus InitConfig(void)
 		ConfigStream = malloc(FileStat.st_size + 1);
 	}
 
-	Descriptor = fopen(CONFIGDIR CONF_NAME, "r"); /*Open the configuration file.*/
-
+	if (!(Descriptor = fopen(ConfigFile, "r"))) /*Open the configuration file.*/
+	{
+		snprintf(ErrBuf, sizeof ErrBuf, "Unable to open configuration file \"%s\"! Permissions?", ConfigFile);
+		SpitError(ErrBuf);
+		EmergencyShell();
+	}
+	
 	/*Read the file into memory. I don't really trust fread(), but oh well.
 	 * People will whine if I use a loop instead.*/
 	fread(ConfigStream, 1, FileStat.st_size, Descriptor);
-	
-	ConfigStream[FileStat.st_size] = '\0'; /*Null terminate.*/
-	
 	fclose(Descriptor); /*Close the file.*/
 
+	ConfigStream[FileStat.st_size] = '\0'; /*Null terminate.*/
+	
 	Worker = ConfigStream;
-
-	/*Empty file?*/
-	if ((*Worker == '\n' && *(Worker + 1) == '\0') || *Worker == '\0')
-	{
-		SpitError("Seems that epoch.conf is empty or corrupted.");
-		free(ConfigStream);
-		return FAILURE;
-	}
-
+	
 	/*Check for non-ASCII characters.*/
-	while (*Worker++ != '\0')
+	while (*(unsigned char*)Worker++ != '\0')
 	{
-		if (*Worker > 127 || *Worker < 0)
-		{
-			SpitWarning("Non-ASCII characters detected in epoch.conf!\n"
+		if ((*(unsigned char*)Worker & 128) == 128)
+		{ /*Check for a sign bit or >= 128. Works for one's complement systems
+			too if we have signed char by default, but who uses one's complement?*/
+			SpitError("Non-ASCII characters detected in configuration file!\n"
 						"Epoch does not support Unicode or the like!");
+			EmergencyShell();
 			break;
 		}
 	}
 	
 	Worker = ConfigStream;
+	
+	/*Empty file?*/
+	if ((*Worker == '\n' && *(Worker + 1) == '\0') || *Worker == '\0')
+	{
+		SpitError("Seems that the configuration file is empty or corrupted.");
+		free(ConfigStream);
+		return FAILURE;
+	}
 	
 	do /*This loop does most of the parsing.*/
 	{
@@ -214,8 +232,9 @@ rStatus InitConfig(void)
 		{ /*It's probably not good to have stray multi-line comment terminators around.*/
 			if (!LongComment)
 			{
-				snprintf(ErrBuf, MAX_LINE_SIZE, "Stray multi-line comment terminator on line %lu\n", LineNum);
+				snprintf(ErrBuf, MAX_LINE_SIZE, CONFIGWARNTXT "Stray multi-line comment terminator on line %lu\n", LineNum);
 				SpitWarning(ErrBuf);
+				WriteLogLine(ErrBuf, true);
 				continue;
 			}
 			LongComment = false;
@@ -309,16 +328,16 @@ rStatus InitConfig(void)
 			
 			if (!strcmp(DelimCurr, "true"))
 			{
-				EnableLogging = true;
+				TrueLogEnable = true;
 			}
 			else if (!strcmp(DelimCurr, "false"))
 			{
-				EnableLogging = false;
+				TrueLogEnable = false;
 			}
 			else
 			{
 				
-				EnableLogging = false;
+				TrueLogEnable = false;
 				
 				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 			}
@@ -410,30 +429,11 @@ rStatus InitConfig(void)
 			continue;
 		}
 		else if (!strncmp(Worker, (CurrentAttribute = "AlignStatusReports"), strlen("AlignStatusReports")))
-		{
-			if (!GetLineDelim(Worker, DelimCurr))
-			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
-
-				continue;
-			}
-			
-			if (!strcmp(DelimCurr, "true"))
-			{
-				AlignStatusReports = true;
-			}
-			else if (!strcmp(DelimCurr, "false"))
-			{
-				AlignStatusReports = false;
-			}
-			else
-			{
-				
-				AlignStatusReports = false;
-				
-				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
-			}
-			
+		{ /*Deprecated.*/
+			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Attribute AlignStatusReports is deprecated and no longer has any effect.\n"
+					"%s line %lu", ConfigFile, LineNum);
+			SpitWarning(ErrBuf);
+			WriteLogLine(ErrBuf, true);
 			continue;
 		}
 		/*This will mount /dev, /proc, /sys, /dev/pts, and /dev/shm on boot time, upon request.*/
@@ -576,7 +576,7 @@ rStatus InitConfig(void)
 			{
 				FILE *TDesc;
 				unsigned long Inc = 0;
-				short TChar;
+				int TChar;
 				const char *TW = DelimCurr;
 				char THostname[MAX_LINE_SIZE];
 				
@@ -586,14 +586,15 @@ rStatus InitConfig(void)
 				
 				if (!(TDesc = fopen(TW, "r")))
 				{
-										snprintf(ErrBuf, sizeof ErrBuf, "Failed to set hostname from file \"%s\".\n", TW);
+					snprintf(ErrBuf, sizeof ErrBuf, "Failed to set hostname from file \"%s\".\n", TW);
 					SpitWarning(ErrBuf);
+					WriteLogLine(ErrBuf, true);
 					continue;
 				}
 				
 				for (Inc = 0; (TChar = getc(TDesc)) != EOF && Inc < MAX_LINE_SIZE - 1; ++Inc)
-				{
-					THostname[Inc] = (char)TChar;
+				{ /*There is a reason for this. Just trust me.*/
+					*(unsigned char*)&THostname[Inc] = (unsigned char)TChar;
 				}
 				THostname[Inc] = '\0';
 				
@@ -619,7 +620,9 @@ rStatus InitConfig(void)
 			/*Check for spaces and tabs in the actual hostname.*/
 			if (strstr(Hostname, " ") != NULL || strstr(Hostname, "\t") != NULL)
 			{
-				SpitWarning("Tabs and/or spaces in hostname file. Cannot set hostname.");
+				const char *const ErrString = "Tabs and/or spaces in hostname file. Cannot set hostname.";
+				SpitWarning((const char*)ErrString);
+				WriteLogLine((const char*)ErrString, true);
 				*Hostname = '\0'; /*Set the hostname back to nothing.*/
 				continue;
 			}
@@ -630,22 +633,27 @@ rStatus InitConfig(void)
 			}
 			
 			continue;
-		}		
+		}
 		else if (!strncmp(Worker, (CurrentAttribute = "ObjectID"), strlen("ObjectID")))
 		{ /*ASCII value used to identify this object internally, and also a kind of short name for it.*/
+			char *Temp = NULL;
+			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 
-			if (strstr(DelimCurr, " ") || strstr(DelimCurr, "\t")) /*We cannot allow whitespace.*/
+			if ((Temp = strpbrk(DelimCurr, " \t")) != NULL) /*We cannot allow whitespace.*/
 			{
-				snprintf(ErrBuf, sizeof ErrBuf, "ObjectIDs may not contain whitespace! This is a critical error.\n"
-						"Line %lu in epoch.conf.", LineNum);
-				SpitError(ErrBuf);
-				EmergencyShell();
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "ObjectIDs may not contain whitespace! Truncating up to occurence of whitespace\n"
+						"Line %lu in %s.", LineNum, ConfigFile);
+				SpitWarning(ErrBuf);
+				WriteLogLine(ErrBuf, true);
+				*Temp = '\0';
 			}
+			
+			DelimCurr[MAX_DESCRIPT_SIZE - 1] = '\0'; /*Chop it off to prevent overflow.*/
 			
 			CurObj = AddObjectToTable(DelimCurr); /*Sets this as our current object.*/
 
@@ -655,6 +663,29 @@ rStatus InitConfig(void)
 			}
 
 			continue;
+		}
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectWorkingDirectory"), strlen("ObjectWorkingDirectory")))
+		{
+			if (!CurObj)
+			{
+				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (CurObj->ObjectWorkingDirectory != NULL)
+			{
+				free(CurObj->ObjectWorkingDirectory);
+			}
+			
+			CurObj->ObjectWorkingDirectory = malloc(strlen(DelimCurr) + 1);
+			
+			strncpy(CurObj->ObjectWorkingDirectory, DelimCurr, strlen(DelimCurr) + 1);	
 		}
 		else if (!strncmp(Worker, (CurrentAttribute = "ObjectEnabled"), strlen("ObjectEnabled")))
 		{
@@ -719,22 +750,35 @@ rStatus InitConfig(void)
 				}
 				CurArg[Inc] = '\0';
 				
-				if (!strcmp(CurArg, "NOWAIT"))
-				{
-					CurObj->Opts.EmulNoWait = true;
-					snprintf(ErrBuf, sizeof ErrBuf, "Option NOWAIT is deprecated and has been partially removed.\n"
-							"Emulating NOWAIT for object %s.\nLine %lu in epoch.conf", CurObj->ObjectID, LineNum);
-					SpitWarning(ErrBuf);
-				}
-				else if (!strcmp(CurArg, "HALTONLY"))
+				
+				if (!strcmp(CurArg, "HALTONLY"))
 				{ /*Allow entries that execute on shutdown only.*/
 					CurObj->Started = true;
-					CurObj->Opts.CanStop = false;
+					CurObj->Opts.Persistent = true;
 					CurObj->Opts.HaltCmdOnly = true;
 				}
 				else if (!strcmp(CurArg, "PERSISTENT"))
 				{
-					CurObj->Opts.CanStop = false;
+					CurObj->Opts.Persistent = true;
+				}
+				else if (!strcmp(CurArg, "FORK"))
+				{
+			#ifndef NOMMU
+					CurObj->Opts.Fork = true;
+			#else
+					snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Object \"%s\" has specified the FORK option,\n"
+							"but this is not supported on NOMMU builds.", CurObj->ObjectID);
+					SpitWarning(ErrBuf);
+					WriteLogLine(ErrBuf, true);
+			#endif /*NOMMU*/
+				}
+				else if (!strcmp(CurArg, "EXEC"))
+				{
+					CurObj->Opts.Exec = true;
+				}
+				else if (!strcmp(CurArg, "PIVOT"))
+				{
+					CurObj->Opts.PivotRoot = true;
 				}
 				else if (!strcmp(CurArg, "RAWDESCRIPTION"))
 				{
@@ -753,11 +797,35 @@ rStatus InitConfig(void)
 					#ifndef NOSHELL
 						CurObj->Opts.ForceShell = true;
 					#else
-						snprintf(ErrBuf, sizeof ErrBuf, "Object %s has the option FORCESHELL set,\n"
+						snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Object %s has the option FORCESHELL set,\n"
 								"but Epoch was compiled without shell support.\n"
 								"Ignoring.", CurObj->ObjectID);
 						SpitWarning(ErrBuf);
+						WriteLogLine(ErrBuf, true);
 					#endif
+				}
+				else if (!strncmp(CurArg, "NOSTOPWAIT", strlen("STOPTIMEOUT")))
+				{
+					CurObj->Opts.NoStopWait = true;
+				}
+				else if (!strncmp(CurArg, "STOPTIMEOUT", strlen("STOPTIMEOUT")))
+				{
+					const char *TWorker = CurArg + strlen("STOPTIMEOUT");
+					
+					if (*TWorker != '=' || *(TWorker + 1) == '\0')
+					{
+						ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, CurArg, LineNum);
+						continue;
+					}
+					++TWorker;
+					
+					if (!AllNumeric(TWorker))
+					{
+						ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, CurArg, LineNum);
+						continue;
+					}
+					
+					CurObj->Opts.StopTimeout = atol(TWorker);
 				}
 				else if (!strncmp(CurArg, "TERMSIGNAL", strlen("TERMSIGNAL")))
 				{
@@ -841,7 +909,12 @@ rStatus InitConfig(void)
 				continue;
 			}
 			
-			snprintf(CurObj->ObjectDescription, MAX_DESCRIPT_SIZE, "%s", DelimCurr);
+			if (CurObj->ObjectDescription != NULL) free(CurObj->ObjectDescription);
+			
+			DelimCurr[MAX_DESCRIPT_SIZE - 1] = '\0'; /*Chop it off to prevent overflow.*/
+
+			CurObj->ObjectDescription = malloc(strlen(DelimCurr) + 1);
+			strncpy(CurObj->ObjectDescription, DelimCurr, strlen(DelimCurr) + 1);
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_DESCRIPT_SIZE)
 			{
@@ -864,7 +937,10 @@ rStatus InitConfig(void)
 				continue;
 			}
 			
-			snprintf(CurObj->ObjectStartCommand, MAX_LINE_SIZE, "%s", DelimCurr);
+			if (CurObj->ObjectStartCommand) free(CurObj->ObjectStartCommand);
+
+			CurObj->ObjectStartCommand = malloc(strlen(DelimCurr) + 1);
+			strncpy(CurObj->ObjectStartCommand, DelimCurr, strlen(DelimCurr) + 1);
 
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
@@ -887,7 +963,10 @@ rStatus InitConfig(void)
 				continue;
 			}
 			
-			snprintf(CurObj->ObjectPrestartCommand, MAX_LINE_SIZE, "%s", DelimCurr);
+			if (CurObj->ObjectPrestartCommand) free(CurObj->ObjectPrestartCommand);
+			
+			CurObj->ObjectPrestartCommand = malloc(strlen(DelimCurr) + 1);
+			strncpy(CurObj->ObjectPrestartCommand, DelimCurr, strlen(DelimCurr) + 1);
 			
 			if (strlen(DelimCurr) + 1 >= MAX_LINE_SIZE)
 			{
@@ -908,8 +987,87 @@ rStatus InitConfig(void)
 				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
+
 			
-			snprintf(CurObj->ObjectReloadCommand, MAX_LINE_SIZE, "%s", DelimCurr);
+			if (!strncmp(DelimCurr, "SIGNAL", strlen("SIGNAL")))
+			{
+				const char *Tag = "SIGNAL";
+				const char *TWorker = &DelimCurr[strlen(Tag)];
+				
+				if (!strcmp(DelimCurr, Tag) ||
+					(TWorker[0] != ' ' && 
+					TWorker[0] != '\t')) /*No arg. Bad.*/
+				{
+					char TBuf[MAX_LINE_SIZE];
+					
+					snprintf(TBuf, sizeof TBuf, "Object \"%s\"'s reload command has 'SIGNAL' specified,\n"
+							"but syntax is not valid.", CurObj->ObjectID);
+					WriteLogLine(TBuf, true);
+					SpitWarning(TBuf);
+					continue;
+				}
+				
+				TWorker = WhitespaceArg(TWorker);
+				
+				if (AllNumeric(TWorker))
+				{
+					if (atoi(TWorker) > 255)
+					{
+						ConfigProblem(CONFIG_ELARGENUM, CurrentAttribute, NULL, LineNum);
+					}
+					CurObj->ReloadCommandSignal = (unsigned char)atoi(TWorker);
+				}
+				else if (!strcmp("SIGTERM", TWorker))
+				{
+					CurObj->ReloadCommandSignal = SIGTERM;
+				}
+				else if (!strcmp("SIGKILL", TWorker))
+				{
+					CurObj->ReloadCommandSignal = SIGKILL;
+				}
+				else if (!strcmp("SIGHUP", TWorker))
+				{
+					CurObj->ReloadCommandSignal = SIGKILL;
+				}
+				else if (!strcmp("SIGINT", TWorker))
+				{
+					CurObj->ReloadCommandSignal = SIGINT;
+				}
+				else if (!strcmp("SIGABRT", TWorker))
+				{
+					CurObj->ReloadCommandSignal = SIGABRT;
+				}
+				else if (!strcmp("SIGQUIT", TWorker))
+				{
+					CurObj->ReloadCommandSignal = SIGQUIT;
+				}
+				else if (!strcmp("SIGUSR1", TWorker))
+				{
+					CurObj->ReloadCommandSignal = SIGUSR1;
+				}
+				else if (!strcmp("SIGUSR2", TWorker))
+				{
+					CurObj->ReloadCommandSignal = SIGUSR2;
+				}
+				else
+				{
+					char TBuf[MAX_LINE_SIZE];
+					
+					snprintf(TBuf, sizeof TBuf, CONFIGWARNTXT
+							"ObjectReloadCommand starts with SIGNAL, but the argument to SIGNAL\n"
+							"is invalid. Object \"%s\" in %s line %lu", CurObj->ObjectID, ConfigFile, LineNum);
+					SpitWarning(TBuf);
+					WriteLogLine(TBuf, true);
+					continue;
+				}
+			}
+			else
+			{
+				if (CurObj->ObjectReloadCommand) free(CurObj->ObjectReloadCommand);
+				
+				CurObj->ObjectReloadCommand = malloc(strlen(DelimCurr) + 1);
+				strncpy(CurObj->ObjectReloadCommand, DelimCurr, strlen(DelimCurr) + 1);
+			}
 			
 			if (strlen(DelimCurr) + 1 >= MAX_LINE_SIZE)
 			{
@@ -949,7 +1107,9 @@ rStatus InitConfig(void)
 					
 					if (*Worker != '\0')
 					{
-						snprintf(CurObj->ObjectPIDFile, MAX_LINE_SIZE, "%s", Worker);
+						CurObj->ObjectPIDFile = malloc(strlen(Worker) + 1);
+						strncpy(CurObj->ObjectPIDFile, Worker, strlen(Worker) + 1);
+						
 						CurObj->Opts.HasPIDFile = true;
 					}
 				}
@@ -965,7 +1125,10 @@ rStatus InitConfig(void)
 			else
 			{
 				CurObj->Opts.StopMode = STOP_COMMAND;
-				snprintf(CurObj->ObjectStopCommand, MAX_LINE_SIZE, "%s", DelimCurr);
+				
+				if (CurObj->ObjectStopCommand) free(CurObj->ObjectStopCommand);
+				CurObj->ObjectStopCommand = malloc(strlen(DelimCurr) + 1);
+				strncpy(CurObj->ObjectStopCommand, DelimCurr, strlen(DelimCurr) + 1);
 			}
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
@@ -1006,7 +1169,7 @@ rStatus InitConfig(void)
 				continue;
 			}
 			
-			CurObj->ObjectStartPriority = atoi(DelimCurr);
+			CurObj->ObjectStartPriority = atol(DelimCurr);
 			
 			if (strlen(DelimCurr) >= 8)
 			{ /*An eight digit number is too high.*/
@@ -1044,7 +1207,7 @@ rStatus InitConfig(void)
 				continue;
 			}
 			
-			CurObj->ObjectStopPriority = atoi(DelimCurr);
+			CurObj->ObjectStopPriority = atol(DelimCurr);
 			
 			if (strlen(DelimCurr) >= 8)
 			{ /*An eight digit number is too high.*/
@@ -1067,7 +1230,11 @@ rStatus InitConfig(void)
 				continue;
 			}
 			
-			snprintf(CurObj->ObjectPIDFile, MAX_LINE_SIZE, "%s", DelimCurr);
+			if (CurObj->ObjectPIDFile) free(CurObj->ObjectPIDFile);
+			
+			CurObj->ObjectPIDFile = malloc(strlen(DelimCurr) + 1);
+			strncpy(CurObj->ObjectPIDFile, DelimCurr, strlen(DelimCurr) + 1);
+			
 			CurObj->Opts.HasPIDFile = true;
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
@@ -1077,11 +1244,149 @@ rStatus InitConfig(void)
 			
 			continue;
 		}
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectUser"), strlen("ObjectUser")))
+		{
+			struct passwd *UserStruct = NULL;
+			
+			if (CurObj == NULL)
+			{
+				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!(UserStruct = getpwnam(DelimCurr)))
+			{ /*getpwnam_r() is more trouble than it's worth in single-threaded Epoch.*/
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT
+						"Unable to lookup requested USER \"%s\" for object \"%s\".\n"
+						"Line %lu in %s", DelimCurr, CurObj->ObjectID, LineNum, ConfigFile);
+				WriteLogLine(ErrBuf, true);
+				SpitWarning(ErrBuf);
+				continue;
+			}
+			
+			CurObj->UserID = (unsigned long)UserStruct->pw_uid;
+			
+			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
+			{
+				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+			}
+			
+			continue;
+		}
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectGroup"), strlen("ObjectGroup")))
+		{
+			struct group *GroupStruct = NULL;
+			
+			if (CurObj == NULL)
+			{
+				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!(GroupStruct = getgrnam(DelimCurr)))
+			{ /*getpwnam_r() is more trouble than it's worth in single-threaded Epoch.*/
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT
+						"Unable to lookup requested GROUP \"%s\" for object \"%s\".\n"
+						"Line %lu in %s", DelimCurr, CurObj->ObjectID, LineNum, ConfigFile);
+				WriteLogLine(ErrBuf, true);
+				SpitWarning(ErrBuf);
+				continue;
+			}
+			
+			CurObj->GroupID = (unsigned long)GroupStruct->gr_gid;
+			
+			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
+			{
+				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+			}
+			continue;
+		}
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStdout"), strlen("ObjectStdout")))
+		{
+			if (CurObj == NULL)
+			{
+				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (CurObj->ObjectStdout) free(CurObj->ObjectStdout);
+			
+			if (!strcmp(DelimCurr, "LOG"))
+			{
+				const char *LogPath = LOGDIR LOGFILE_NAME;
+				CurObj->ObjectStdout = malloc(strlen(LogPath) + 1);
+
+				strncpy(CurObj->ObjectStdout, LOGDIR LOGFILE_NAME, strlen(LogPath) + 1);
+			}
+			else
+			{
+				CurObj->ObjectStdout = malloc(strlen(DelimCurr) + 1);
+				strncpy(CurObj->ObjectStdout, DelimCurr, strlen(DelimCurr) + 1);
+				
+				if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
+				{
+					ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+				}
+			}
+			continue;
+		}
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStderr"), strlen("ObjectStderr")))
+		{
+			if (CurObj == NULL)
+			{
+				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (CurObj->ObjectStderr) free(CurObj->ObjectStderr);
+			
+			if (!strcmp(DelimCurr, "LOG"))
+			{
+				const char *LogPath = LOGDIR LOGFILE_NAME;
+				CurObj->ObjectStderr = malloc(strlen(LogPath) + 1);
+
+				strncpy(CurObj->ObjectStderr, LOGDIR LOGFILE_NAME, strlen(LogPath) + 1);
+			}
+			else
+			{
+				CurObj->ObjectStderr = malloc(strlen(DelimCurr) + 1);
+				strncpy(CurObj->ObjectStderr, DelimCurr, strlen(DelimCurr) + 1);
+				
+				if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
+				{
+					ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+				}
+			}
+			continue;
+		}
 		else if (!strncmp(Worker, (CurrentAttribute = "ObjectRunlevels"), strlen("ObjectRunlevels")))
 		{ /*Runlevel.*/
 			char *TWorker;
 			char TRL[MAX_DESCRIPT_SIZE], *TRL2;
-			static const ObjTable *LastObject = NULL;
 			
 			if (!CurObj)
 			{
@@ -1089,16 +1394,16 @@ rStatus InitConfig(void)
 				continue;
 			}
 			
-			if (CurObj == LastObject)
+			if (CurObj->ObjectRunlevels != NULL)
 			{ /*We cannot have multiple runlevel attributes because it messes up config file editing.*/
-				snprintf(ErrBuf, sizeof ErrBuf, "Object %s has more than one ObjectRunlevels line.\n"
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Object %s has more than one ObjectRunlevels line.\n"
 						"This is not advised because the config file editing code is not smart enough\n"
 						"to handle multiple lines. You should put the additional runlevels on the same line.\n"
-						"Line %lu in epoch.conf",
-						CurObj->ObjectID, LineNum);
+						"Line %lu in %s",
+						CurObj->ObjectID, LineNum, ConfigFile);
 				SpitWarning(ErrBuf);
+				WriteLogLine(ErrBuf, true);
 			}
-			LastObject = CurObj;
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
@@ -1130,90 +1435,28 @@ rStatus InitConfig(void)
 		}
 		else
 		{ /*No big deal.*/
-						snprintf(ErrBuf, sizeof ErrBuf, "Unidentified attribute in epoch.conf on line %lu.", LineNum);
+			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Unidentified attribute in %s on line %lu.", ConfigFile, LineNum);
 			SpitWarning(ErrBuf);
-			
+			WriteLogLine(ErrBuf, true);
 			continue;
 		}
 	} while (++LineNum, (Worker = NextLine(Worker)));
 	
-	/*This code permits the usage of objects with the same priority by making them NOT
-	 * the same priority, because the rest of the object handling subsystem is too stupid
-	 * to know how to handle this, and this was easier to write.*/
-	 for (ObjWorker = ObjectTable; ObjWorker->Next != NULL; ObjWorker = ObjWorker->Next)
-	 {
-		 for (CurObj = ObjectTable; CurObj->Next != NULL; CurObj = CurObj->Next)
-		 {
-			 if (ObjWorker->ObjectStartPriority != 0 && ObjWorker != CurObj &&
-				CurObj->ObjectStartPriority == ObjWorker->ObjectStartPriority)
-			{
-				ObjTable *TWorker = ObjectTable;
-				
-				++CurObj->ObjectStartPriority;
-				for (; TWorker->Next != NULL; TWorker = TWorker->Next)
-				{
-					if (TWorker->ObjectStartPriority >= CurObj->ObjectStartPriority &&
-						CurObj != TWorker && TWorker != ObjWorker)
-					{
-						++TWorker->ObjectStartPriority;
-					}
-				}
-			}
-			
-			if (ObjWorker->ObjectStopPriority != 0 && ObjWorker != CurObj &&
-				CurObj->ObjectStopPriority == ObjWorker->ObjectStopPriority)
-			{
-				ObjTable *TWorker = ObjectTable;
-				
-				++CurObj->ObjectStopPriority;
-				for (; TWorker->Next != NULL; TWorker = TWorker->Next)
-				{
-					if (TWorker->ObjectStopPriority >= CurObj->ObjectStopPriority &&
-						CurObj != TWorker && TWorker != ObjWorker)
-					{
-						++TWorker->ObjectStopPriority;
-					}
-				}
-			}
-		}
-	}
-	
 	for (ObjWorker = ObjectTable; ObjWorker->Next; ObjWorker = ObjWorker->Next)
 	{
 		/*We don't need to specify a description, but if we neglect to, use the ObjectID.*/
-		if (ObjWorker->ObjectDescription[0] == 0)
+		if (ObjWorker->ObjectDescription == NULL)
 		{
-			strncpy(ObjWorker->ObjectDescription, ObjWorker->ObjectID, strlen(ObjWorker->ObjectID) + 1);
-		}
-
-		/*NOWAIT is deprecated, so emulate it's effect with an ampersand.*/
-		if (ObjWorker->Opts.EmulNoWait)
-		{
-			unsigned long TInc = 0;
-			
-			if (*ObjWorker->ObjectStartCommand == '\0')
-			{ /*Don't bother if it's empty.*/
-				continue;
-			}
-			
-			/*Check if we already have an ampersand at the end.*/
-			
-			/*Go back behind any whitespace at the end.*/
-			for (TInc = strlen(ObjWorker->ObjectStartCommand) - 1; ObjWorker->ObjectStartCommand[TInc] == ' ' ||
-				ObjWorker->ObjectStartCommand[TInc] == '\t'; --TInc);
-			
-			if (ObjWorker->ObjectStartCommand[TInc] != '&')
-			{
-				strncat(ObjWorker->ObjectStartCommand, "&", MAX_LINE_SIZE - strlen(ObjWorker->ObjectStartCommand) - 1);
-			}
+			ObjWorker->ObjectDescription = ObjWorker->ObjectID;
 		}
 	}
 	
 	/*This is harmless, but it's bad form and could indicate human error in writing the config file.*/
 	if (LongComment)
 	{
-				snprintf(ErrBuf, sizeof ErrBuf, "No comment terminator at end of configuration file.");
+		snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "No comment terminator at end of configuration file.");
 		SpitWarning(ErrBuf);
+		WriteLogLine(ErrBuf, true);
 	}
 	
 	PriorityAlias_Shutdown(); /*We don't need to keep this in memory.*/
@@ -1224,18 +1467,18 @@ rStatus InitConfig(void)
 			break;
 		case FAILURE:
 		{ /*We failed integrity checking.*/
-			fprintf(stderr, "%s\n", "Enter \"d\" to dump epoch.conf to console or strike enter to continue.\n->");
+			fprintf(stderr, "Enter \"d\" to dump %s to console or strike enter to continue.\n-> ", ConfigFile);
 			fflush(NULL); /*Have an eerie feeling this will be necessary on some systems.*/
 			
 			if (getchar() == 'd')
 			{
-				fprintf(stderr, CONSOLE_COLOR_MAGENTA "Beginning dump of epoch.conf to console.\n" CONSOLE_ENDCOLOR);
+				fprintf(stderr, CONSOLE_COLOR_MAGENTA "Beginning dump of %s to console.\n" CONSOLE_ENDCOLOR, ConfigFile);
 				fprintf(stderr, "%s", ConfigStream);
 				fflush(NULL);
 			}
 			else
 			{
-				puts("Not dumping epoch.conf.");
+				printf("Not dumping %s.\n", ConfigFile);
 			}
 			
 			ShutdownConfig();
@@ -1245,13 +1488,18 @@ rStatus InitConfig(void)
 		}
 		case WARNING:
 		{
-			SpitWarning("Noncritical configuration problems exist.\nPlease edit epoch.conf to resolve these.");
-			return WARNING;
+			const char *WarnTxt = "Noncritical configuration problems exist.\nPlease edit Epoch's configuration file to resolve these.";
+			WriteLogLine(WarnTxt, true);
+			SpitWarning(WarnTxt);
+			break;
+
 		}
 	}
 		
 	free(ConfigStream); /*Release ConfigStream, since we only use the object table now.*/
-
+	LogInMemory = PrevLogInMemory;
+	EnableLogging = TrueLogEnable;
+	
 	return SUCCESS;
 }
 
@@ -1276,7 +1524,7 @@ static rStatus GetLineDelim(const char *InStream, char *OutStream)
 		}
 		ObjectInQuestion[IncT] = '\0';
 
-		snprintf(TmpBuf, 1024, "No parameter for attribute \"%s\" in epoch.conf.", ObjectInQuestion);
+		snprintf(TmpBuf, 1024, "No parameter for attribute \"%s\" in %s.", ObjectInQuestion, ConfigFile);
 
 		SpitError(TmpBuf);
 
@@ -1322,15 +1570,15 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 	unsigned long NumWhiteSpaces = 0;
 	Bool PresentHalfTwo = false;
 	
-	if (stat(CONFIGDIR CONF_NAME, &FileStat) != 0)
+	if (stat(ConfigFile, &FileStat) != 0)
 	{
-		SpitError("EditConfigValue(): Failed to stat " CONFIGDIR CONF_NAME ". Does the file exist?");
+		SpitError("EditConfigValue(): Failed to stat config file. Does the file exist?");
 		return FAILURE;
 	}
 	
-	if ((Descriptor = fopen(CONFIGDIR CONF_NAME, "r")) == NULL)
+	if ((Descriptor = fopen(ConfigFile, "r")) == NULL)
 	{
-		SpitError("EditConfigValue(): Failed to open " CONFIGDIR CONF_NAME ". Are permissions correct?");
+		SpitError("EditConfigValue(): Failed to open config file. Are permissions correct?");
 		return FAILURE;
 	}
 	
@@ -1495,7 +1743,7 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 	free(HalfTwo);
 	
 	/*Write the configuration back to disk.*/
-	Descriptor = fopen(CONFIGDIR CONF_NAME, "w");
+	Descriptor = fopen(ConfigFile, "w");
 	fwrite(MasterStream, 1, strlen(MasterStream), Descriptor);
 	fclose(Descriptor);
 	
@@ -1508,7 +1756,7 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 /*Adds an object to the table and, if the first run, sets up the table.*/
 static ObjTable *AddObjectToTable(const char *ObjectID)
 {
-	ObjTable *Worker = ObjectTable;
+	ObjTable *Worker = ObjectTable, *Next, *Prev;
 	
 	/*See, we actually allocate two cells initially. The base and it's node.
 	 * We always keep a free one open. This is just more convenient.*/
@@ -1533,39 +1781,33 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	Worker->Next->Next = NULL;
 	Worker->Next->Prev = Worker;
 
+	/*These are the only two variables inside that we need to save before we wipe.*/
+	Next = Worker->Next;
+	Prev = Worker->Prev;
+	
+	memset(Worker, 0, sizeof(ObjTable)); /*Set everything that is going to be zero to zero.*/
+	
+	Worker->Next = Next;
+	Worker->Prev = Prev;
+	
 	/*This is the first thing that must ever be initialized, because it's how we tell objects apart.*/
-	snprintf(Worker->ObjectID, MAX_DESCRIPT_SIZE, "%s", ObjectID);
+	/*This and all things like it are dynamically allocated to provide aggressive memory savings.*/
+	Worker->ObjectID = malloc(strlen(ObjectID) + 1);
+	strncpy(Worker->ObjectID, ObjectID, strlen(ObjectID) + 1);
 	
 	/*Initialize these to their default values. Used to test integrity before execution begins.*/
-	Worker->Started = false;
-	Worker->StartedSince = 0;
-	Worker->ObjectDescription[0] = '\0';
-	Worker->ObjectStartCommand[0] = '\0';
-	Worker->ObjectStopCommand[0] = '\0';
-	Worker->ObjectPrestartCommand[0] = '\0';
-	Worker->ObjectReloadCommand[0] = '\0';
-	Worker->ObjectPIDFile[0] = '\0';
-	Worker->ObjectStartPriority = 0;
-	Worker->ObjectStopPriority = 0;
-	Worker->Opts.StopMode = STOP_NONE;
-	Worker->Opts.CanStop = true;
-	Worker->ObjectPID = 0;
 	Worker->TermSignal = SIGTERM; /*This can be changed via config.*/
-	Worker->ObjectRunlevels = NULL;
-	Worker->Enabled = 2; /*We can indeed store this in a bool you know. There's no 1 bit datatype.*/
-	Worker->Opts.HaltCmdOnly = false;
-	Worker->Opts.RawDescription = false;
-	Worker->Opts.IsService = false;
-	Worker->Opts.AutoRestart = false;
-	Worker->Opts.EmulNoWait = false;
-	Worker->Opts.ForceShell = false;
-	Worker->Opts.HasPIDFile = false;
+	Worker->Enabled = 2; /*We can indeed store this in a bool you know.
+						There's no 1 bit datatype, and in Epoch,
+						Bool is just signed char.*/
+	Worker->Opts.StopTimeout = 10; /*Ten seconds by default.*/
 	
 	return Worker;
 }
 
 static rStatus ScanConfigIntegrity(void)
 { /*Here we check common mistakes and problems.*/
+#define IntegrityWarn(msg) WriteLogLine(msg, true), SpitWarning(msg)
 	ObjTable *Worker = ObjectTable, *TOffender;
 	char TmpBuf[1024];
 	rStatus RetState = SUCCESS;
@@ -1638,19 +1880,22 @@ static rStatus ScanConfigIntegrity(void)
 	
 	for (; Worker->Next != NULL; Worker = Worker->Next)
 	{		
-		if (*Worker->ObjectStartCommand == '\0' && *Worker->ObjectStopCommand == '\0' && Worker->Opts.StopMode == STOP_COMMAND)
+		if (Worker->ObjectStartCommand == NULL && Worker->ObjectStopCommand == NULL && Worker->Opts.StopMode == STOP_COMMAND)
 		{
 			snprintf(TmpBuf, 1024, "Object %s has neither ObjectStopCommand nor ObjectStartCommand attributes.", Worker->ObjectID);
 			SpitError(TmpBuf);
 			RetState = FAILURE;
 		}
 		
-		if (!Worker->Opts.HaltCmdOnly && *Worker->ObjectStartCommand == '\0')
+		if (!Worker->Opts.HaltCmdOnly && Worker->ObjectStartCommand == NULL)
 		{
 			snprintf(TmpBuf, 1024, "Object %s has no attribute ObjectStartCommand\nand is not set to HALTONLY.\n"
 					"Disabling.", Worker->ObjectID);
-			SpitWarning(TmpBuf);
+			IntegrityWarn(TmpBuf);
+			Worker->Opts.Exec = false; /*Just in case.*/
+			Worker->Opts.PivotRoot = false;
 			Worker->Enabled = false;
+			Worker->Started = false;
 			RetState = WARNING;
 		}
 		
@@ -1658,16 +1903,25 @@ static rStatus ScanConfigIntegrity(void)
 		{
 			snprintf(TmpBuf, 1024, "Object \"%s\" is set to stop via tracked PID,\n"
 					"but a PID file has been specified! Switching to STOP_PIDFILE from STOP_PID.", Worker->ObjectID);
-			SpitWarning(TmpBuf);
+			IntegrityWarn(TmpBuf);
 			Worker->Opts.StopMode = STOP_PIDFILE;
 			RetState = WARNING;
 		}
 		
+		if (Worker->Opts.PivotRoot && Worker->Opts.Exec)
+		{ /*What?*/
+			snprintf(TmpBuf, 1024, "Object \"%s\" has both EXEC and PIVOT options set!\n"
+					"This makes no sense. Disabling the object.", Worker->ObjectID);
+			IntegrityWarn(TmpBuf);
+			Worker->Enabled = false;
+			RetState = WARNING;
+		}
+
 		if (!Worker->Opts.HasPIDFile && Worker->Opts.StopMode == STOP_PIDFILE)
 		{
 			snprintf(TmpBuf, 1024, "Object \"%s\" is set to stop via PID File,\n"
 					"but no PID File attribute specified! Switching to STOP_PID.", Worker->ObjectID);
-			SpitWarning(TmpBuf);
+			IntegrityWarn(TmpBuf);
 			Worker->Opts.StopMode = STOP_PID;
 			RetState = WARNING;
 		}
@@ -1686,12 +1940,80 @@ static rStatus ScanConfigIntegrity(void)
 			RetState = FAILURE;
 		}
 		
-		if (Worker->Opts.StopMode == STOP_PID && Worker->Opts.HaltCmdOnly)
+		if (Worker->Opts.StopMode != STOP_COMMAND && Worker->Opts.HaltCmdOnly)
 		{ /*We put this here instead of InitConfig() because we can't really do anything but disable.*/
 			snprintf(TmpBuf, 1024, "Object \"%s\" has HALTONLY set,\n"
-					"but stop method is PID!\nDisabling.", Worker->ObjectID);
-			SpitWarning(TmpBuf);
+					"but stop method is not a command!\nDisabling.", Worker->ObjectID);
+			IntegrityWarn(TmpBuf);
 			Worker->Enabled = false;
+			Worker->Started = false;
+			Worker->Opts.StopMode = STOP_NONE;
+			RetState = WARNING;
+		}
+		
+		if (Worker->Opts.PivotRoot && Worker->Opts.HaltCmdOnly)
+		{
+			snprintf(TmpBuf, 1024, "Object \"%s\" has the PIVOT option set,\n"
+					"but has HALTONLY set as well. Disabling object.", Worker->ObjectID);
+			IntegrityWarn(TmpBuf);
+			Worker->Enabled = false;
+			Worker->Started = false;
+			Worker->Opts.PivotRoot = false;
+			RetState = WARNING;
+		}
+		
+		if (Worker->Opts.Exec && Worker->Opts.HaltCmdOnly)
+		{
+			snprintf(TmpBuf, 1024, "Object \"%s\" has the EXEC option set,\n"
+					"but has HALTONLY set as well. Disabling object.", Worker->ObjectID);
+			IntegrityWarn(TmpBuf);
+			Worker->Opts.Exec = false;
+			Worker->Enabled = false;
+			Worker->Started = false;
+			RetState = WARNING;
+		}
+		
+		if (Worker->Opts.NoStopWait && Worker->Opts.StopTimeout != 10)
+		{ /*Why are you setting a stop timeout and then turning off the thing that uses your new value?*/
+			snprintf(TmpBuf, 1024, "Object \"%s\" has both NOSTOPWAIT and STOPTIMEOUT options set.\n"
+					"This doesn't seem very useful.", Worker->ObjectID);
+			IntegrityWarn(TmpBuf);
+			RetState = WARNING;
+		}
+			
+		
+		if (Worker->Opts.PivotRoot && Worker->Opts.StopMode != STOP_NONE)
+		{
+			snprintf(TmpBuf, 1024, "Object \"%s\" has the PIVOT option set,\n"
+					"but ObjectStopCommand is not NONE. Setting to NONE.", Worker->ObjectID);
+			IntegrityWarn(TmpBuf);
+			
+			Worker->Opts.StopMode = STOP_NONE;
+			Worker->ObjectStopPriority = 0;
+			
+			if (Worker->ObjectStopCommand)
+			{
+				free(Worker->ObjectStopCommand);
+				Worker->ObjectStopCommand = NULL;
+			}
+			
+			RetState = WARNING;
+		}
+		
+		if (Worker->Opts.PivotRoot && Worker->Opts.HasPIDFile)
+		{
+			snprintf(TmpBuf, 1024, "Object \"%s\" has the PIVOT option set,\n"
+					"but a PID file has been specified. Unsetting PID file attribute.", Worker->ObjectID);
+			IntegrityWarn(TmpBuf);
+			
+			Worker->Opts.HasPIDFile = false;
+			
+			if (Worker->ObjectPIDFile)
+			{
+				free(Worker->ObjectPIDFile);
+				Worker->ObjectPIDFile = NULL;
+			}
+			
 			RetState = WARNING;
 		}
 		
@@ -1706,7 +2028,8 @@ static rStatus ScanConfigIntegrity(void)
 			}			
 		}
 	}
-	
+			
+			
 	WasRunBefore = true;
 	
 	return RetState;
@@ -2011,21 +2334,22 @@ static void RLInheritance_Shutdown(void)
 	RunlevelInheritance = NULL;
 }
 
-ObjTable *GetObjectByPriority(const char *ObjectRunlevel, Bool WantStartPriority, unsigned long ObjectPriority)
+ObjTable *GetObjectByPriority(const char *ObjectRunlevel, ObjTable *LastNode, Bool WantStartPriority, unsigned long ObjectPriority)
 { /*The primary lookup function to be used when executing commands.*/
-	ObjTable *Worker = ObjectTable;
+	ObjTable *Worker = LastNode ? LastNode->Next : ObjectTable;
+	unsigned long WorkerPriority = 0;
 	
 	if (!ObjectTable)
 	{
-		return NULL;
+		return (void*)-1; /*Error.*/
 	}
 	
 	for (; Worker->Next != NULL; Worker = Worker->Next)
 	{
+		WorkerPriority = (WantStartPriority ? Worker->ObjectStartPriority : Worker->ObjectStopPriority);
+		
 		if ((ObjectRunlevel == NULL || ((WantStartPriority || !Worker->Opts.HaltCmdOnly) &&
-			ObjRL_CheckRunlevel(ObjectRunlevel, Worker, true))) && 
-			/*As you can see by below, I obfuscate with efficiency!*/
-			(WantStartPriority ? Worker->ObjectStartPriority : Worker->ObjectStopPriority) == ObjectPriority)
+			ObjRL_CheckRunlevel(ObjectRunlevel, Worker, true))) && WorkerPriority == ObjectPriority)
 		{
 			return Worker;
 		}
@@ -2042,6 +2366,20 @@ void ShutdownConfig(void)
 	{
 		if (Worker->Next)
 		{
+			if (Worker->ObjectID) free(Worker->ObjectID);
+			
+			if (Worker->ObjectDescription &&
+				Worker->ObjectDescription != Worker->ObjectID) free(Worker->ObjectDescription);
+				
+			if (Worker->ObjectStartCommand) free(Worker->ObjectStartCommand);
+			if (Worker->ObjectStopCommand) free(Worker->ObjectStopCommand);
+			if (Worker->ObjectReloadCommand) free(Worker->ObjectReloadCommand);
+			if (Worker->ObjectPrestartCommand) free(Worker->ObjectPrestartCommand);
+			if (Worker->ObjectPIDFile) free(Worker->ObjectPIDFile);
+			if (Worker->ObjectWorkingDirectory) free(Worker->ObjectWorkingDirectory);
+			if (Worker->ObjectStdout) free(Worker->ObjectStdout);
+			if (Worker->ObjectStderr) free(Worker->ObjectStderr);
+			
 			ObjRL_ShutdownRunlevels(Worker);
 		}
 		
@@ -2050,7 +2388,6 @@ void ShutdownConfig(void)
 	}
 	
 	RLInheritance_Shutdown();
-	
 	ObjectTable = NULL;
 }
 
@@ -2062,6 +2399,7 @@ rStatus ReloadConfig(void)
 	Bool GlobalOpts[3], ConfigOK = true;
 	struct _RunlevelInheritance *RLIRoot = NULL, *RLIWorker[2] = { NULL };
 	char RunlevelBackup[MAX_DESCRIPT_SIZE];
+	void *TempPtr = NULL, *TempPtr2 = NULL;
 	
 	WriteLogLine("CONFIG: Reloading configuration.\n", true);
 	WriteLogLine("CONFIG: Backing up current configuration.", true);
@@ -2072,9 +2410,41 @@ rStatus ReloadConfig(void)
 	for (; Worker->Next != NULL; Worker = Worker->Next, SWorker = SWorker->Next)
 	{
 		*SWorker = *Worker; /*Direct as-a-unit copy of the main list node to the backup list node.*/
+		SWorker->Prev = TempPtr;
 		SWorker->Next = malloc(sizeof(ObjTable));
 		SWorker->Next->Next = NULL;
-		SWorker->Next->Prev = SWorker;
+		TempPtr = SWorker;
+		
+		/*Backup the dynamically allocated strings.*/
+		SWorker->ObjectID = Worker->ObjectID;
+		Worker->ObjectID = NULL;
+		
+		SWorker->ObjectDescription = Worker->ObjectDescription;
+		Worker->ObjectDescription = NULL;
+		
+		SWorker->ObjectStartCommand = Worker->ObjectStartCommand;
+		Worker->ObjectStartCommand = NULL;
+		
+		SWorker->ObjectStopCommand = Worker->ObjectStopCommand;
+		Worker->ObjectStopCommand = NULL;
+		
+		SWorker->ObjectPrestartCommand = Worker->ObjectPrestartCommand;
+		Worker->ObjectPrestartCommand = NULL;
+		
+		SWorker->ObjectReloadCommand = Worker->ObjectReloadCommand;
+		Worker->ObjectReloadCommand = NULL;
+		
+		SWorker->ObjectPIDFile = Worker->ObjectPIDFile;
+		Worker->ObjectPIDFile = NULL;
+		
+		SWorker->ObjectWorkingDirectory = Worker->ObjectWorkingDirectory;
+		Worker->ObjectWorkingDirectory = NULL;
+		
+		SWorker->ObjectStdout = Worker->ObjectStdout;
+		Worker->ObjectStdout = NULL;
+		
+		SWorker->ObjectStderr = Worker->ObjectStderr;
+		Worker->ObjectStderr = NULL;
 		
 		if (!Worker->ObjectRunlevels)
 		{
@@ -2083,12 +2453,15 @@ rStatus ReloadConfig(void)
 		
 		RLTemp2 = SWorker->ObjectRunlevels = malloc(sizeof(struct _RLTree));
 		
+		TempPtr2 = NULL;
 		for (RLTemp1 = Worker->ObjectRunlevels; RLTemp1->Next; RLTemp1 = RLTemp1->Next)
 		{
 			*RLTemp2 = *RLTemp1;
+			RLTemp2->Prev = TempPtr2;
 			RLTemp2->Next = malloc(sizeof(struct _RLTree));
 			RLTemp2->Next->Next = NULL;
-			RLTemp2->Next->Prev = RLTemp2;
+			TempPtr2 = RLTemp2;
+			
 			RLTemp2 = RLTemp2->Next;
 		}
 	}
@@ -2098,15 +2471,17 @@ rStatus ReloadConfig(void)
 	{
 		RLIRoot = RLIWorker[1] = malloc(sizeof(struct _RunlevelInheritance));
 		memset(RLIWorker[1], 0, sizeof(struct _RunlevelInheritance));
+		TempPtr = NULL;
 		
 		for (RLIWorker[0] = RunlevelInheritance; RLIWorker[0]->Next; RLIWorker[0] = RLIWorker[0]->Next)
 		{
 			*RLIWorker[1] = *RLIWorker[0];
-			
+			RLIWorker[1]->Prev = TempPtr;
+			TempPtr = RLIWorker[1];
 			RLIWorker[1]->Next = malloc(sizeof(struct _RunlevelInheritance));
 			memset(RLIWorker[1]->Next, 0, sizeof(struct _RunlevelInheritance));
 			
-			RLIWorker[1]->Next->Prev = RLIWorker[1];
+			RLIWorker[1] = RLIWorker[1]->Next;
 		}
 	}
 	
@@ -2118,7 +2493,6 @@ rStatus ReloadConfig(void)
 	/*Do this to prevent some weird options from being changeable by a config reload.*/
 	GlobalOpts[0] = EnableLogging;
 	GlobalOpts[1] = DisableCAD;
-	GlobalOpts[2] = AlignStatusReports;
 	
 	WriteLogLine("CONFIG: Initializing new configuration.", true);
 	
@@ -2128,42 +2502,59 @@ rStatus ReloadConfig(void)
 					" Restoring previous configuration from backup.", true);
 		SpitError("ReloadConfig(): Failed to reload configuration.\n"
 					"Restoring old configuration to memory.\n"
-					"Please check epoch.conf for syntax errors.");
-		ObjectTable = TRoot; /*Point ObjectTable to our new, identical copy of the old tree.*/
+					"Please check Epoch's configuration file for syntax errors.");
 		
-		/*Restore runlevel inheritance state.*/
-		RLInheritance_Shutdown();
-		RunlevelInheritance = RLIRoot;
+		ShutdownConfig();
+		
+		ObjectTable = TRoot; /*Point ObjectTable to our new, identical copy of the old tree.*/
+		RunlevelInheritance = RLIRoot; /*Restore runlevel inheritance.*/
 		
 		/*Restore current runlevel*/
 		snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", RunlevelBackup);
 		
 		ConfigOK = false;
+		
+		FinaliseLogStartup(false); /*Write any logs to disk.*/
 	}
 	
 	/*And then restore those options to their previous states.*/
 	EnableLogging = GlobalOpts[0];
 	DisableCAD = GlobalOpts[1];
-	AlignStatusReports = GlobalOpts[2];
 	
 	if (!ConfigOK) return ConfigOK;
 	
 	WriteLogLine("CONFIG: Restoring object statuses and deleting backup configuration.", true);
 	
-	for (SWorker = TRoot; SWorker->Next != NULL; SWorker = Temp)
+	for (SWorker = TRoot; SWorker != NULL; SWorker = Temp)
 	{ /*Add back the Started states, so we don't forget to stop services, etc.*/
-		if ((Worker = LookupObjectInTable(SWorker->ObjectID)))
+		
+		if (SWorker->Next)
 		{
-			Worker->Started = SWorker->Started;
-			Worker->ObjectPID = SWorker->ObjectPID;
-			Worker->StartedSince = SWorker->StartedSince;
+			if ((Worker = LookupObjectInTable(SWorker->ObjectID)))
+			{
+				Worker->Started = SWorker->Started;
+				Worker->ObjectPID = SWorker->ObjectPID;
+				Worker->StartedSince = SWorker->StartedSince;
+			}
+			
+			ObjRL_ShutdownRunlevels(SWorker);
+			
+			if (SWorker->ObjectID) free(SWorker->ObjectID);
+			if (SWorker->ObjectDescription &&
+				SWorker->ObjectDescription != SWorker->ObjectID) free(SWorker->ObjectDescription);
+			if (SWorker->ObjectStartCommand) free(SWorker->ObjectStartCommand);
+			if (SWorker->ObjectStopCommand) free(SWorker->ObjectStopCommand);
+			if (SWorker->ObjectReloadCommand) free(SWorker->ObjectReloadCommand);
+			if (SWorker->ObjectPrestartCommand) free(SWorker->ObjectPrestartCommand);
+			if (SWorker->ObjectPIDFile) free(SWorker->ObjectPIDFile);
+			if (SWorker->ObjectWorkingDirectory) free(SWorker->ObjectWorkingDirectory);
+			if (SWorker->ObjectStdout) free(SWorker->ObjectStdout);
+			if (SWorker->ObjectStderr) free(SWorker->ObjectStderr);
 		}
 		
-		ObjRL_ShutdownRunlevels(SWorker);
 		Temp = SWorker->Next;
 		free(SWorker);
 	}
-	free(SWorker);
 	
 	/*Release the runlevel inheritance table.*/
 	for (; RLIRoot != NULL; RLIRoot = RLIWorker[0])
@@ -2174,6 +2565,8 @@ rStatus ReloadConfig(void)
 	
 	WriteLogLine("CONFIG: " CONSOLE_COLOR_GREEN "Configuration reload successful." CONSOLE_ENDCOLOR, true);
 	puts(CONSOLE_COLOR_GREEN "Epoch: Configuration reloaded." CONSOLE_ENDCOLOR);
+	
+	FinaliseLogStartup(false); /*Clean up logs in memory.*/
 	
 	return SUCCESS;
 }
