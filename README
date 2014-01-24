@@ -11,7 +11,8 @@ Epoch can be built without it by passing the argument
 (this comes at the cost of support for any
 shell symbols like '&' and any types of quotes.)
 
-The build process only requires an ANSI C89 compliant compiler,
+The build process only requires an ANSI C89 compliant compiler
+that provides snprintf(), (or bring your own)
 glibc or similar with headers, kernel headers,
 and a bash-compatible shell.
 
