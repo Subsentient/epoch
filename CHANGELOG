@@ -1,209 +1,418 @@
-Changelog for 1.0 RC2, in order from newest to oldest.
-
-
-commit e9ddddae4aabed344cff8a0733f0127a5648a30f
+commit 6f8ec45cf77b1d619fb74ba0ba13c32276a2ec65
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Wed Dec 18 15:20:45 2013 -0700
+Date:   Fri Jan 24 14:03:35 2014 -0700
 
-    Fix forever-spaced bug with alignment on non-ttys.
+    Silence irrelevant warning in HandleEpochCommand().
 
-commit 56f03fee94dcb2dad8c10012fc90f2f224afcb82
+commit fa5ca4cfa38c0b5e70133ec83131ae7fb8f97b90
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Wed Dec 18 03:50:50 2013 -0700
+Date:   Fri Jan 24 05:18:09 2014 -0700
 
-    Fix a really embarassing typo I claimed wasn't.
+    Try to add a little safety to some operations.
 
-commit 215463b10a8d7d2e3ed47f28edb3557f8d000be3
+commit c32f1cc6910cb0b9db7e1c245e61a7fbb6ae5e94
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Wed Dec 18 03:42:34 2013 -0700
+Date:   Fri Jan 24 04:48:20 2014 -0700
 
-    Reap the force-killed possible job at shutdown. This is a cryptic description.
+    Implement a new approach for pivoting root that's more flexible and less tedious.
 
-commit 0728c6fe01b9ab78353a2c92c48e36d3f7e7a532
+commit aad40cd9abd911b5004acb8a2a0cda0860348183
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Wed Dec 18 03:32:43 2013 -0700
+Date:   Thu Jan 23 11:15:51 2014 -0700
 
-    Fix poweroff/halt/reboot commands not returning.
+    Fix Pivot Points broken by a recent commit.
 
-commit 669f8619c380120fe73c91f0217380c648744a66
+commit 6af7ad78c81f9e02067504373855181515a4145b
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Wed Dec 18 03:14:20 2013 -0700
+Date:   Thu Jan 23 00:46:56 2014 -0700
 
-    Don't wait forever if the client exited for reexec.
+    Fix InitConfig() logging for 'epoch configreload' command
 
-commit 2a2d31cb0dbf50f1b9ea76b6145703c454ac92cc
+commit 0b9870730ad90a87cdc2256c65d5984a4a7e1126
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Wed Dec 18 03:05:47 2013 -0700
+Date:   Thu Jan 23 00:38:44 2014 -0700
 
-    Remove all requirements for threading, use a coroutine instead.
+    Make InitConfig() more tolerant of whitespace where it doesn't belong.
 
-commit fd0310b4461643e04bcbbcf345c716eb55cadeed
+commit c2cdeb76fe7a0633693cc94cd931e82ada21ace1
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Mon Dec 16 15:35:38 2013 -0700
+Date:   Thu Jan 23 00:11:04 2014 -0700
 
-    Warn about unicode characters in epoch.conf
+    Fix bad method for detecting multiple ObjectRunlevels attributes.
 
-commit 860c97b3dc5406ca28199c2ee0997b3a95cff00a
+commit 709c22a64eb9e546efa466f7bbd8eb02439cfa7d
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Mon Dec 16 07:24:03 2013 -0700
+Date:   Thu Jan 23 00:06:24 2014 -0700
 
-    Remove accidentally left-over debugging trick.
+    Make it truly and severely illegal to put whitespace in PivotPointID attributes.
 
-commit b48abb8c6f76a529784e3b41dd9a21e812d7bdd7
+commit c7d995d85929eed5c935e9aa8faaa6bb2337a618
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Mon Dec 16 06:20:53 2013 -0700
+Date:   Wed Jan 22 20:17:24 2014 -0700
 
-    Allow scheduled shutdowns for those who are not root.
+    Adjust 'epoch status' output to reflect changes made to group/user system.
 
-commit 08b0dd90bf218d926a89984acd922599dd0cacae
+commit 5530c9a63512310e74372e964725515ae097d23a
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Mon Dec 16 06:07:16 2013 -0700
+Date:   Wed Jan 22 19:46:22 2014 -0700
 
-    Fix missing user in EmulWall().
+    Fix supplemental groups for ObjectUser.
 
-commit e2ede8a245e94d7c579420d2226da18946e7cc46
+commit 0051e59f8c50c70a831dbc13405f24957112f879
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Mon Dec 16 05:19:27 2013 -0700
+Date:   Wed Jan 22 08:56:02 2014 -0700
 
-    Fix some funky code for < 20 min shutdown warnings.
+    Rewrite the LSOBJ MemBus command to use pure binary transfers, and improve said command in other ways.
 
-commit c2feec6ffb07b9cbfb7d1094b3e0d6366830204b
+commit 5239ac5d5d1cb2be9c9e65458aa32eafa11bc723
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Wed Dec 11 21:20:53 2013 -0700
+Date:   Tue Jan 21 21:09:07 2014 -0700
 
-    Don't call the shell to start an object when unnecessary
+    Fix the rest of the environment variables for ObjectUser.
 
-commit 454dca588c8ef213cdadc3d95adbbf2784ef9486
+commit 45f0f90f3346e96d4307af83ded2063583ff48ec
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Wed Dec 11 14:21:22 2013 -0700
+Date:   Tue Jan 21 06:56:53 2014 -0700
 
-    Remove obsolete code from old status format.
+    Change to home directory before execution if we set ObjectUser.
 
-commit 84bad9ec559341977fafcecca31aaa6a86580248
+commit c4af5a7ebc0b29ce943c3fef95f4b5d71faf7325
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Wed Dec 11 14:12:10 2013 -0700
+Date:   Tue Jan 21 06:43:52 2014 -0700
 
-    Enable logging by default, and turn on BlankLogOnBoot by default.
+    Bugfixes to stdout/stderr redirection and the FORK option.
 
-commit a43c38f115c9cea19d503abc824dc6aba1eb6b08
+commit 45a1d6620f7b19e48b20dafe8178f10b1eab12ad
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Wed Dec 11 13:59:19 2013 -0700
+Date:   Tue Jan 21 02:30:11 2014 -0700
 
-    Safeguard against autorestart infinite loops.
+    Get rid of stupid and dangerous GlobalStdout/err option, and make stdout/stderr redirection work for stop/prestart/reload commands too.
 
-commit edb26b7def90fb6eaebbb9b6d5e1c6edb31b2acb
+commit f393c7778a257463b45c65305cef1c258350a102
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Wed Dec 11 03:07:33 2013 -0700
+Date:   Tue Jan 21 01:42:53 2014 -0700
 
-    Add times to 'epoch list' command, and then merge 'list' into 'status'.
+    Increment PID for objects that use our new FORK option.
 
-commit 34ae5fd8af7731daea6cd82220b19ed76dfcf06c
+commit 446bd21df3f918574ea2758830e64f2a3bf80c70
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Tue Dec 10 21:21:28 2013 -0700
+Date:   Tue Jan 21 01:25:28 2014 -0700
 
-    Add help for new 'epoch list' command, fix C89-related warnings.
+    Add a working "FORK" option to emulate '&' when we are built without shell support.
 
-commit 88948afce2b83a20a25da0565569b69e9f4593a5
+commit 504792e76e07e35e2be68ab4bbdbdb3354fb576f
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Tue Dec 10 20:47:39 2013 -0700
+Date:   Tue Jan 21 00:18:35 2014 -0700
 
-    Fix critical bug -- make TERMSIGNAL option work.
+    Do not allow ObjectID and ObjectDescription to exceed MAX_DESCRIPT_SIZE
 
-commit 0f5debc22ef121bbc12ccd6d5c0c105c2608fe3a
+commit 54fd2eed7c0ded9a68c8f0fc2ef3ce256d639370
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Tue Dec 10 20:45:43 2013 -0700
+Date:   Mon Jan 20 19:23:59 2014 -0700
 
-    Add very useful 'epoch list' command, updates the LSOBJS protocol.
+    Add support for stderr/stdout redirection, and change options USER and GROUP to real attributes ObjectUser and ObjectGroup.
 
-commit 61bca69f78d67f273d9a2d8bde328a7a80b2f5fd
+commit 23b898ab77e23306a044f2124846f1ae88b0b52a
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Tue Dec 10 01:50:07 2013 -0700
+Date:   Sat Jan 18 12:35:05 2014 -0700
 
-    Add ability to switch runlevels with 'epoch runlevel', clean up help code a big.
+    Fix some possible memory leaks by users repeating themselves in config.
 
-commit 90addf907578b6e8876cc0919332e67c220f3c1b
+commit a8c1be7185ce1c2ea44fa35b1fbe5b6bf35f7158
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Tue Dec 10 00:46:39 2013 -0700
+Date:   Sat Jan 18 12:30:07 2014 -0700
 
-    Fix typos in buildepoch.sh
+    Add support for specifying a working directory for objects.
 
-commit 32ea863e364083209d7cc202b149af5ce6cce9e9
+commit cbc4844bd9fa899906db264798398edab4a16651
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Mon Dec 9 21:32:36 2013 -0700
+Date:   Fri Jan 17 12:34:26 2014 -0700
 
-    Fix exit statuses and whatnot with some of the new command framework.
+    Replace some shorts that don't belong with ints.
 
-commit 369709e4509bd2e06d13d6b209fe51ee064d95de
+commit 1f6037f13b6220873eee4bfc5547b89f0e536a88
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Mon Dec 9 11:47:15 2013 -0700
+Date:   Thu Jan 16 18:53:34 2014 -0700
 
-    Fix support for non-glibc libcs.
+    Silence two warnings by clang-analyzer.
 
-commit e5a4e7282058df47c4afb57e93196983eb3b42c2
+commit a1d4face6df1f838b0b531e8298f79bc3d49367d
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Mon Dec 9 01:35:49 2013 -0700
+Date:   Thu Jan 16 15:52:37 2014 -0700
 
-    Make use of ObjectDescription optional, if not specified, use ObjectID instead.
+    Fix stupid non-ASCII character detection, make non-ascii chars critical.
 
-commit 2f51a701b0a3dba856d60d11e49de6c29161aa30
+commit d03b405a41af489d624943bb7b5d86624129092b
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Sun Dec 8 23:05:11 2013 -0700
+Date:   Thu Jan 16 12:06:26 2014 -0700
 
-    Fix broken ObjectDescription send through new membus third party interface.
+    Don't use regular char to copy binary data via MemBus.
 
-commit 79a91bde02c6486d583879d9ec87c9b363c5f953
+commit c1be9ba626304815ea1358a4f3f20022390e3ba6
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Sun Dec 8 20:23:01 2013 -0700
+Date:   Thu Jan 16 10:03:47 2014 -0700
 
-    Whitespace cannot be allowed in ObjectIDs. Ensure it isn't.
+    Guarantee that read-in files don't violate the standard.
+    
+    Interestingly, I even find references in K&R2 that violate the standard,
+    very similar to the code I corrected. fgetc() returns an unsigned char
+    cast to int, and if your machine's implementation uses signed chars,
+    if Epoch is compiled in C99 mode, it's possible for things to go sour,
+    depending on your compiler, since in C99 the compiler is given the choice
+    to raise a signal instead of being forced to try and convert it into a valid
+    value. If there is binary data in one of the files that's read in, this is possible.
+    
+    char does not trap: 6.2.6.1 of the C99 standard:
+    "Certain object representations need not represent a value of the object type. If the stored value of an object has such a representation and is read by an lvalue expression that does not have character type, the behavior is undefined. If such a representation is produced by a side effect that modifies all or any part of the object by an lvalue expression that does not have character type, the behavior is undefined.41) Such a representation is called a trap representation."
+    
+    Therefore, this fixes it.
 
-commit eb302942cd1ea65b0215386c6e8f8ba5ca95f149
+commit bafc5e15fec7539dfeb662c1ed3cd6785ec8dde4
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Sun Dec 8 19:42:47 2013 -0700
+Date:   Thu Jan 16 09:29:54 2014 -0700
 
-    Add untested, helpful membus interface for third party service managers.
+    Remove (reluctantly) initializers for some globals.
 
-commit 0589a8c8744e670f83626b62d589ed68d778808e
+commit 03dfd150756f8403307709ac3ba684d01ac55c97
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Sun Dec 8 16:00:47 2013 -0700
+Date:   Tue Jan 14 21:07:12 2014 -0700
 
-    Rewrite some bad argument handling in HandleEpochCommand().
+    Allow specifying a timeout time for stopping objects that have PIDs still running.
 
-commit 96f18012d64ae1d76ab833897101083b9754a65d
+commit 6b7b7f867065a8eb9ea1e2eb62d36d5c0d2bfbe1
+Merge: 53bd187 492f01f
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Fri Dec 6 18:10:32 2013 -0700
+Date:   Tue Jan 14 13:25:53 2014 -0700
 
-    Fix killing of the PrimaryLoop on shutdown.
+    Merge branch 'master' of http://github.com/Subsentient/epoch
 
-commit bc43b53b3bab803894272469e10f85a05f3f414f
+commit 53bd187c3a08624ec30fac99eeca7a2a8380e265
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Fri Dec 6 14:08:36 2013 -0700
+Date:   Tue Jan 14 13:25:38 2014 -0700
 
-    Make sure it's impossible to trigger a reboot when we're already shutting down. That ends badly sometimes.
+    Don't timeout waiting for a service restart.
 
-commit d6156a94733e0db53deb7b0d250c09c772395631
+commit 492f01fd372cd1611237fc649e7591e39f123df7
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Fri Dec 6 11:29:43 2013 -0700
+Date:   Mon Jan 13 05:35:31 2014 -0700
 
-    When waiting for PID files, allow us to kill those tasks via CTRL-ALT-DEL.
+    Rearrange ObjTable structure to help alignment a little bit.
 
-commit 71a6b8ad7d3e5d4d74fcc4a032807c56acf650ca
+commit b77eb83a006fbd01f8fd7c0aaec47688d2275a8e
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Fri Dec 6 10:00:42 2013 -0700
+Date:   Sat Jan 11 07:32:04 2014 -0700
 
-    Update version for 1.0 RC1
+    Use _exit() instead of exit() for failed exec().
 
-commit a954e04844f6e1cf33e8343c0e0d00b32152da6b
-Merge: 4f8ce89 74df2f2
+commit a26d1b51d6811ddde95c9e3fbca387a8a9db1307
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Fri Dec 6 09:59:43 2013 -0700
+Date:   Fri Jan 10 08:22:53 2014 -0700
 
-    Merge again to fix README.
+    Remove tacky type name for StopMode variable.
 
-commit 74df2f23e7837cf9e145e18e806821f12d85ee11
+commit c3e1e4c32512c51586659314e14d0f876fb5d654
 Author: Subsentient <thinkingrodent@gmail.com>
-Date:   Fri Dec 6 09:59:23 2013 -0700
+Date:   Fri Jan 10 08:02:46 2014 -0700
 
-    Fix bad info in README.
+    Fix a typo in last commit.
 
-End of changelog.
+commit 4510449e139a4277f921fa8150588d25a0f8ffe2
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Fri Jan 10 07:57:16 2014 -0700
+
+    Fix the kinks in MemBus, and organize it better.
+
+commit cffcc021969421a240cbba439a8543b6c07345d0
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Tue Jan 7 22:29:19 2014 -0700
+
+    Some fixes to the membus, but not done yet, and SIGUSR2 now causes reexec.
+
+commit ccdb3fcf4d108ca2d07f67b0c61a374e2cfec3c9
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Jan 6 13:25:13 2014 -0700
+
+    Couple fixes to execvp() argument lists in ExecuteConfigObject() and PerformPivotRoot().
+
+commit 484b580e27e79d430775982fd46f1bbd4afa2753
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Jan 6 12:44:44 2014 -0700
+
+    Show message at boot telling us if we are using an alternate config file.
+
+commit 58a1e90775aee26a02b737f22c73763534d65c40
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Jan 6 02:37:34 2014 -0700
+
+    Allow specifying the config file via the 'epochconfig=' kernel CLI option.
+
+commit 7ff49ed7ee10a6f9d90e0ec45ba9d4fb1bf7d6cd
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Jan 6 00:41:47 2014 -0700
+
+    Fix misc problems with ReloadConfig(), including missing support for PivotPoint backups.
+
+commit b0471a2befa1791b03dcbca1648f49b4689f7171
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Sun Jan 5 23:04:50 2014 -0700
+
+    Add support for (multiple) pivot_root.
+
+commit 881920d095e66c8952567c6ca04c81d8c6ab09d5
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Dec 30 17:19:53 2013 -0700
+
+    Fix for last commit: Do not run EVERYTHING as the specified user/group.
+
+commit 1c33a388471addaf71a16be0846d5c6c3b341cab
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Dec 30 17:06:37 2013 -0700
+
+    Add support for setting the user and group for objects to run as.
+
+commit 3384238ba87723002ef5111f054cdb3e08824a9f
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Dec 30 10:12:17 2013 -0700
+
+    Fix backwards-ness of vfork() and fork() with NOMMU.
+
+commit fec11e553e382b6a756a3c12893c8727af3e0bde
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Dec 30 09:57:50 2013 -0700
+
+    Fix useless volatile variables.
+
+commit 1950e277f83da1daad9571fd8a25405a173ce52a
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Dec 30 09:05:23 2013 -0700
+
+    Fix log failure after reexec.
+
+commit 24582005a6c09f2b3b14e1b7c74056da868a0dee
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Dec 30 08:14:19 2013 -0700
+
+    Add ability to use a signal for ObjectReloadCommand
+
+commit 87f8f6f999fa8b6e40719bf2aeca37124f859634
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Dec 30 02:59:14 2013 -0700
+
+    Fix bug with 'shutdown -whatever now' hanging the whole init system
+
+commit 8048068a248b5f94bd700366b87434d34cbe0219
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Dec 30 01:55:46 2013 -0700
+
+    Log any errors produced by InitConfig().
+
+commit f5e3a52fd7198b7d306c40855f621420bd046772
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Mon Dec 30 00:16:04 2013 -0700
+
+    Remove useless log warning that's never logged.
+
+commit 3151179ba71d0dd4b3179b3e14543581acb60fd1
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Sun Dec 29 18:44:43 2013 -0700
+
+    Add warning in logs when ObjectPrestartCommand doesn't return SUCCESS.
+
+commit aefe2cc9d43881a2009240bd3dee0fdb8936fbff
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Sat Dec 28 22:00:45 2013 -0700
+
+    Do not needlessly delete lines when making status reports.
+
+commit a234f71d7d01a27fa994c93da7ba33a6575fcc04
+Merge: 7200e7e 189ac22
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Sat Dec 28 21:52:44 2013 -0700
+
+    Merge branch 'master' of http://github.com/Subsentient/epoch
+
+commit 7200e7e801a050c7098d9de6cfc3302a186693eb
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Sat Dec 28 21:52:36 2013 -0700
+
+    Use a cleaner method for providing status reports.
+
+commit 189ac220e0b9c5aa3b2a18703c655ed6c9ed4e76
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Fri Dec 27 21:45:07 2013 -0700
+
+    Fix large memory leak.
+
+commit 34281b5036af9db3aeec4d43080c60df0e107af2
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Fri Dec 27 18:50:34 2013 -0700
+
+    Do not allow recursive segfaults etc.
+
+commit 384c8870a0b3a301445a8cb2a2c487dddc79f7e4
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Fri Dec 27 18:42:06 2013 -0700
+
+    Fix segfault from accessing the trailing Worker->Next node.
+
+commit 77605657d3c4209bff66d91b16956a23caae7a0a
+Merge: fe335f7 f6e9efa
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Fri Dec 27 16:23:17 2013 -0700
+
+    Merge branch 'master' of http://github.com/Subsentient/epoch
+
+commit fe335f7ab54d087ac14c67a186de6f42da5936e1
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Fri Dec 27 16:23:03 2013 -0700
+
+    Dynamically allocate the strings in ObjTable type, saving lots of memory.
+
+commit f6e9efa16e32dc4d1e8622c5380df193c1423b1c
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Fri Dec 27 04:57:42 2013 -0700
+
+    Fix missing waitpid() call
+
+commit dae997c665880c4a5190eb956fe13844b7ad7f74
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Fri Dec 27 03:53:09 2013 -0700
+
+    Rewrite code that allows objects with same priority. Order of start no longer undefined.
+
+commit d35fff9bdf00c4cf765d8596c9c55ab89d4f7e6d
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Wed Dec 25 22:35:28 2013 -0700
+
+    clarify a warning.
+
+commit 114ae8d04294a73980295690e7314ec8e76405dc
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Wed Dec 25 01:00:34 2013 -0700
+
+    Return warning if we CTRL-ALT-DEL kill a stop command waiting for the program to exit.
+
+commit 9ad76a56712aa82590c91de5b8818b490a76ee12
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Wed Dec 25 00:52:27 2013 -0700
+
+    Make new StopCommand wait failure warning actually go to logs.
+
+commit 1ff29fba2a07e08eab9ba523093ca0dec7c72d12
+Merge: dfb25f6 184dc71
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Wed Dec 25 00:50:17 2013 -0700
+
+    Merge branch 'master' of http://github.com/Subsentient/epoch
+
+commit dfb25f680a2457849f1dd386a30a0aef03ba2455
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Wed Dec 25 00:49:49 2013 -0700
+
+    Wait for StopCommands to execute and give option to override, and nuke the deprecated NOWAIT config option.
+
+commit 184dc713deb655797eaf2797013c462dc58200bb
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Tue Dec 24 01:56:38 2013 -0700
+
+    Warn us in logs if we can't detect the PID file within 10 seconds of object start.
