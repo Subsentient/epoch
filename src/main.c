@@ -618,7 +618,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		char *Worker = NULL;
 		char RLExpect[MEMBUS_MSGSIZE ];
 		unsigned long PID = 0;
-		Bool Started = false, Running = false, Enabled = false, PivotRoot = false, Persistent = false;
+		Bool Started = false, Running = false, Enabled = false, PivotRoot = false, Persistent = false, Exec = false;
 		enum _StopMode StopMode;
 		unsigned char TermSignal = 0, ReloadCommandSignal = 0, *BinWorker = NULL;
 		unsigned long StartedSince, UserID, GroupID, Inc = 0, StopTimeout;
@@ -687,7 +687,6 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			Started = *BinWorker++;
 			Running = *BinWorker++;
 			Enabled = *BinWorker++;
-			PivotRoot = *BinWorker++;
 			TermSignal = *BinWorker++;
 			ReloadCommandSignal = *BinWorker++;
 
@@ -743,6 +742,12 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 					case COPT_NOSTOPWAIT:
 						NoStopWait = true;
 						break;
+					case COPT_EXEC:
+						Exec = true;
+						break;
+					case COPT_PIVOTROOT:
+						PivotRoot = true;
+						break;
 					default:
 						break;
 				}
@@ -783,7 +788,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			}
 			
 			if (IsService || AutoRestart || HaltCmdOnly || Persistent || Fork || StopTimeout != 10 || 
-				ForceShell || RawDescription || NoStopWait || PivotRoot || TermSignal != SIGTERM)
+				ForceShell || RawDescription || NoStopWait || PivotRoot || TermSignal != SIGTERM || Exec)
 			{
 				printf("Options:");
 				
@@ -796,7 +801,8 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 				if (RawDescription) printf(" RAWDESCRIPTION");
 				if (TermSignal != SIGTERM) printf(" TERMSIGNAL=%u", TermSignal);
 				if (NoStopWait) printf(" NOSTOPWAIT");
-				if (PivotRoot) printf(" <PivotPoint>");
+				if (PivotRoot) printf(" PIVOT");
+				if (Exec) printf(" EXEC");
 				if (StopTimeout != 10) printf(" STOPTIMEOUT=%lu", StopTimeout);
 				
 				putchar('\n');

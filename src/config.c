@@ -61,7 +61,7 @@ static void RLInheritance_Shutdown(void);
 
 /*Used for error handling in InitConfig() by ConfigProblem().*/
 enum { CONFIG_EMISSINGVAL = 1, CONFIG_EBADVAL, CONFIG_ETRUNCATED, CONFIG_EAFTER,
-	CONFIG_EBEFORE, CONFIG_ELARGENUM, CONFIG_EPIVOTAFTER, CONFIG_EPIVOTBEFORE };
+	CONFIG_EBEFORE, CONFIG_ELARGENUM };
 
 /*Actual functions.*/
 static char *NextLine(const char *InStream)
@@ -133,14 +133,6 @@ static void ConfigProblem(short Type, const char *Attribute, const char *AttribV
 			snprintf(TmpBuf, 1024, "Attribute %s in %s line %lu has\n"
 					"abnormally high numeric value and may cause malfunctions.", Attribute, ConfigFile, LineNum);
 			break;
-		case CONFIG_EPIVOTAFTER:
-			snprintf(TmpBuf, 1024, "Attribute %s cannot be set after any ObjectID attribute.\n"
-					"Line %lu in %s", Attribute, LineNum, ConfigFile);
-			break;
-		case CONFIG_EPIVOTBEFORE:
-			snprintf(TmpBuf, 1024, "Attribute %s comes before any PivotPoint attribute.\n"
-					"%s line %lu. Ignoring.", Attribute, ConfigFile, LineNum);
-			break;
 		default:
 			return;
 	}
@@ -157,7 +149,6 @@ rStatus InitConfig(void)
 	struct stat FileStat;
 	char *ConfigStream = NULL, *Worker = NULL;
 	ObjTable *CurObj = NULL, *ObjWorker = NULL;
-	struct _PivotPoint *CurPivot = NULL;
 	char DelimCurr[MAX_LINE_SIZE] = { '\0' };
 	unsigned long LineNum = 1;
 	const char *CurrentAttribute = NULL;
@@ -781,6 +772,14 @@ rStatus InitConfig(void)
 					WriteLogLine(ErrBuf, true);
 			#endif /*NOMMU*/
 				}
+				else if (!strcmp(CurArg, "EXEC"))
+				{
+					CurObj->Opts.Exec = true;
+				}
+				else if (!strcmp(CurArg, "PIVOT"))
+				{
+					CurObj->Opts.PivotRoot = true;
+				}
 				else if (!strcmp(CurArg, "RAWDESCRIPTION"))
 				{
 					CurObj->Opts.RawDescription = true;
@@ -926,9 +925,6 @@ rStatus InitConfig(void)
 		}
 		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStartCommand"), strlen("ObjectStartCommand")))
 		{ /*What we execute to start it.*/
-			const char *TWorker = DelimCurr;
-			char *Temp = NULL;
-
 			if (!CurObj)
 			{
 				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
@@ -941,42 +937,10 @@ rStatus InitConfig(void)
 				continue;
 			}
 			
-			if (!strncmp("PIVOT", DelimCurr, strlen("PIVOT")))
-			{
-				TWorker += strlen("PIVOT");
-				
-				if (*TWorker != ' ' && *TWorker != '\t')
-				{
-					ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
-					continue;
-				}
-				
-				while (*TWorker == ' ' || *TWorker == '\t') ++TWorker;
-				
-				if (*TWorker == '\0')
-				{
-					ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
-					continue;
-				}
-				
-				/*Made it this far.*/
-				CurObj->Opts.PivotRoot = true;
-			}
-				
 			if (CurObj->ObjectStartCommand) free(CurObj->ObjectStartCommand);
-			
-			if (CurObj->Opts.PivotRoot && (Temp = strpbrk(TWorker, " \t")) != NULL)
-			{
-				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Object \"%s\"'s ObjectStartCommand atrribute specifies Pivot Point, \n"
-						"but whitespace detected in Pivot Point ID! Truncating to start of whitespace.\n"
-						"Line %lu in %s", CurObj->ObjectID, LineNum, ConfigFile);
-				SpitWarning(ErrBuf);
-				WriteLogLine(ErrBuf, true);
-				*Temp = '\0';
-			}
-			
-			CurObj->ObjectStartCommand = malloc(strlen(TWorker) + 1);
-			strncpy(CurObj->ObjectStartCommand, TWorker, strlen(TWorker) + 1);
+
+			CurObj->ObjectStartCommand = malloc(strlen(DelimCurr) + 1);
+			strncpy(CurObj->ObjectStartCommand, DelimCurr, strlen(DelimCurr) + 1);
 
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
@@ -1469,108 +1433,6 @@ rStatus InitConfig(void)
 			continue;
 
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "PivotPointID"), strlen("PivotPointID")))
-		{	
-			char *Temp = NULL;
-					
-			if (CurObj != NULL)
-			{
-				ConfigProblem(CONFIG_EPIVOTAFTER, CurrentAttribute, NULL, LineNum);
-				continue;
-			}
-			
-			if (!GetLineDelim(Worker, DelimCurr))
-			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
-				continue;
-			}
-			
-			if ((Temp = strpbrk(DelimCurr, " \t")) != NULL)
-			{
-				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "PivotPointID attribute contains whitespace! This is illegal!\n"
-						"Truncating up to point of whitespace's occurence.\n"
-						"Line %lu in %s", LineNum, ConfigFile);
-				SpitWarning(ErrBuf);
-				WriteLogLine(ErrBuf, true);
-				*Temp = '\0';
-			}
-			
-			CurPivot = PivotPoint_Add(DelimCurr);
-			
-			continue;
-		}
-		else if (!strncmp(Worker, (CurrentAttribute = "PivotPointCommand"), strlen("PivotPointCommand")))
-		{
-			if (CurObj != NULL)
-			{
-				ConfigProblem(CONFIG_EPIVOTAFTER, CurrentAttribute, NULL, LineNum);
-				continue;
-			}
-			
-			if (!CurPivot)
-			{
-				ConfigProblem(CONFIG_EPIVOTBEFORE, CurrentAttribute, NULL, LineNum);
-				continue;
-			}
-			
-			if (!GetLineDelim(Worker, DelimCurr))
-			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
-				continue;
-			}
-			
-			snprintf(CurPivot->Command, sizeof CurPivot->Command, "%s", DelimCurr);
-			
-			continue;
-		}
-		else if (!strncmp(Worker, (CurrentAttribute = "PivotPointNewRoot"), strlen("PivotPointNewRoot")))
-		{
-			if (CurObj != NULL)
-			{
-				ConfigProblem(CONFIG_EPIVOTAFTER, CurrentAttribute, NULL, LineNum);
-				continue;
-			}
-			
-			if (!CurPivot)
-			{
-				ConfigProblem(CONFIG_EPIVOTBEFORE, CurrentAttribute, NULL, LineNum);
-				continue;
-			}
-			
-			if (!GetLineDelim(Worker, DelimCurr))
-			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
-				continue;
-			}
-			
-			snprintf(CurPivot->NewRoot, sizeof CurPivot->NewRoot, "%s", DelimCurr);
-			
-			continue;
-		}
-		else if (!strncmp(Worker, (CurrentAttribute = "PivotPointOldRootDir"), strlen("PivotPointOldRootDir")))
-		{
-			if (CurObj != NULL)
-			{
-				ConfigProblem(CONFIG_EPIVOTAFTER, CurrentAttribute, NULL, LineNum);
-				continue;
-			}
-			
-			if (!CurPivot)
-			{
-				ConfigProblem(CONFIG_EPIVOTBEFORE, CurrentAttribute, NULL, LineNum);
-				continue;
-			}
-			
-			if (!GetLineDelim(Worker, DelimCurr))
-			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
-				continue;
-			}
-			
-			snprintf(CurPivot->OldRootDir, sizeof CurPivot->OldRootDir, "%s", DelimCurr);
-			
-			continue;
-		}
 		else
 		{ /*No big deal.*/
 			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Unidentified attribute in %s on line %lu.", ConfigFile, LineNum);
@@ -1950,7 +1812,6 @@ static rStatus ScanConfigIntegrity(void)
 	char TmpBuf[1024];
 	rStatus RetState = SUCCESS;
 	static Bool WasRunBefore = false;
-	struct _PivotPoint *PivotWorker = PivotCore;
 	
 	if (ObjectTable == NULL)
 	{ /*This can happen if configuration is filled with trash and nothing valid.*/
@@ -2031,6 +1892,8 @@ static rStatus ScanConfigIntegrity(void)
 			snprintf(TmpBuf, 1024, "Object %s has no attribute ObjectStartCommand\nand is not set to HALTONLY.\n"
 					"Disabling.", Worker->ObjectID);
 			IntegrityWarn(TmpBuf);
+			Worker->Opts.Exec = false; /*Just in case.*/
+			Worker->Opts.PivotRoot = false;
 			Worker->Enabled = false;
 			Worker->Started = false;
 			RetState = WARNING;
@@ -2045,6 +1908,15 @@ static rStatus ScanConfigIntegrity(void)
 			RetState = WARNING;
 		}
 		
+		if (Worker->Opts.PivotRoot && Worker->Opts.Exec)
+		{ /*What?*/
+			snprintf(TmpBuf, 1024, "Object \"%s\" has both EXEC and PIVOT options set!\n"
+					"This makes no sense. Disabling the object.", Worker->ObjectID);
+			IntegrityWarn(TmpBuf);
+			Worker->Enabled = false;
+			RetState = WARNING;
+		}
+
 		if (!Worker->Opts.HasPIDFile && Worker->Opts.StopMode == STOP_PIDFILE)
 		{
 			snprintf(TmpBuf, 1024, "Object \"%s\" is set to stop via PID File,\n"
@@ -2078,12 +1950,21 @@ static rStatus ScanConfigIntegrity(void)
 			RetState = WARNING;
 		}
 		
-		/*Check various turditudes from PivotPoint attributes.*/
 		if (Worker->Opts.PivotRoot && Worker->Opts.HaltCmdOnly)
 		{
-			snprintf(TmpBuf, 1024, "Object \"%s\" has a PivotPoint for a start command,\n"
+			snprintf(TmpBuf, 1024, "Object \"%s\" has the PIVOT option set,\n"
 					"but has HALTONLY set as well. Disabling object.", Worker->ObjectID);
 			IntegrityWarn(TmpBuf);
+			Worker->Enabled = false;
+			Worker->Started = false;
+			RetState = WARNING;
+		}
+		if (Worker->Opts.Exec && Worker->Opts.HaltCmdOnly)
+		{
+			snprintf(TmpBuf, 1024, "Object \"%s\" has the EXEC option set,\n"
+					"but has HALTONLY set as well. Disabling object.", Worker->ObjectID);
+			IntegrityWarn(TmpBuf);
+			Worker->Opts.Exec = false;
 			Worker->Enabled = false;
 			Worker->Started = false;
 			RetState = WARNING;
@@ -2142,33 +2023,6 @@ static rStatus ScanConfigIntegrity(void)
 				SpitError(TmpBuf);
 				RetState = FAILURE;
 			}			
-		}
-	}
-	
-	if (PivotWorker)
-	{ /*Problems with PivotPoints are critical since they deeply affect the boot sequence.*/
-		for (; PivotWorker->Next; PivotWorker = PivotWorker->Next)
-		{
-			if (PivotWorker->Command[0] == '\0')
-			{
-				snprintf(TmpBuf, 1024, "PivotPoint %s has no PivotPointCommand attribute.", PivotWorker->ID);
-				SpitError(TmpBuf);
-				RetState = FAILURE;
-			}
-			
-			if (PivotWorker->NewRoot[0] == '\0')
-			{
-				snprintf(TmpBuf, 1024, "PivotPoint %s has no PivotPointNewRoot attribute.", PivotWorker->ID);
-				SpitError(TmpBuf);
-				RetState = FAILURE;
-			}
-			
-			if (PivotWorker->OldRootDir[0] == '\0')
-			{
-				snprintf(TmpBuf, 1024, "PivotPoint %s has no PivotPointOldRootDir attribute.", PivotWorker->ID);
-				SpitError(TmpBuf);
-				RetState = FAILURE;
-			}
 		}
 	}
 			
@@ -2531,7 +2385,6 @@ void ShutdownConfig(void)
 	}
 	
 	RLInheritance_Shutdown();
-	PivotPoint_Shutdown();
 	ObjectTable = NULL;
 }
 
@@ -2540,7 +2393,6 @@ rStatus ReloadConfig(void)
 	ObjTable *Worker = ObjectTable;
 	ObjTable *TRoot = malloc(sizeof(ObjTable)), *SWorker = TRoot, *Temp = NULL;
 	struct _RLTree *RLTemp1 = NULL, *RLTemp2 = NULL;
-	struct _PivotPoint *PivotWorker[2] = { NULL }, *PVRoot = PivotCore;
 	Bool GlobalOpts[3], ConfigOK = true;
 	struct _RunlevelInheritance *RLIRoot = NULL, *RLIWorker[2] = { NULL };
 	char RunlevelBackup[MAX_DESCRIPT_SIZE];
@@ -2630,24 +2482,6 @@ rStatus ReloadConfig(void)
 		}
 	}
 	
-	/*Back up the PivotPoint table.*/
-	if (PivotCore != NULL)
-	{
-		PVRoot = PivotWorker[1] = malloc(sizeof(struct _PivotPoint));
-		memset(PivotWorker[1], 0, sizeof(struct _PivotPoint));
-
-		TempPtr = NULL;
-		for (PivotWorker[0] = PivotCore; PivotWorker[0]->Next; PivotWorker[0] = PivotWorker[0]->Next, PivotWorker[1] = PivotWorker[1]->Next)
-		{
-			*PivotWorker[1] = *PivotWorker[0];
-			
-			PivotWorker[1]->Prev = TempPtr;
-			PivotWorker[1]->Next = malloc(sizeof(struct _PivotPoint));
-			PivotWorker[1]->Next->Next = NULL;
-			
-			TempPtr = PivotWorker[1];
-		}
-	}
 	WriteLogLine("CONFIG: Shutting down configuration.", true);
 	
 	/*Actually do the reload of the config.*/
@@ -2671,7 +2505,6 @@ rStatus ReloadConfig(void)
 		
 		ObjectTable = TRoot; /*Point ObjectTable to our new, identical copy of the old tree.*/
 		RunlevelInheritance = RLIRoot; /*Restore runlevel inheritance.*/
-		PivotCore = PVRoot; /*Restore pivot_root pivotpoints.*/
 		
 		/*Restore current runlevel*/
 		snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", RunlevelBackup);
@@ -2725,12 +2558,6 @@ rStatus ReloadConfig(void)
 	{
 		RLIWorker[0] = RLIRoot->Next;
 		free(RLIRoot);
-	}
-	
-	for (PivotWorker[0] = PVRoot; PivotWorker[0]; PivotWorker[0] = PivotWorker[1])
-	{ /*Release PivotPoint backup table.*/
-		PivotWorker[1] = PivotWorker[0]->Next;
-		free(PivotWorker[0]);
 	}
 	
 	WriteLogLine("CONFIG: " CONSOLE_COLOR_GREEN "Configuration reload successful." CONSOLE_ENDCOLOR, true);

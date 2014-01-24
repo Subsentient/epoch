@@ -409,7 +409,6 @@ void ParseMemBus(void)
 			*BinWorker++ = (Worker->Started && !Worker->Opts.HaltCmdOnly);
 			*BinWorker++ = ObjectProcessRunning(Worker);
 			*BinWorker++ = Worker->Enabled;
-			*BinWorker++ = Worker->Opts.PivotRoot;
 			*BinWorker++ = Worker->TermSignal;
 			*BinWorker++ = Worker->ReloadCommandSignal;
 			
@@ -440,6 +439,8 @@ void ParseMemBus(void)
 			if (Worker->Opts.AutoRestart) *BinWorker++ = COPT_AUTORESTART;
 			if (Worker->Opts.ForceShell) *BinWorker++ = COPT_FORCESHELL;
 			if (Worker->Opts.NoStopWait) *BinWorker++ = COPT_NOSTOPWAIT;
+			if (Worker->Opts.Exec) *BinWorker++ = COPT_EXEC;
+			if (Worker->Opts.PivotRoot) *BinWorker++ = COPT_PIVOTROOT;
 	
 			*BinWorker = 0;
 			

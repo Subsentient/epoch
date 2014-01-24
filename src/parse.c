@@ -420,31 +420,44 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		/*This means we are doing an equivalent pivot_root...*/
 		if (CurObj->Opts.PivotRoot)
 		{
-			char TmpBuf[MAX_LINE_SIZE];
-			struct _PivotPoint *PivotPoint = PivotPoint_Lookup(CurObj->ObjectStartCommand);
+			unsigned long Inc = 0;
+			char NewRoot[MAX_LINE_SIZE], OldRootDir[MAX_LINE_SIZE], *Worker = CurObj->ObjectStartCommand;
 			
-			
-			if (!PivotPoint)
+			if (CurObj->ObjectStartCommand == NULL)
 			{
-				fprintf(stderr, CONSOLE_COLOR_RED "Failed" CONSOLE_ENDCOLOR
-						" to lookup requested pivot point \"%s\" for object \"%s\"!",
-						CurObj->ObjectStartCommand, CurObj->ObjectID);
-				EmergencyShell();
+				CompleteStatusReport(PrintOutStream, FAILURE, true);
+				return FAILURE;
 			}
-						
-			strcpy(TmpBuf, CurObj->ObjectID);
-
-			PerformPivotRoot(PivotPoint);
+				
+			for (; *Worker != ' ' && *Worker != '\t' && *Worker != '\0' && Inc < MAX_LINE_SIZE - 1; ++Inc, ++Worker)
+			{
+				NewRoot[Inc] = *Worker;
+			}
+			NewRoot[Inc] = '\0';
 			
-			/*Means it didn't go as planned or we didn't find it.*/
-			CompleteStatusReport(PrintOutStream, FAILURE, false);
+			Worker = WhitespaceArg(Worker);
 			
-			fprintf(stderr, CONSOLE_COLOR_RED "Failed" CONSOLE_ENDCOLOR
-					" to perform pivot_root requested by object %s. Starting emergency shell.", TmpBuf);
+			snprintf(OldRootDir, sizeof OldRootDir, "%s", Worker);
 			
-			EmergencyShell();
+			PerformPivotRoot(NewRoot, OldRootDir);
 			
+			CompleteStatusReport(PrintOutStream, SUCCESS, true);
+			return SUCCESS;
 		}
+		else if (CurObj->Opts.Exec)
+		{ /*We are supposed to replace ourselves with this.*/
+			if (CurObj->ObjectStartCommand == NULL)
+			{
+				CompleteStatusReport(PrintOutStream, FAILURE, true);
+				return FAILURE;
+			}
+			
+			PerformExec(CurObj->ObjectStartCommand);
+			
+			CompleteStatusReport(PrintOutStream, FAILURE, true);
+			return FAILURE;
+		}
+			
 			
 		if (CurObj->ObjectPrestartCommand != NULL)
 		{

@@ -29,7 +29,6 @@ static void PrimaryLoop(void);
 struct _HaltParams HaltParams = { -1 };
 Bool AutoMountOpts[5];
 static Bool ContinuePrimaryLoop = true;
-struct _PivotPoint *PivotCore;
 
 /*Functions.*/
 static void MountVirtuals(void)
@@ -528,44 +527,12 @@ void ReexecuteEpoch(void)
 	exit(0);
 }
 
-void PerformPivotRoot(struct _PivotPoint *PivotPoint)
-{ /*Replace us with another init.*/
-	char **Buffer = NULL;
-	char Cmd[MAX_LINE_SIZE];
-	char LogBuf[MAX_LINE_SIZE];
-	char *Worker = PivotPoint->Command;
+void PerformExec(const char *Cmd)
+{
 	unsigned long Inc = 0, NumSpaces = 1, cOffset = 0, Inc2 = 0;
-	
-	if (!PivotPoint)
-	{
-		SpitError("NULL value passed to PerformPivotRoot()!");
-		EmergencyShell();
-	}
-	
-	if (EnableLogging)
-	{
-		snprintf(LogBuf, sizeof LogBuf, CONSOLE_COLOR_CYAN "Performing a pivot root to %s..." CONSOLE_ENDCOLOR, PivotPoint->Command);
-		WriteLogLine(LogBuf, true);
-		EnableLogging = false;
-	}
+	char **Buffer = NULL;
+	const char *Worker = Cmd;
 
-	/*Sync to be safe.*/
-	sync();
-	
-	/*Shut down membus.*/
-	ShutdownMemBus(true);
-
-	/*pivot_root now.*/
-	if (syscall(SYS_pivot_root, PivotPoint->NewRoot, PivotPoint->OldRootDir) != 0)
-	{
-		SpitError("Failed to pivot_root()!");
-		EmergencyShell();
-	}
-
-	chdir("/"); /*Reset working directory*/
-
-	snprintf(Cmd, sizeof Cmd, "%s", PivotPoint->Command);
-		
 	while ((Worker = WhitespaceArg(Worker))) ++NumSpaces;
 	
 	Buffer = malloc(sizeof(char*) * NumSpaces + 1);
@@ -586,20 +553,38 @@ void PerformPivotRoot(struct _PivotPoint *PivotPoint)
 	}
 	
 	Buffer[NumSpaces] = NULL;
-
-	/*Shutdown config, because doing it any earlier will also shutdown all pivot points.*/
-	ShutdownConfig();
+	
+	sync();
+	
+	ShutdownMemBus(true);
 
 	for (Inc = 1; Inc < NSIG; ++Inc)
 	{ /*Reset signal handlers.*/
 		signal(Inc, SIG_DFL);
 	}
 
-	execvp(Buffer[0], Buffer); /*Perform the pivot.*/
+	execvp(Buffer[0], Buffer); /*Perform the exec.*/
 	
-	SpitError("exec() failed after pivot_root! Starting emergency shell.");
+	SpitError("exec() failed! Starting emergency shell.");
 	EmergencyShell();
 }
+
+void PerformPivotRoot(const char *NewRoot, const char *OldRootDir)
+{ /*Switch to a new root fs.*/	
+	/*Sync to be safe.*/
+	sync();
+
+	/*pivot_root now.*/
+	if (syscall(SYS_pivot_root, NewRoot, OldRootDir) != 0)
+	{
+		SpitError("Failed to pivot_root()!");
+		EmergencyShell();
+	}
+
+	chdir("/"); /*Reset working directory*/
+}
+
+
 
 void FinaliseLogStartup(Bool BlankLog)
 {
@@ -834,57 +819,4 @@ void LaunchShutdown(signed long Signal)
 	
 	SpitError("Failed to reboot/halt/power down!");
 	EmergencyShell();
-}
-
-struct _PivotPoint *PivotPoint_Add(const char *ID)
-{
-	struct _PivotPoint *Worker = PivotCore;
-	
-	if (!Worker)
-	{
-		PivotCore = Worker = malloc(sizeof(struct _PivotPoint));
-		memset(PivotCore, 0, sizeof(struct _PivotPoint));
-	}
-	
-	for (; Worker->Next; Worker = Worker->Next)
-	{
-		if (!strcmp(Worker->ID, ID))
-		{
-			return NULL; /*Tells us it already exists.*/
-		}
-	}
-	
-	Worker->Next = malloc(sizeof(struct _PivotPoint));
-	memset(Worker->Next, 0, sizeof(struct _PivotPoint));
-	Worker->Next->Prev = Worker;
-	
-	strcpy(Worker->ID, ID);
-	
-	return Worker;
-}
-
-struct _PivotPoint *PivotPoint_Lookup(const char *ID)
-{
-	struct _PivotPoint *Worker = PivotCore;
-	
-	if (!Worker) return NULL;
-	
-	for (; Worker->Next; Worker = Worker->Next)
-	{
-		if (!strcmp(ID, Worker->ID)) return Worker;
-	}
-	
-	return NULL;
-}
-
-
-void PivotPoint_Shutdown(void)
-{
-	struct _PivotPoint *Worker = PivotCore, *Next = NULL;
-	
-	for (; Worker != NULL; Worker = Next)
-	{
-		Next = Worker->Next;
-		free(Worker);
-	}
 }
