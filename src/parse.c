@@ -63,6 +63,15 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	static Bool DidWarn = false;
 	const char *ShellPath = "/bin/sh";
 	
+	if (CurCmd == NULL)
+	{
+		const char *ErrMsg = "NULL value passed to ExecuteConfigObject()! This is likely a bug.";
+		SpitError(ErrMsg);
+		WriteLogLine(ErrMsg, true);
+		
+		return FAILURE;
+	}
+	
 	/*Check how we should handle PIDs for each shell. In order to get the PID, exit status,
 	* and support shell commands, we need to jump through a bunch of hoops.*/
 	if (ShellEnabled)
@@ -380,6 +389,12 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		return SUCCESS;
 	}
 	
+	if (!IsStartingMode && CurObj->Opts.HaltCmdOnly &&
+		!CurObj->ObjectStopCommand && CurObj->Opts.StopMode == STOP_COMMAND)
+	{ /*This can happen too.*/
+		return SUCCESS;
+	}
+	
 	if (PrintStatus)
 	{/*Copy in the description to be printed to the console.*/
 		if (CurObj->Opts.RawDescription)
@@ -422,12 +437,6 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		{
 			unsigned long Inc = 0;
 			char NewRoot[MAX_LINE_SIZE], OldRootDir[MAX_LINE_SIZE], *Worker = CurObj->ObjectStartCommand;
-			
-			if (CurObj->ObjectStartCommand == NULL)
-			{
-				CompleteStatusReport(PrintOutStream, FAILURE, true);
-				return FAILURE;
-			}
 				
 			for (; *Worker != ' ' && *Worker != '\t' && *Worker != '\0' && Inc < MAX_LINE_SIZE - 1; ++Inc, ++Worker)
 			{
@@ -446,11 +455,6 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		}
 		else if (CurObj->Opts.Exec)
 		{ /*We are supposed to replace ourselves with this.*/
-			if (CurObj->ObjectStartCommand == NULL)
-			{
-				CompleteStatusReport(PrintOutStream, FAILURE, true);
-				return FAILURE;
-			}
 			
 			PerformExec(CurObj->ObjectStartCommand);
 			

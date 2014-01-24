@@ -1940,13 +1940,14 @@ static rStatus ScanConfigIntegrity(void)
 			RetState = FAILURE;
 		}
 		
-		if (Worker->Opts.StopMode == STOP_PID && Worker->Opts.HaltCmdOnly)
+		if (Worker->Opts.StopMode != STOP_COMMAND && Worker->Opts.HaltCmdOnly)
 		{ /*We put this here instead of InitConfig() because we can't really do anything but disable.*/
 			snprintf(TmpBuf, 1024, "Object \"%s\" has HALTONLY set,\n"
-					"but stop method is PID!\nDisabling.", Worker->ObjectID);
+					"but stop method is not a command!\nDisabling.", Worker->ObjectID);
 			IntegrityWarn(TmpBuf);
 			Worker->Enabled = false;
 			Worker->Started = false;
+			Worker->Opts.StopMode = STOP_NONE;
 			RetState = WARNING;
 		}
 		
@@ -1957,8 +1958,10 @@ static rStatus ScanConfigIntegrity(void)
 			IntegrityWarn(TmpBuf);
 			Worker->Enabled = false;
 			Worker->Started = false;
+			Worker->Opts.PivotRoot = false;
 			RetState = WARNING;
 		}
+		
 		if (Worker->Opts.Exec && Worker->Opts.HaltCmdOnly)
 		{
 			snprintf(TmpBuf, 1024, "Object \"%s\" has the EXEC option set,\n"
@@ -1981,12 +1984,12 @@ static rStatus ScanConfigIntegrity(void)
 		
 		if (Worker->Opts.PivotRoot && Worker->Opts.StopMode != STOP_NONE)
 		{
-			snprintf(TmpBuf, 1024, "Object \"%s\" has a PivotPoint for a start command,\n"
+			snprintf(TmpBuf, 1024, "Object \"%s\" has the PIVOT option set,\n"
 					"but ObjectStopCommand is not NONE. Setting to NONE.", Worker->ObjectID);
 			IntegrityWarn(TmpBuf);
 			
 			Worker->Opts.StopMode = STOP_NONE;
-			Worker->ObjectStopPriority = STOP_NONE;
+			Worker->ObjectStopPriority = 0;
 			
 			if (Worker->ObjectStopCommand)
 			{
@@ -1999,7 +2002,7 @@ static rStatus ScanConfigIntegrity(void)
 		
 		if (Worker->Opts.PivotRoot && Worker->Opts.HasPIDFile)
 		{
-			snprintf(TmpBuf, 1024, "Object \"%s\" has a PivotPoint for a start command,\n"
+			snprintf(TmpBuf, 1024, "Object \"%s\" has the PIVOT option set,\n"
 					"but a PID file has been specified. Unsetting PID file attribute.", Worker->ObjectID);
 			IntegrityWarn(TmpBuf);
 			

@@ -533,6 +533,14 @@ void PerformExec(const char *Cmd)
 	char **Buffer = NULL;
 	const char *Worker = Cmd;
 
+	if (!Cmd)
+	{
+		const char *ErrMsg ="NULL value passed to PerformExec()! This is likely a bug. Please report.";
+		SpitError(ErrMsg);
+		WriteLogLine(ErrMsg, true);
+		return;
+	}
+		
 	while ((Worker = WhitespaceArg(Worker))) ++NumSpaces;
 	
 	Buffer = malloc(sizeof(char*) * NumSpaces + 1);
@@ -570,7 +578,26 @@ void PerformExec(const char *Cmd)
 }
 
 void PerformPivotRoot(const char *NewRoot, const char *OldRootDir)
-{ /*Switch to a new root fs.*/	
+{ /*Switch to a new root fs.*/
+	if (!NewRoot || !OldRootDir)
+	{ /*Safety first.*/
+		if (NewRoot == NULL)
+		{
+			const char *ErrMsg = "NULL NewRoot passed to PerformPivotRoot()! This is likely a bug, please report.";
+			SpitError(ErrMsg);
+			WriteLogLine(ErrMsg, true);
+		}
+		
+		if (OldRootDir == NULL)
+		{
+			const char *ErrMsg = "NULL OldRootDir passed to PerformPivotRoot()! This is likely a bug, please report.";
+			SpitError(ErrMsg);
+			WriteLogLine(ErrMsg, true);
+		}
+		
+		return;
+	}
+	
 	/*Sync to be safe.*/
 	sync();
 
