@@ -690,6 +690,9 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			TermSignal = *BinWorker++;
 			ReloadCommandSignal = *BinWorker++;
 
+			/*Remove this line when we make use of ReloadCommandSignal.*/
+			(void)ReloadCommandSignal;
+			
 			memcpy(&UserID, BinWorker, sizeof(long));
 			memcpy(&GroupID, (BinWorker += sizeof(long)), sizeof(long));
 			
