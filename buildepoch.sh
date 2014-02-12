@@ -55,75 +55,75 @@ ShowHelp()
 NEED_EMPTY_CFLAGS="0"
 outdir="../built"
 
-if [ "$CC" == "" ]; then
+if [ "$CC" = "" ]; then
 	CC="cc"
 fi
 
 if [ "$#" != "0" ]; then
 	while [ -n "$1" ]
 	do
-		if [ "$1" == "--help" ]; then
+		if [ "$1" = "--help" ]; then
 			ShowHelp
 			exit 0
 		
-		elif [ "$1" == "--nommu" ]; then
+		elif [ "$1" = "--nommu" ]; then
 			CFLAGS=$CFLAGS" -DNOMMU"
 	
-		elif [ "$1" == "--configdir" ];then
+		elif [ "$1" = "--configdir" ];then
 			shift
 			CFLAGS=$CFLAGS" -DCONFIGDIR=\"$1\""
 	
-		elif [ "$1" == "--binarypath" ]; then
+		elif [ "$1" = "--binarypath" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DEPOCH_BINARY_PATH=\"$1\""
 	
-		elif [ "$1" == "--logdir" ]; then
+		elif [ "$1" = "--logdir" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DLOGDIR=\"$1\""
 		
-		elif [ "$1" == "--env-home" ]; then
+		elif [ "$1" = "--env-home" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DENVVAR_HOME=\"$1\""
 	
-		elif [ "$1" == "--env-user" ]; then
+		elif [ "$1" = "--env-user" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DENVVAR_USER=\"$1\""
 	
-		elif [ "$1" == "--env-shell" ]; then
+		elif [ "$1" = "--env-shell" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DENVVAR_SHELL=\"$1\""
 	
-		elif [ "$1" == "--env-path" ]; then
+		elif [ "$1" = "--env-path" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DENVVAR_PATH=\"$1\""
 	
-		elif [ "$1" == "--shell-forks-with-dashc" ]; then
+		elif [ "$1" = "--shell-forks-with-dashc" ]; then
 			CFLAGS=$CFLAGS" -DSHELLDISSOLVES=false"
 	
-		elif [ "$1" == "--outpath" ]; then
+		elif [ "$1" = "--outpath" ]; then
 			shift
 			outdir="$1"
 			
-		elif [ "$1" == "--disable-shell" ]; then
+		elif [ "$1" = "--disable-shell" ]; then
 			CFLAGS=$CFLAGS" -DNOSHELL"
 			
-		elif [ "$1" == "--disable-backtraces" ]; then
+		elif [ "$1" = "--disable-backtraces" ]; then
 			CFLAGS=$CFLAGS" -DNO_EXECINFO"
 			
-		elif [ "$1" == "--shellpath" ]; then
+		elif [ "$1" = "--shellpath" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DSHELLPATH=\"$1\""
 			
-		elif [ "$1" == "--cflags" ]; then
+		elif [ "$1" = "--cflags" ]; then
 			shift
 			CFLAGS=$CFLAGS" $1"
 			NEED_EMPTY_CFLAGS="1"
 	
-		elif [ "$1" == "--cc" ]; then
+		elif [ "$1" = "--cc" ]; then
 			shift
 			CC="$1"
 	
-		elif [ "$1" == "--ldflags" ]; then
+		elif [ "$1" = "--ldflags" ]; then
 			shift
 			LDFLAGS="$1"
 		fi
@@ -132,11 +132,11 @@ if [ "$#" != "0" ]; then
 	done
 fi
 
-if [ "$NEED_EMPTY_CFLAGS" == "0" ]; then
+if [ "$NEED_EMPTY_CFLAGS" = "0" ]; then
 	CFLAGS=$CFLAGS" -std=gnu89 -pedantic -Wall -g -O0"
 fi
 
-if [ "$LDFLAGS" == "" ]; then
+if [ "$LDFLAGS" = "" ]; then
 	LDFLAGS="-rdynamic"
 fi
 
