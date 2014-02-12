@@ -3,11 +3,12 @@
 
 CMD()
 {
-	echo $1
+    printf "%s " $1
+    printf "\n"
 	$1
 	if [ "$?" != "0" ]; then
 	{
-		echo "Error building Epoch."
+	   printf "Error building Epoch.\n"
 		exit 1;
 	}
 	fi
@@ -18,38 +19,38 @@ ShowHelp()
 	Green="\033[32m"
 	EndGreen="\033[0m"
 	
-	echo -e $Green"--nommu"$EndGreen":\n\tUse this to build Epoch for a CPU with no MMU."
-	echo -e $Green"--configdir dir"$EndGreen":\n\tSets the directory Epoch will search for epoch.conf."
-	echo -e "\tDefault is /etc/epoch."
-	echo -e $Green"--logdir dir"$EndGreen":\n\tSets the directory Epoch will write system.log to."
-	echo -e "\tDefault is /var/log."
-	echo -e $Green"--binarypath path"$EndGreen":\n\tThe direct path to the Epoch binary. Default is /sbin/epoch."
-	echo -e $Green"--env-home value"$EndGreen":\n\tDesired environment variable for \$HOME."
-	echo -e "\tThis will be usable in Epoch start/stop commands."
-	echo -e $Green"--env-user value"$EndGreen":\n\tDesired environment variable for \$USER."
-	echo -e "\tThis will be usable in Epoch start/stop commands."
-	echo -e $Green"--env-shell value"$EndGreen":\n\tDesired environment variable for \$SHELL."
-	echo -e "\tThis will be usable in Epoch start/stop commands."
-	echo -e $Green"--env-path value"$EndGreen":\n\tDesired environment variable for \$PATH"
-	echo -e $Green"--outpath dir"$EndGreen":\n\tThe location that the compiled binary"
-	echo -e "\tand symlinks will be placed upon completion."
-	echo -e "\tSimilar to make install DESTDIR=\"\"."
-	echo -e $Green"--disable-backtraces"$EndGreen":\n\tThis flag is necessary for building with"
-	echo -e "\tuClibc and other libc implementations that don't provide execinfo.h."
-	echo -e $Green"--disable-shell"$EndGreen":\n\tIf this flag is set, Epoch will be built"
-	echo -e "\tto not launch objects with /bin/sh, and will instead try to use an"
-	echo -e "\targument list. This may be useful on embedded systems,"
-	echo -e "\tbut comes at a high price of removing support for any shell characters,"
-	echo -e "\tsuch as '&' and '&&'."
-	echo -e $Green"--shellpath"$EndGreen":\n\tThe shell that Epoch will use to assist in the launching of objects,"
-	echo -e "\tprovided that --disable-shell is not specified."
-	echo -e $Green"--shell-forks-with-dashc"$EndGreen":\n\tShells such as busybox create a new process"
-	echo -e "\twhen we use 'sh -c', but most including bash, dash, ksh, csh, tcsh,"
-	echo -e "\tand zsh do not. You are encouraged to make sure this is set for"
-	echo -e "\tbusybox etc, because this option is used to assist tracking PIDs."
-	echo -e $Green"--cflags value"$EndGreen":\n\tSets \$CFLAGS to the desired value."
-	echo -e $Green"--ldflags value"$EndGreen":\n\tSets \$LDFLAGS to the desired value."
-	echo -e $Green"--cc value"$EndGreen":\n\tSets \$CC to be the compiler for Epoch."
+    printf $Green"--nommu"$EndGreen":\n\tUse this to build Epoch for a CPU with no MMU.\n"
+    printf $Green"--configdir dir"$EndGreen":\n\tSets the directory Epoch will search for epoch.conf.\n"
+    printf "\tDefault is /etc/epoch.\n"
+    printf $Green"--logdir dir"$EndGreen":\n\tSets the directory Epoch will write system.log to.\n"
+    printf "\tDefault is /var/log.\n"
+    printf $Green"--binarypath path"$EndGreen":\n\tThe direct path to the Epoch binary. Default is /sbin/epoch.\n"
+    printf $Green"--env-home value"$EndGreen":\n\tDesired environment variable for \$HOME.\n"
+    printf "\tThis will be usable in Epoch start/stop commands.\n"
+    printf $Green"--env-user value"$EndGreen":\n\tDesired environment variable for \$USER.\n"
+    printf "\tThis will be usable in Epoch start/stop commands.\n"
+    printf $Green"--env-shell value"$EndGreen":\n\tDesired environment variable for \$SHELL.\n"
+    printf "\tThis will be usable in Epoch start/stop commands.\n"
+    printf $Green"--env-path value"$EndGreen":\n\tDesired environment variable for \$PATH.\n"
+    printf $Green"--outpath dir"$EndGreen":\n\tThe location that the compiled binary.\n"
+    printf "\tand symlinks will be placed upon completion.\n"
+    printf "\tSimilar to make install DESTDIR=\"\".\n"
+    printf $Green"--disable-backtraces"$EndGreen":\n\tThis flag is necessary for building with\n"
+    printf "\tuClibc and other libc implementations that don't provide execinfo.h.\n"
+    printf $Green"--disable-shell"$EndGreen":\n\tIf this flag is set, Epoch will be built\n"
+    printf "\tto not launch objects with /bin/sh, and will instead try to use an\n"
+    printf "\targument list. This may be useful on embedded systems,\n"
+    printf "\tbut comes at a high price of removing support for any shell characters,\n"
+    printf "\tsuch as '&' and '&&'.\n"
+    printf $Green"--shellpath"$EndGreen":\n\tThe shell that Epoch will use to assist in the launching of objects,\n"
+    printf "\tprovided that --disable-shell is not specified.\n"
+    printf $Green"--shell-forks-with-dashc"$EndGreen":\n\tShells such as busybox create a new process\n"
+    printf "\twhen we use 'sh -c', but most including bash, dash, ksh, csh, tcsh,\n"
+    printf "\tand zsh do not. You are encouraged to make sure this is set for\n"
+    printf "\tbusybox etc, because this option is used to assist tracking PIDs.\n"
+    printf $Green"--cflags value"$EndGreen":\n\tSets \$CFLAGS to the desired value.\n"
+    printf $Green"--ldflags value"$EndGreen":\n\tSets \$LDFLAGS to the desired value.\n"
+    printf $Green"--cc value"$EndGreen":\n\tSets \$CC to be the compiler for Epoch.\n"
 }
 
 NEED_EMPTY_CFLAGS="0"
@@ -140,7 +141,7 @@ if [ "$LDFLAGS" = "" ]; then
 	LDFLAGS="-rdynamic"
 fi
 
-echo -e "\nBuilding object files.\n"
+printf "\nBuilding object files.\n\n"
 rm -rf objects built
 
 mkdir objects
@@ -155,7 +156,7 @@ CMD "$CC $CFLAGS -c ../src/modes.c"
 CMD "$CC $CFLAGS -c ../src/parse.c"
 CMD "$CC $CFLAGS -c ../src/utilfuncs.c"
 
-echo -e "\nBuilding main executable.\n"
+printf "\nBuilding main executable.\n\n"
 
 mkdir -p $outdir/sbin/
 mkdir -p $outdir/bin/
@@ -163,7 +164,7 @@ mkdir -p $outdir/bin/
 CMD "$CC $LDFLAGS $CFLAGS -o $outdir/sbin/epoch\
  actions.o config.o console.o main.o membus.o modes.o parse.o utilfuncs.o"
 
-echo -e "\nCreating symlinks.\n"
+printf "\nCreating symlinks.\n"
 cd $outdir/sbin/
 
 CMD "ln -s -f ./epoch init"
@@ -177,5 +178,5 @@ cd ../bin/
 
 CMD "ln -s -f ../sbin/epoch wall"
 
-echo -e "\nBuild complete.\n"
+printf "\nBuild complete.\n\n"
 cd ..
