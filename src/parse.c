@@ -568,8 +568,8 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 						usleep(100);
 					}
 					
-					if (Inc == CurObj->Opts.StopTimeout * 10000)
-					{ /*We timed out.*/
+					if (Inc == CurObj->Opts.StopTimeout * 10000 || Abort)
+					{ /*We timed out or something.*/
 						ExitStatus = WARNING;
 					}
 					
