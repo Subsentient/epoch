@@ -1,3 +1,48 @@
+*******Changes for 1.0.1 vs 1.0*******
+
+commit a4f705a39c1f6ba15eb21e8800f9ba135499eab9
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Sun Feb 23 02:37:52 2014 -0700
+
+    Cosmetic addendum to last commit.
+
+commit 2667d60c852ef5a94744dedbc26cc3d96f4c80aa
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Sun Feb 23 02:30:29 2014 -0700
+
+    Fix exhausted coding bugs with STOPTIMEOUT and PID waiting.
+
+commit 0e945b8e37ae1f52fb81b78073f95f7cd87b8a73
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Sun Feb 23 01:39:04 2014 -0700
+
+    Fix a couple bugs in the display of the 'epoch status' command.
+
+commit f702f6bc9e50b6b8629b2c1cf519907a89fa4b65
+Merge: bee7117 24ff77f
+Author: Subsentient <thinkingrodent@gmail.com>
+Date:   Wed Feb 12 14:52:48 2014 -0700
+
+    Merge pull request #11 from torstehu/master
+    
+    Merge changes to make buildepoch.sh more portable.
+
+commit 24ff77fb6e80859ffbe21b3d48a57c3de9c6ce71
+Author: Torstein Husebø <torstein@huseboe.net>
+Date:   Wed Feb 12 19:45:19 2014 +0100
+
+    Rework buildepoch.sh to use printf rather than echo
+
+commit e8cc70f7506620c7feb946bcff73bc1d4f443c97
+Author: Torstein Husebø <torstein@huseboe.net>
+Date:   Wed Feb 12 19:19:19 2014 +0100
+
+    Switch from "==" bashism to POSIX Compliant "="
+    string comparison
+
+
+*******Changes for 1.0 vs 1.0 RC2********
+
 commit 6f8ec45cf77b1d619fb74ba0ba13c32276a2ec65
 Author: Subsentient <thinkingrodent@gmail.com>
 Date:   Fri Jan 24 14:03:35 2014 -0700
