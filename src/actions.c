@@ -784,9 +784,9 @@ void LaunchShutdown(signed long Signal)
 	{
 		if (CurrentTask.PID == 0)
 		{
-			unsigned long *TNum = (void*)CurrentTask.Node;
+			Bool *TNum = (void*)CurrentTask.Node;
 			
-			*TNum = 100001;
+			*TNum = true;
 		}
 		else
 		{

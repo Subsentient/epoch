@@ -98,9 +98,9 @@ static void SigHandler(int Signal)
 					
 					if (CurrentTask.PID == 0)
 					{
-						unsigned long *TPtr = (void*)CurrentTask.Node;
+						Bool *TPtr = (void*)CurrentTask.Node;
 						
-						*TPtr = 100001;
+						*TPtr = true;
 						
 						KilledOK = SUCCESS;
 					}
@@ -736,6 +736,9 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 					case COPT_SERVICE:
 						IsService = true;
 						break;
+					case COPT_RAWDESCRIPTION:
+						RawDescription = true;
+						break;
 					case COPT_AUTORESTART:
 						AutoRestart = true;
 						break;
@@ -759,8 +762,8 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		
 			printf("ObjectID: %s\nObjectDescription: %s\nEnabled: %s | Started: %s | Running: %s | Stop mode: ",
 					ObjectID, ObjectDescription, YN[Enabled],
-					HaltCmdOnly ? CONSOLE_COLOR_YELLOW "N/A" CONSOLE_ENDCOLOR : YN[Started],
-					HaltCmdOnly ? CONSOLE_COLOR_YELLOW "N/A" CONSOLE_ENDCOLOR : YN[Running]);
+					HaltCmdOnly || PivotRoot || Exec ? CONSOLE_COLOR_YELLOW "N/A" CONSOLE_ENDCOLOR : YN[Started],
+					HaltCmdOnly || PivotRoot || Exec ? CONSOLE_COLOR_YELLOW "N/A" CONSOLE_ENDCOLOR : YN[Running]);
 			
 			if (StopMode == STOP_COMMAND) printf("Command");
 			else if (StopMode == STOP_NONE) printf("None");

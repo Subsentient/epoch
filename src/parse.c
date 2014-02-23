@@ -483,36 +483,31 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		/*Wait for a PID file to appear if we specified one. This prevents autorestart hell.*/
 		if (ExitStatus && CurObj->Opts.HasPIDFile)
 		{
-			CurrentTask.Node = (void*)&Counter;
+			Bool Abort = false;
+			
+			CurrentTask.Node = (void*)&Abort;
 			CurrentTask.TaskName = CurObj->ObjectID;
 			CurrentTask.PID = 0;
 			CurrentTask.Set = true;
 			
-			while (!FileUsable(CurObj->ObjectPIDFile))
-			{ /*Wait ten seconds total but check every 0.0001 seconds.*/
+			for (Counter = 0; !FileUsable(CurObj->ObjectPIDFile) && Counter < 10000 && !Abort; ++Counter)
+			{
 				usleep(100);
+			}
+			
+			if (Counter == 10000 && !Abort)
+			{
+				char OutBuf[MAX_LINE_SIZE];
 				
-				++Counter;
-				
-				if (Counter == 100000)
-				{
-					char OutBuf[MAX_LINE_SIZE];
+				snprintf(OutBuf, sizeof OutBuf,CONSOLE_COLOR_YELLOW "WARNING: " CONSOLE_ENDCOLOR
+						"Object %s was successfully started%s,\n"
+						"but it's PID file did not appear within ten seconds of start.\n"
+						"Please verify that \"%s\" exists and whether this object is starting properly.",
+						CurObj->ObjectID, (ExitStatus == WARNING ? ", but with a warning" : ""),
+						CurObj->ObjectPIDFile);
 					
-					snprintf(OutBuf, sizeof OutBuf,CONSOLE_COLOR_YELLOW "WARNING: " CONSOLE_ENDCOLOR
-								"Object %s was successfully started%s,\n"
-								"but it's PID file did not appear within ten seconds of start.\n"
-								"Please verify that \"%s\" exists and whether this object is starting properly.",
-								CurObj->ObjectID, (ExitStatus == WARNING ? ", but with a warning" : ""),
-								CurObj->ObjectPIDFile);
-								
-					WriteLogLine(OutBuf, true);
-					ExitStatus = WARNING;
-					break;
-				}
-				else if (Counter > 100000)
-				{
-					break;
-				}
+				WriteLogLine(OutBuf, true);
+				ExitStatus = WARNING;
 			}
 			
 			CurrentTask.Set = false;
@@ -555,14 +550,15 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				if (!CurObj->Opts.NoStopWait)
 				{
 					unsigned long CurPID = 0;
+					Bool Abort = false;
 					
-					CurrentTask.Node = (void*)&Inc;
+					CurrentTask.Node = (void*)&Abort;
 					CurrentTask.PID = 0;
 					CurrentTask.TaskName = CurObj->ObjectID;
 					CurrentTask.Set = true;
 					
-					for (; ObjectProcessRunning(CurObj) && Inc < CurObj->Opts.StopTimeout * 10000; ++Inc)
-					{ /*Sleep for ten seconds.*/
+					for (; ObjectProcessRunning(CurObj) && Inc < CurObj->Opts.StopTimeout * 10000 && !Abort; ++Inc)
+					{
 						CurPID = CurObj->Opts.HasPIDFile ? ReadPIDFile(CurObj) : CurObj->ObjectPID;
 						
 						if (!CurPID) break; /*No PID? No point.*/
@@ -572,8 +568,8 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 						usleep(100);
 					}
 					
-					if (Inc >= 100000)
-					{
+					if (Inc == CurObj->Opts.StopTimeout * 10000 || Abort)
+					{ /*We timed out or something.*/
 						ExitStatus = WARNING;
 					}
 					
@@ -626,32 +622,33 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					if (!CurObj->Opts.NoStopWait)
 					{
 						unsigned long TInc = 0;
+						Bool Abort = false;
 						
-						CurrentTask.Node = (void*)&TInc;
+						CurrentTask.Node = (void*)&Abort;
 						CurrentTask.PID = 0;
 						CurrentTask.TaskName = CurObj->ObjectID;
 						CurrentTask.Set = true;
 								
 						/*Give it ten seconds to terminate on it's own.*/
-						for (; kill(CurObj->ObjectPID, 0) == 0 && TInc < CurObj->Opts.StopTimeout * 200; ++TInc)
-						{ /*Two hundred is ten seconds here.*/
+						for (; kill(CurObj->ObjectPID, 0) == 0 && TInc < CurObj->Opts.StopTimeout * 200 && !Abort; ++TInc)
+						{
 							
 							waitpid(CurObj->ObjectPID, NULL, WNOHANG); /*We must harvest the PID since we have occupied the primary loop.*/
 							
 							usleep(50000);
 						}
 						
-						if (TInc < 200)
-						{
-							ExitStatus = SUCCESS;
-						}
-						else if (TInc > 200)
-						{ /*Means we were killed via CTRL-ALT-DEL.*/
-							ExitStatus = WARNING;
-						}
-						else if (TInc == 200)
+						if (TInc == CurObj->Opts.StopTimeout * 200)
 						{
 							ExitStatus = FAILURE;
+						}
+						else if (Abort)
+						{
+							ExitStatus = WARNING;
+						}
+						else
+						{
+							ExitStatus = SUCCESS;
 						}
 						
 						CurrentTask.Set = false;
@@ -708,14 +705,15 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					if (!CurObj->Opts.NoStopWait)
 					{ /*If we're free to wait for a PID to stop, do so.*/
 						unsigned long TInc = 0;			
-							
-						CurrentTask.Node = (void*)&TInc;
+						Bool Abort = false;
+						
+						CurrentTask.Node = (void*)&Abort;
 						CurrentTask.PID = 0;
 						CurrentTask.TaskName = CurObj->ObjectID;
 						CurrentTask.Set = true;
 						
 						/*Give it ten seconds to terminate on it's own.*/
-						for (; kill(TruePID, 0) == 0 && TInc < CurObj->Opts.StopTimeout * 200; ++TInc)
+						for (; kill(TruePID, 0) == 0 && TInc < CurObj->Opts.StopTimeout * 200 && !Abort; ++TInc)
 						{ /*Two hundred is ten seconds here.*/
 							
 							waitpid(TruePID, NULL, WNOHANG); /*We must harvest the PID since we have occupied the primary loop.*/
@@ -723,17 +721,17 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 							usleep(50000);
 						}
 						
-						if (TInc < 200)
+						if (TInc == CurObj->Opts.StopTimeout * 200)
 						{
-							ExitStatus = SUCCESS;
+							ExitStatus = FAILURE;
 						}
-						else if (TInc > 200)
+						else if (Abort)
 						{ /*Means we were killed via CTRL-ALT-DEL.*/
 							ExitStatus = WARNING;
 						}
-						else if (TInc == 200)
+						else
 						{
-							ExitStatus = FAILURE;
+							ExitStatus = SUCCESS;
 						}
 						
 						CurrentTask.Set = false;
