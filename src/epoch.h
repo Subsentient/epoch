@@ -59,7 +59,7 @@
 #endif
 
 /*Version.*/
-#define VERSIONSTRING "Epoch Init System 1.0 \"Sage\""
+#define VERSIONSTRING "Epoch Init System 1.0.1 \"Sage\""
 
 /*Power control magic. FIXME: Add support for BSD etc. here!*/
 #define OSCTL_LINUX_REBOOT 0x1234567
