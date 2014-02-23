@@ -432,6 +432,7 @@ void ParseMemBus(void)
 			
 			BinWorker = (void*)OutBuf;
 			/*Write it over binary now.*/
+			if (Worker->Opts.RawDescription) *BinWorker++ = COPT_RAWDESCRIPTION;
 			if (Worker->Opts.HaltCmdOnly) *BinWorker++ = COPT_HALTONLY;
 			if (Worker->Opts.Persistent) *BinWorker++ = COPT_PERSISTENT;
 			if (Worker->Opts.Fork) *BinWorker++ = COPT_FORK;
