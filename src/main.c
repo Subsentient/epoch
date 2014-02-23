@@ -98,9 +98,9 @@ static void SigHandler(int Signal)
 					
 					if (CurrentTask.PID == 0)
 					{
-						unsigned long *TPtr = (void*)CurrentTask.Node;
+						Bool *TPtr = (void*)CurrentTask.Node;
 						
-						*TPtr = 100001;
+						*TPtr = true;
 						
 						KilledOK = SUCCESS;
 					}
