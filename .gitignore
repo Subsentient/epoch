@@ -2,3 +2,5 @@
 /workroom
 /built/
 /objects/
+/src/*.o
+/src/*.gch
