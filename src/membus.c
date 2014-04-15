@@ -442,7 +442,7 @@ void ParseMemBus(void)
 			if (Worker->Opts.NoStopWait) *BinWorker++ = COPT_NOSTOPWAIT;
 			if (Worker->Opts.Exec) *BinWorker++ = COPT_EXEC;
 			if (Worker->Opts.PivotRoot) *BinWorker++ = COPT_PIVOTROOT;
-	
+			if (Worker->Opts.RunOnce) *BinWorker++ = COPT_RUNONCE;
 			*BinWorker = 0;
 			
 			MemBus_BinWrite(OutBuf, MEMBUS_MSGSIZE, true);

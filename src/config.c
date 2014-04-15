@@ -761,6 +761,10 @@ rStatus InitConfig(void)
 				{
 					CurObj->Opts.Persistent = true;
 				}
+				else if (!strcmp(CurArg, "RUNONCE"))
+				{
+					CurObj->Opts.RunOnce = true;
+				}
 				else if (!strcmp(CurArg, "FORK"))
 				{
 			#ifndef NOMMU

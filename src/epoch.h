@@ -144,7 +144,7 @@ enum _StopMode { STOP_NONE, STOP_COMMAND, STOP_PID, STOP_PIDFILE, STOP_INVALID }
 
 enum { COPT_HALTONLY = 1, COPT_PERSISTENT, COPT_FORK, COPT_SERVICE, COPT_AUTORESTART,
 		COPT_FORCESHELL, COPT_NOSTOPWAIT, COPT_STOPTIMEOUT, COPT_TERMSIGNAL,
-		COPT_RAWDESCRIPTION, COPT_PIVOTROOT, COPT_EXEC, COPT_MAX };
+		COPT_RAWDESCRIPTION, COPT_PIVOTROOT, COPT_EXEC, COPT_RUNONCE, COPT_MAX };
 		
 /*Trinary return values for functions.*/
 typedef enum { FAILURE, SUCCESS, WARNING } rStatus;
@@ -200,6 +200,7 @@ typedef struct _EpochObjectTable
 		unsigned int NoStopWait : 1; /*Used to tell us not to wait for an object to actually quit.*/
 		unsigned int PivotRoot : 1; /*Says that ObjectStartCommand is actually used to pivot_root. See actions.c.*/
 		unsigned int Exec : 1; /*Says that we are gerbils.*/
+		unsigned int RunOnce : 1; /*Tells us to disable ourselves upon completion whenever we are started.*/
 #ifndef NOMMU
 		unsigned int Fork : 1; /*Essentially do the same thing (with an Epoch twist) as Command& in sh.*/
 #endif

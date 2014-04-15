@@ -623,7 +623,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		unsigned char TermSignal = 0, ReloadCommandSignal = 0, *BinWorker = NULL;
 		unsigned long StartedSince, UserID, GroupID, Inc = 0, StopTimeout;
 		Bool HaltCmdOnly = false, IsService = false, AutoRestart = false, NoStopWait = false;
-		Bool ForceShell = false, RawDescription = false, Fork = false;
+		Bool ForceShell = false, RawDescription = false, Fork = false, RunOnce = false;
 		const char *const YN[2] = { CONSOLE_COLOR_RED "No" CONSOLE_ENDCOLOR,
 									CONSOLE_COLOR_GREEN "Yes" CONSOLE_ENDCOLOR };
 		
@@ -754,6 +754,9 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 					case COPT_PIVOTROOT:
 						PivotRoot = true;
 						break;
+					case COPT_RUNONCE:
+						RunOnce = true;
+						break;
 					default:
 						break;
 				}
@@ -794,7 +797,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			}
 			
 			if (IsService || AutoRestart || HaltCmdOnly || Persistent || Fork || StopTimeout != 10 || 
-				ForceShell || RawDescription || NoStopWait || PivotRoot || TermSignal != SIGTERM || Exec)
+				ForceShell || RawDescription || NoStopWait || PivotRoot || RunOnce || TermSignal != SIGTERM || Exec)
 			{
 				printf("Options:");
 				
@@ -809,6 +812,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 				if (NoStopWait) printf(" NOSTOPWAIT");
 				if (PivotRoot) printf(" PIVOT");
 				if (Exec) printf(" EXEC");
+				if (RunOnce) printf(" RUNONCE");
 				if (StopTimeout != 10) printf(" STOPTIMEOUT=%lu", StopTimeout);
 				
 				putchar('\n');
