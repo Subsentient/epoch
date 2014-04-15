@@ -591,6 +591,15 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					CurObj->ObjectPID = 0;
 					CurObj->Started = false;
 					CurObj->StartedSince = 0;
+					
+					/*We place this here and not the others because HALTONLY only supports commands.*/
+					if (CurObj->Opts.RunOnce && CurObj->Opts.HaltCmdOnly && CurObj->Enabled)
+					{  /* Disable HaltCmdOnly objects with RunOnce set. We don't disable non-haltonly here for two reasons.
+						* First, it's usually unnecessary since the start command did it, and second, if someone turned it on again before the reboot,
+						* they probably want it to start again next boot.*/
+						CurObj->Enabled = false;
+						EditConfigValue(CurObj->ObjectID, "ObjectEnabled", "false");
+					}
 				}
 				
 				if (PrintStatus)
@@ -761,14 +770,6 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					CurObj->Started = false;
 					CurObj->StartedSince = 0;
 					CurObj->ObjectPID = 0;
-					
-					if (CurObj->Opts.RunOnce && CurObj->Opts.HaltCmdOnly && CurObj->Enabled)
-					{  /* Disable HaltCmdOnly objects with RunOnce set. We don't disable non-haltonly here for two reasons.
-						* First, it's usually unnecessary since the start command did it, and second, if someone turned it on again before the reboot,
-						* they probably want it to start again next boot.*/
-						CurObj->Enabled = false;
-						EditConfigValue(CurObj->ObjectID, "ObjectEnabled", "false");
-					}
 				}
 				
 				if (PrintStatus)
