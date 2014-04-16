@@ -497,7 +497,7 @@ void ParseMemBus(void)
 		}
 		
 		CurObj->Enabled = (EnablingThis ? true : false);
-		DidWork = EditConfigValue(TWorker, "ObjectEnabled", EnablingThis ? "true" : "false");
+		DidWork = EditConfigValue(CurObj->ConfigFile, TWorker, "ObjectEnabled", EnablingThis ? "true" : "false");
 		
 		switch (DidWork)
 		{
@@ -675,7 +675,7 @@ void ParseMemBus(void)
 					}
 				}
 				
-				if (!EditConfigValue(CurObj->ObjectID, "ObjectRunlevels", RLStream))
+				if (!EditConfigValue(CurObj->ConfigFile, CurObj->ObjectID, "ObjectRunlevels", RLStream))
 				{
 					snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
 					MemBus_Write(TmpBuf, true);

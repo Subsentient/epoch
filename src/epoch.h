@@ -14,6 +14,7 @@
 /*Limits and stuff.*/
 #define MAX_DESCRIPT_SIZE 384
 #define MAX_LINE_SIZE 2048
+#define MAX_CONFIG_FILES 400
 
 /*Configuration.*/
 
@@ -179,6 +180,11 @@ typedef struct _EpochObjectTable
 	char *ObjectWorkingDirectory; /*The working directory the object chdirs to before execution.*/
 	char *ObjectStderr; /*A file that stderr redirects to.*/
 	char *ObjectStdout; /*A file that stdout redirects to.*/
+	
+	const char *ConfigFile; /*The config file this object was declared in.
+	* Points either to the correct element in ConfigFileList or it points to the single-file ConfigFile array.
+	* You can safely cast the above pointer to remove const.*/
+	
 	unsigned char TermSignal; /*The signal we send to an object if it's stop mode is PID or PIDFILE.*/
 	unsigned char ReloadCommandSignal; /*If the reload command sends a signal, this works.*/
 	Bool Enabled;
@@ -272,6 +278,8 @@ extern BootMode CurrentBootMode;
 extern signed long MemBusKey;
 extern Bool BusRunning;
 extern char ConfigFile[MAX_LINE_SIZE];
+extern char *ConfigFileList[MAX_CONFIG_FILES];
+extern int NumConfigFiles;
 
 /**Function forward declarations.*/
 
@@ -283,7 +291,7 @@ extern ObjTable *LookupObjectInTable(const char *ObjectID);
 extern ObjTable *GetObjectByPriority(const char *ObjectRunlevel, ObjTable *LastNode,
 									Bool WantStartPriority, unsigned long ObjectPriority);
 extern unsigned long GetHighestPriority(Bool WantStartPriority);
-extern rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char *Value);
+extern rStatus EditConfigValue(const char *File, const char *ObjectID, const char *Attribute, const char *Value);
 extern void ObjRL_AddRunlevel(const char *InRL, ObjTable *InObj);
 extern Bool ObjRL_CheckRunlevel(const char *InRL, const ObjTable *InObj, Bool CountInherited);
 extern Bool ObjRL_DelRunlevel(const char *InRL, ObjTable *InObj);

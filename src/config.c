@@ -21,6 +21,8 @@
 /*We want the only interface for this to be LookupObjectInTable().*/
 ObjTable *ObjectTable;
 char ConfigFile[MAX_LINE_SIZE] = CONFIGDIR CONF_NAME;
+char *ConfigFileList[MAX_CONFIG_FILES] = { ConfigFile };
+int NumConfigFiles = 1;
 
 /*Used to allow for things like 'ObjectStartPriority Services', where Services == 3, for example.*/
 static struct _PriorityAliasTree
@@ -47,7 +49,7 @@ Epoch is just a linked list of linked lists anymore.*/
 char Hostname[MAX_LINE_SIZE] = { '\0' };
 
 /*Function forward declarations for all the statics.*/
-static ObjTable *AddObjectToTable(const char *ObjectID);
+static ObjTable *AddObjectToTable(const char *ObjectID, const char *File);
 static char *NextLine(const char *InStream);
 static rStatus GetLineDelim(const char *InStream, char *OutStream);
 static rStatus ScanConfigIntegrity(void);
@@ -280,7 +282,23 @@ rStatus InitConfig(const char *CurConfigFile)
 				continue;
 			}
 			
-			if (!InitConfig(DelimCurr))
+			if (NumConfigFiles == MAX_CONFIG_FILES)
+			{
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Cannot import config file \"%s\", config file limit of %d has been reached!\n"
+						"Attempting to continue.", DelimCurr, MAX_CONFIG_FILES);
+				SpitWarning(ErrBuf);
+				WriteLogLine(ErrBuf, true);
+				continue;
+			}
+			
+			ConfigFileList[NumConfigFiles] = malloc(MAX_LINE_SIZE);
+			
+			strncpy(ConfigFileList[NumConfigFiles], DelimCurr, MAX_LINE_SIZE - 1);
+			ConfigFileList[NumConfigFiles][MAX_LINE_SIZE - 1] = '\0';
+			
+			++NumConfigFiles;
+			
+			if (!InitConfig(ConfigFileList[NumConfigFiles - 1])) /*It's very important we pass this pointer and not DelimCurr.*/
 			{
 				if (!strcmp(ConfigFile, CurConfigFile))
 				{
@@ -683,7 +701,14 @@ rStatus InitConfig(const char *CurConfigFile)
 			
 			DelimCurr[MAX_DESCRIPT_SIZE - 1] = '\0'; /*Chop it off to prevent overflow.*/
 			
-			CurObj = AddObjectToTable(DelimCurr); /*Sets this as our current object.*/
+			if (!(CurObj = AddObjectToTable(DelimCurr, CurConfigFile))) /*Sets this as our current object.*/
+			{
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Duplicate ObjectID %s detected in config file %s, ignoring.",
+						DelimCurr, CurConfigFile);
+				SpitWarning(ErrBuf);
+				WriteLogLine(ErrBuf, true);
+				continue;
+			}
 
 			if ((strlen(DelimCurr) + 1) >= MAX_DESCRIPT_SIZE)
 			{
@@ -1582,7 +1607,7 @@ static rStatus GetLineDelim(const char *InStream, char *OutStream)
 	return SUCCESS;
 }
 
-rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char *Value)
+rStatus EditConfigValue(const char *File, const char *ObjectID, const char *Attribute, const char *Value)
 { /*Looks up the attribute for the passed ID and replaces the value for that attribute.*/
 	char *MasterStream = NULL, *HalfTwo = NULL;
 	char *NewValue = NULL, *Worker = NULL, *Stopper = NULL, *LineArm = NULL;
@@ -1594,15 +1619,19 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 	unsigned long NumWhiteSpaces = 0;
 	Bool PresentHalfTwo = false;
 	
-	if (stat(ConfigFile, &FileStat) != 0)
+	if (stat(File, &FileStat) != 0)
 	{
-		SpitError("EditConfigValue(): Failed to stat config file. Does the file exist?");
+		char ErrBuf[MAX_LINE_SIZE];
+		snprintf(ErrBuf, sizeof ErrBuf, "EditConfigValue(): Failed to stat \"%s\". Does the file exist?", File);
+		SpitError(ErrBuf);
 		return FAILURE;
 	}
 	
-	if ((Descriptor = fopen(ConfigFile, "r")) == NULL)
+	if ((Descriptor = fopen(File, "r")) == NULL)
 	{
-		SpitError("EditConfigValue(): Failed to open config file. Are permissions correct?");
+		char ErrBuf[MAX_LINE_SIZE];
+		snprintf(ErrBuf, sizeof ErrBuf, "EditConfigValue(): Failed to open \"%s\". Are permissions correct?", File);
+		SpitError(ErrBuf);
 		return FAILURE;
 	}
 	
@@ -1767,7 +1796,7 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 	free(HalfTwo);
 	
 	/*Write the configuration back to disk.*/
-	Descriptor = fopen(ConfigFile, "w");
+	Descriptor = fopen(File, "w");
 	fwrite(MasterStream, 1, strlen(MasterStream), Descriptor);
 	fclose(Descriptor);
 	
@@ -1778,7 +1807,7 @@ rStatus EditConfigValue(const char *ObjectID, const char *Attribute, const char 
 }
 
 /*Adds an object to the table and, if the first run, sets up the table.*/
-static ObjTable *AddObjectToTable(const char *ObjectID)
+static ObjTable *AddObjectToTable(const char *ObjectID, const char *File)
 {
 	ObjTable *Worker = ObjectTable, *Next, *Prev;
 	
@@ -1797,7 +1826,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	{
 		if (!strcmp(ObjectID, Worker->ObjectID))
 		{ /*Do not allow duplicate entries.*/
-			return Worker;
+			return NULL;
 		}
 	}
 
@@ -1818,6 +1847,8 @@ static ObjTable *AddObjectToTable(const char *ObjectID)
 	/*This and all things like it are dynamically allocated to provide aggressive memory savings.*/
 	Worker->ObjectID = malloc(strlen(ObjectID) + 1);
 	strncpy(Worker->ObjectID, ObjectID, strlen(ObjectID) + 1);
+	
+	Worker->ConfigFile = File; /*Set the config file. The pointer actually points to an element in ConfigFileList.*/
 	
 	/*Initialize these to their default values. Used to test integrity before execution begins.*/
 	Worker->TermSignal = SIGTERM; /*This can be changed via config.*/
@@ -2385,7 +2416,8 @@ ObjTable *GetObjectByPriority(const char *ObjectRunlevel, ObjTable *LastNode, Bo
 void ShutdownConfig(void)
 {
 	ObjTable *Worker = ObjectTable, *Temp;
-
+	unsigned long Inc = 1;
+	
 	for (; Worker != NULL; Worker = Temp)
 	{
 		if (Worker->Next)
@@ -2413,6 +2445,13 @@ void ShutdownConfig(void)
 	
 	RLInheritance_Shutdown();
 	ObjectTable = NULL;
+	
+	/*Release all config file names.*/
+	for (; Inc < MAX_CONFIG_FILES && ConfigFileList[Inc] != NULL; ++Inc)
+	{ /*Inc is initialized to ONE. Do not try to free 0, that points to an array on the stack!*/
+		free(ConfigFileList[Inc]);
+		ConfigFileList[Inc] = NULL;
+	}
 }
 
 rStatus ReloadConfig(void)

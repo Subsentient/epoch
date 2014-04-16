@@ -525,7 +525,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 			/*RunOnce objects are supposed to run once, so disable them after a successful run.*/
 			if (CurObj->Opts.RunOnce)
 			{
-				EditConfigValue(CurObj->ObjectID, "ObjectEnabled", "false");
+				EditConfigValue(CurObj->ConfigFile, CurObj->ObjectID, "ObjectEnabled", "false");
 				CurObj->Enabled = false;
 			}
 		}
@@ -598,7 +598,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 						* First, it's usually unnecessary since the start command did it, and second, if someone turned it on again before the reboot,
 						* they probably want it to start again next boot.*/
 						CurObj->Enabled = false;
-						EditConfigValue(CurObj->ObjectID, "ObjectEnabled", "false");
+						EditConfigValue(CurObj->ConfigFile, CurObj->ObjectID, "ObjectEnabled", "false");
 					}
 				}
 				
