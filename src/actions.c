@@ -264,7 +264,7 @@ void RecoverFromReexec(Bool ViaMemBus)
 	
 	MemBusKey = MEMKEY + 1;
 	
-	if (!InitConfig())
+	if (!InitConfig(ConfigFile))
 	{
 		EmulWall("Epoch: "CONSOLE_COLOR_RED "ERROR: " CONSOLE_ENDCOLOR
 		"Cannot reload configuration for re-exec!", false);
@@ -667,7 +667,7 @@ void LaunchBootup(void)
 		printf("Booting to runlevel \"%s\".\n\n", CurRunlevel);
 	}
 
-	if (!InitConfig())
+	if (!InitConfig(ConfigFile))
 	{ /*That is very very bad if we fail here.*/
 		EmergencyShell();
 	}

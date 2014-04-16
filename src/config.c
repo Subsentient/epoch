@@ -51,7 +51,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID);
 static char *NextLine(const char *InStream);
 static rStatus GetLineDelim(const char *InStream, char *OutStream);
 static rStatus ScanConfigIntegrity(void);
-static void ConfigProblem(short Type, const char *Attribute, const char *AttribVal, unsigned long LineNum);
+static void ConfigProblem(const char *File, short Type, const char *Attribute, const char *AttribVal, unsigned long LineNum);
 static unsigned long PriorityAlias_Lookup(const char *Alias);
 static void PriorityAlias_Add(const char *Alias, unsigned long Target);
 static void PriorityAlias_Shutdown(void);
@@ -59,7 +59,7 @@ static void RLInheritance_Add(const char *Inheriter, const char *Inherited);
 static Bool RLInheritance_Check(const char *Inheriter, const char *Inherited);
 static void RLInheritance_Shutdown(void);
 
-/*Used for error handling in InitConfig() by ConfigProblem().*/
+/*Used for error handling in InitConfig() by ConfigProblem(CurConfigFile, ).*/
 enum { CONFIG_EMISSINGVAL = 1, CONFIG_EBADVAL, CONFIG_ETRUNCATED, CONFIG_EAFTER,
 	CONFIG_EBEFORE, CONFIG_ELARGENUM };
 
@@ -103,7 +103,7 @@ char *WhitespaceArg(const char *InStream)
 }
 
 
-static void ConfigProblem(short Type, const char *Attribute, const char *AttribVal, unsigned long LineNum)
+static void ConfigProblem(const char *File, short Type, const char *Attribute, const char *AttribVal, unsigned long LineNum)
 { /*Special little error handler used by InitConfig() to prevent repetitive duplicate errors.*/
 	char TmpBuf[1024];
 	char LogBuffer[MAX_LINE_SIZE];
@@ -112,26 +112,26 @@ static void ConfigProblem(short Type, const char *Attribute, const char *AttribV
 	{
 		case CONFIG_EMISSINGVAL:
 			snprintf(TmpBuf, 1024, "Missing or bad value for attribute %s in %s line %lu.\nIgnoring.",
-					Attribute, ConfigFile, LineNum);
+					Attribute, File, LineNum);
 			break;
 		case CONFIG_EBADVAL:
-			snprintf(TmpBuf, 1024, "Bad value %s for attribute %s in %s line %lu.", AttribVal, Attribute, ConfigFile, LineNum);
+			snprintf(TmpBuf, 1024, "Bad value %s for attribute %s in %s line %lu.", AttribVal, Attribute, File, LineNum);
 			break;
 		case CONFIG_ETRUNCATED:
 			snprintf(TmpBuf, 1024, "Attribute %s in %s line %lu has\n"
-					"abnormally long value and may have been truncated.", Attribute, ConfigFile, LineNum);
+					"abnormally long value and may have been truncated.", Attribute, File, LineNum);
 			break;
 		case CONFIG_EAFTER:
 			snprintf(TmpBuf, 1024, "Attribute %s cannot be set after an ObjectID attribute; "
-					"%s line %lu. Ignoring.", Attribute, ConfigFile, LineNum);
+					"%s line %lu. Ignoring.", Attribute, File, LineNum);
 			break;
 		case CONFIG_EBEFORE:
 			snprintf(TmpBuf, 1024, "Attribute %s comes before any ObjectID attribute.\n"
-					"%s line %lu. Ignoring.", Attribute, ConfigFile, LineNum);
+					"%s line %lu. Ignoring.", Attribute, File, LineNum);
 			break;
 		case CONFIG_ELARGENUM:
 			snprintf(TmpBuf, 1024, "Attribute %s in %s line %lu has\n"
-					"abnormally high numeric value and may cause malfunctions.", Attribute, ConfigFile, LineNum);
+					"abnormally high numeric value and may cause malfunctions.", Attribute, File, LineNum);
 			break;
 		default:
 			return;
@@ -143,7 +143,7 @@ static void ConfigProblem(short Type, const char *Attribute, const char *AttribV
 	WriteLogLine(LogBuffer, true);
 }
 
-rStatus InitConfig(void)
+rStatus InitConfig(const char *CurConfigFile)
 { /*Set aside storage for the table.*/
 	FILE *Descriptor = NULL;
 	struct stat FileStat;
@@ -157,13 +157,17 @@ rStatus InitConfig(void)
 	Bool PrevLogInMemory = LogInMemory;
 	char ErrBuf[MAX_LINE_SIZE];
 	
-	EnableLogging = true; /*To temporarily turn on the logging system.*/
-	LogInMemory = true;
+	if (!strcmp(ConfigFile, CurConfigFile))
+	{
+		EnableLogging = true; /*To temporarily turn on the logging system.*/
+		LogInMemory = true;
+	}
 	
 	/*Get the file size of the config file.*/
-	if (stat(ConfigFile, &FileStat) != 0)
+	if (stat(CurConfigFile, &FileStat) != 0)
 	{ /*Failure?*/
-		SpitError("Failed to obtain information about configuration file.\nDoes it exist?");
+		snprintf(ErrBuf, sizeof ErrBuf, "Failed to obtain information about config file \"%s\".\nDoes it exist?", CurConfigFile);
+		SpitError(ErrBuf);
 		return FAILURE;
 	}
 	else
@@ -172,9 +176,9 @@ rStatus InitConfig(void)
 		ConfigStream = malloc(FileStat.st_size + 1);
 	}
 
-	if (!(Descriptor = fopen(ConfigFile, "r"))) /*Open the configuration file.*/
+	if (!(Descriptor = fopen(CurConfigFile, "r"))) /*Open the configuration file.*/
 	{
-		snprintf(ErrBuf, sizeof ErrBuf, "Unable to open configuration file \"%s\"! Permissions?", ConfigFile);
+		snprintf(ErrBuf, sizeof ErrBuf, "Unable to open configuration file \"%s\"! Permissions?", CurConfigFile);
 		SpitError(ErrBuf);
 		EmergencyShell();
 	}
@@ -194,8 +198,11 @@ rStatus InitConfig(void)
 		if ((*(unsigned char*)Worker & 128) == 128)
 		{ /*Check for a sign bit or >= 128. Works for one's complement systems
 			too if we have signed char by default, but who uses one's complement?*/
-			SpitError("Non-ASCII characters detected in configuration file!\n"
-						"Epoch does not support Unicode or the like!");
+			char OutBuf[MAX_LINE_SIZE];
+			
+			snprintf(OutBuf, sizeof OutBuf, "Non-ASCII characters detected in configuration file \"%s\"!\n"
+						"Epoch does not support Unicode or the like!", CurConfigFile);
+			free(ConfigStream);
 			EmergencyShell();
 			break;
 		}
@@ -265,12 +272,33 @@ rStatus InitConfig(void)
 		}
 		
 		/**Global configuration begins here.**/
-		if (!strncmp(Worker, (CurrentAttribute = "DisableCAD"), strlen("DisableCAD")))
+		if (!strncmp(Worker, (CurrentAttribute = "Import"), sizeof "Import" - 1))
+		{
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!InitConfig(DelimCurr))
+			{
+				if (!strcmp(ConfigFile, CurConfigFile))
+				{
+					ShutdownConfig();
+					PriorityAlias_Shutdown();
+				}
+				free(ConfigStream);
+					
+				return FAILURE;
+			}
+			continue;
+		}
+		if (!strncmp(Worker, (CurrentAttribute = "DisableCAD"), sizeof "DisableCAD" - 1))
 		{ /*Should we disable instant reboots on CTRL-ALT-DEL?*/
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 
@@ -286,17 +314,17 @@ rStatus InitConfig(void)
 			{				
 				DisableCAD = true;
 				
-				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 			}
 
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "BlankLogOnBoot"), strlen("BlankLogOnBoot")))
+		else if (!strncmp(Worker, (CurrentAttribute = "BlankLogOnBoot"), sizeof "BlankLogOnBoot" - 1))
 		{ /*Should the log only hold the current boot cycle's logs?*/
 
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 
@@ -312,16 +340,16 @@ rStatus InitConfig(void)
 			{				
 				BlankLogOnBoot = false;
 				
-				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 			}
 
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "EnableLogging"), strlen("EnableLogging")))
+		else if (!strncmp(Worker, (CurrentAttribute = "EnableLogging"), sizeof "EnableLogging" - 1))
 		{
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 
 				continue;
 			}
@@ -339,12 +367,12 @@ rStatus InitConfig(void)
 				
 				TrueLogEnable = false;
 				
-				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 			}
 			
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "RunlevelInherits"), strlen("RunlevelInherits")))
+		else if (!strncmp(Worker, (CurrentAttribute = "RunlevelInherits"), sizeof "RunlevelInherits" - 1))
 		{
 			char Inheriter[MAX_DESCRIPT_SIZE], Inherited[MAX_DESCRIPT_SIZE];
 			const char *TWorker = DelimCurr;
@@ -352,7 +380,7 @@ rStatus InitConfig(void)
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EAFTER, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EAFTER, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
@@ -364,7 +392,7 @@ rStatus InitConfig(void)
 			
 			if (*TWorker == '\0')
 			{
-				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 				continue;
 			}
 			
@@ -372,7 +400,7 @@ rStatus InitConfig(void)
 			
 			if (strstr(TWorker, " ") || strstr(TWorker, "\t"))
 			{
-				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 				continue;
 			}
 			
@@ -382,7 +410,7 @@ rStatus InitConfig(void)
 			
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "DefinePriority"), strlen("DefinePriority")))
+		else if (!strncmp(Worker, (CurrentAttribute = "DefinePriority"), sizeof "DefinePriority" - 1))
 		{
 			char Alias[MAX_DESCRIPT_SIZE] = { '\0' };
 			unsigned long Target = 0, TInc = 0;
@@ -390,13 +418,13 @@ rStatus InitConfig(void)
 			
 			if (CurObj != NULL)
 			{ /*We can't allow this in object-local options, because then this may not be properly defined.*/
-				ConfigProblem(CONFIG_EAFTER, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EAFTER, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				
 				continue;
 			}
@@ -410,7 +438,7 @@ rStatus InitConfig(void)
 			
 			if (*TWorker == '\0')
 			{
-				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 				continue;
 			}
 			
@@ -418,7 +446,7 @@ rStatus InitConfig(void)
 			
 			if (!AllNumeric(TWorker))
 			{
-				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 				continue;
 			}
 			
@@ -428,10 +456,10 @@ rStatus InitConfig(void)
 			
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "AlignStatusReports"), strlen("AlignStatusReports")))
+		else if (!strncmp(Worker, (CurrentAttribute = "AlignStatusReports"), sizeof "AlignStatusReports" - 1))
 		{ /*Deprecated.*/
 			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Attribute AlignStatusReports is deprecated and no longer has any effect.\n"
-					"%s line %lu", ConfigFile, LineNum);
+					"%s line %lu", CurConfigFile, LineNum);
 			SpitWarning(ErrBuf);
 			WriteLogLine(ErrBuf, true);
 			continue;
@@ -447,7 +475,7 @@ rStatus InitConfig(void)
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 
 				continue;
 			}
@@ -476,7 +504,7 @@ rStatus InitConfig(void)
 
 				if (!FoundSomething)
 				{ /*If it doesn't match anything, that's bad.*/
-					ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+					ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 					
 					continue;
 				}
@@ -485,17 +513,17 @@ rStatus InitConfig(void)
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
-				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
 			}
 			
 			continue;
 		}
 		/*Now we get into the actual attribute tags.*/
-		else if (!strncmp(Worker, (CurrentAttribute = "BootBannerText"), strlen("BootBannerText")))
+		else if (!strncmp(Worker, (CurrentAttribute = "BootBannerText"), sizeof "BootBannerText" - 1))
 		{ /*The text shown at boot up as a kind of greeter, before we start executing objects. Can be disabled, off by default.*/
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
@@ -512,15 +540,15 @@ rStatus InitConfig(void)
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_DESCRIPT_SIZE)
 			{
-				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
 			}
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "BootBannerColor"), strlen("BootBannerColor")))
+		else if (!strncmp(Worker, (CurrentAttribute = "BootBannerColor"), sizeof "BootBannerColor" - 1))
 		{ /*Color for boot banner.*/
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
@@ -533,7 +561,7 @@ rStatus InitConfig(void)
 			SetBannerColor(DelimCurr); /*Function to be found elsewhere will do this for us, otherwise this loop would be even bigger.*/
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "DefaultRunlevel"), strlen("DefaultRunlevel")))
+		else if (!strncmp(Worker, (CurrentAttribute = "DefaultRunlevel"), sizeof "DefaultRunlevel" - 1))
 		{
 			if (CurRunlevel[0] != 0)
 			{ /*If the runlevel has already been set, don't set it again.
@@ -543,13 +571,13 @@ rStatus InitConfig(void)
 			
 			if (CurObj != NULL)
 			{ /*What the warning says. It'd get all weird if we allowed that.*/
-				ConfigProblem(CONFIG_EAFTER, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EAFTER, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}	
 			
@@ -557,17 +585,17 @@ rStatus InitConfig(void)
 			
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "Hostname"), strlen("Hostname")))
+		else if (!strncmp(Worker, (CurrentAttribute = "Hostname"), sizeof "Hostname" - 1))
 		{
 			if (CurObj != NULL)
 			{ /*What the warning says. It'd get all weird if we allowed that.*/
-				ConfigProblem(CONFIG_EAFTER, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EAFTER, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 
 			}
@@ -629,25 +657,25 @@ rStatus InitConfig(void)
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
-				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
 			}
 			
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "ObjectID"), strlen("ObjectID")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectID"), sizeof "ObjectID" - 1))
 		{ /*ASCII value used to identify this object internally, and also a kind of short name for it.*/
 			char *Temp = NULL;
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 
 			if ((Temp = strpbrk(DelimCurr, " \t")) != NULL) /*We cannot allow whitespace.*/
 			{
 				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "ObjectIDs may not contain whitespace! Truncating up to occurence of whitespace\n"
-						"Line %lu in %s.", LineNum, ConfigFile);
+						"Line %lu in %s.", LineNum, CurConfigFile);
 				SpitWarning(ErrBuf);
 				WriteLogLine(ErrBuf, true);
 				*Temp = '\0';
@@ -659,22 +687,22 @@ rStatus InitConfig(void)
 
 			if ((strlen(DelimCurr) + 1) >= MAX_DESCRIPT_SIZE)
 			{
-				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
 			}
 
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "ObjectWorkingDirectory"), strlen("ObjectWorkingDirectory")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectWorkingDirectory"), sizeof "ObjectWorkingDirectory" - 1))
 		{
 			if (!CurObj)
 			{
-				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
@@ -687,18 +715,18 @@ rStatus InitConfig(void)
 			
 			strncpy(CurObj->ObjectWorkingDirectory, DelimCurr, strlen(DelimCurr) + 1);	
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "ObjectEnabled"), strlen("ObjectEnabled")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectEnabled"), sizeof "ObjectEnabled" - 1))
 		{
 			if (!CurObj)
 			{
 
-				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
@@ -712,12 +740,12 @@ rStatus InitConfig(void)
 			}
 			else
 			{
-				ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 			}
 			
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "ObjectOptions"), strlen("ObjectOptions")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectOptions"), sizeof "ObjectOptions" - 1))
 		{
 			const char *TWorker = DelimCurr;
 			unsigned long Inc;
@@ -725,19 +753,19 @@ rStatus InitConfig(void)
 			
 			if (!CurObj)
 			{
-				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
-				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
 			}
 			
 			do
@@ -808,36 +836,36 @@ rStatus InitConfig(void)
 						WriteLogLine(ErrBuf, true);
 					#endif
 				}
-				else if (!strncmp(CurArg, "NOSTOPWAIT", strlen("STOPTIMEOUT")))
+				else if (!strncmp(CurArg, "NOSTOPWAIT", sizeof "NOSTOPWAIT" - 1))
 				{
 					CurObj->Opts.NoStopWait = true;
 				}
-				else if (!strncmp(CurArg, "STOPTIMEOUT", strlen("STOPTIMEOUT")))
+				else if (!strncmp(CurArg, "STOPTIMEOUT", sizeof "STOPTIMEOUT" - 1))
 				{
-					const char *TWorker = CurArg + strlen("STOPTIMEOUT");
+					const char *TWorker = CurArg + sizeof "STOPTIMEOUT" - 1;
 					
 					if (*TWorker != '=' || *(TWorker + 1) == '\0')
 					{
-						ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, CurArg, LineNum);
+						ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, CurArg, LineNum);
 						continue;
 					}
 					++TWorker;
 					
 					if (!AllNumeric(TWorker))
 					{
-						ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, CurArg, LineNum);
+						ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, CurArg, LineNum);
 						continue;
 					}
 					
 					CurObj->Opts.StopTimeout = atol(TWorker);
 				}
-				else if (!strncmp(CurArg, "TERMSIGNAL", strlen("TERMSIGNAL")))
+				else if (!strncmp(CurArg, "TERMSIGNAL", sizeof "TERMSIGNAL" - 1))
 				{
-					const char *TWorker = CurArg + strlen("TERMSIGNAL");
+					const char *TWorker = CurArg + sizeof "TERMSIGNAL" - 1;
 					
 					if (*TWorker != '=' || *(TWorker + 1) == '\0')
 					{
-						ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, CurArg, LineNum);
+						ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, CurArg, LineNum);
 						continue;
 					}
 					
@@ -847,7 +875,7 @@ rStatus InitConfig(void)
 					{
 						if (atoi(TWorker) > 255)
 						{
-							ConfigProblem(CONFIG_ELARGENUM, CurArg, NULL, LineNum);
+							ConfigProblem(CurConfigFile, CONFIG_ELARGENUM, CurArg, NULL, LineNum);
 						}
 
 						CurObj->TermSignal = atoi(TWorker);
@@ -886,30 +914,30 @@ rStatus InitConfig(void)
 					}
 					else
 					{
-						ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, TWorker, LineNum);
+						ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, TWorker, LineNum);
 						continue;
 					}
 				}
 				else
 				{
-					ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, CurArg, LineNum);
+					ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, CurArg, LineNum);
 					break;
 				}
 			} while ((TWorker = WhitespaceArg(TWorker)));
 			
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "ObjectDescription"), strlen("ObjectDescription")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectDescription"), sizeof "ObjectDescription" - 1))
 		{ /*It's description.*/
 			if (!CurObj)
 			{
-				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
@@ -922,22 +950,22 @@ rStatus InitConfig(void)
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_DESCRIPT_SIZE)
 			{
-				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
 			}
 
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStartCommand"), strlen("ObjectStartCommand")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStartCommand"), sizeof "ObjectStartCommand" - 1))
 		{ /*What we execute to start it.*/
 			if (!CurObj)
 			{
-				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
@@ -948,22 +976,22 @@ rStatus InitConfig(void)
 
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
-				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
 			}
 			
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "ObjectPrestartCommand"), strlen("ObjectPrestartCommand")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectPrestartCommand"), sizeof "ObjectPrestartCommand" - 1))
 		{
 			if (!CurObj)
 			{
-				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
@@ -974,21 +1002,21 @@ rStatus InitConfig(void)
 			
 			if (strlen(DelimCurr) + 1 >= MAX_LINE_SIZE)
 			{
-				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_ETRUNCATED, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "ObjectReloadCommand"), strlen("ObjectReloadCommand")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectReloadCommand"), sizeof "ObjectReloadCommand" - 1))
 		{
 			if (!CurObj)
 			{
-				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 
@@ -1017,7 +1045,7 @@ rStatus InitConfig(void)
 				{
 					if (atoi(TWorker) > 255)
 					{
-						ConfigProblem(CONFIG_ELARGENUM, CurrentAttribute, NULL, LineNum);
+						ConfigProblem(CurConfigFile, CONFIG_ELARGENUM, CurrentAttribute, NULL, LineNum);
 					}
 					CurObj->ReloadCommandSignal = (unsigned char)atoi(TWorker);
 				}
@@ -1059,7 +1087,7 @@ rStatus InitConfig(void)
 					
 					snprintf(TBuf, sizeof TBuf, CONFIGWARNTXT
 							"ObjectReloadCommand starts with SIGNAL, but the argument to SIGNAL\n"
-							"is invalid. Object \"%s\" in %s line %lu", CurObj->ObjectID, ConfigFile, LineNum);
+							"is invalid. Object \"%s\" in %s line %lu", CurObj->ObjectID, CurConfigFile, LineNum);
 					SpitWarning(TBuf);
 					WriteLogLine(TBuf, true);
 					continue;
@@ -1075,23 +1103,23 @@ rStatus InitConfig(void)
 			
 			if (strlen(DelimCurr) + 1 >= MAX_LINE_SIZE)
 			{
-				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_ETRUNCATED, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStopCommand"), strlen("ObjectStopCommand")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStopCommand"), sizeof "ObjectStopCommand" - 1))
 		{ /*If it's "PID", then we know that we need to kill the process ID only. If it's "NONE", well, self explanitory.*/
 			if (!CurObj)
 			{
-				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 
@@ -1118,11 +1146,11 @@ rStatus InitConfig(void)
 					}
 				}
 			}
-			else if (!strncmp(DelimCurr, "PID", strlen("PID")))
+			else if (!strncmp(DelimCurr, "PID", sizeof "PID" - 1))
 			{
 				CurObj->Opts.StopMode = STOP_PID;
 			}
-			else if (!strncmp(DelimCurr, "NONE", strlen("NONE")))
+			else if (!strncmp(DelimCurr, "NONE", sizeof "NONE" - 1))
 			{
 				CurObj->Opts.StopMode = STOP_NONE;
 			}
@@ -1137,25 +1165,25 @@ rStatus InitConfig(void)
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
-				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
 			}
 			
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStartPriority"), strlen("ObjectStartPriority")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStartPriority"), sizeof "ObjectStartPriority" - 1))
 		{
 			/*The order in which this item is started. If it is disabled in this runlevel, the next object in line is executed, IF
 			 * and only IF it is enabled. If not, the one after that and so on.*/
 			
 			if (!CurObj)
 			{
-				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
@@ -1165,7 +1193,7 @@ rStatus InitConfig(void)
 				
 				if (!(TmpTarget = PriorityAlias_Lookup(DelimCurr)))
 				{
-					ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+					ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 					continue;
 				}
 				
@@ -1177,23 +1205,23 @@ rStatus InitConfig(void)
 			
 			if (strlen(DelimCurr) >= 8)
 			{ /*An eight digit number is too high.*/
-				ConfigProblem(CONFIG_ELARGENUM, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_ELARGENUM, CurrentAttribute, NULL, LineNum);
 			}
 			
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStopPriority"), strlen("ObjectStopPriority")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStopPriority"), sizeof "ObjectStopPriority" - 1))
 		{
 			/*Same as above, but used for when the object is being shut down.*/
 			if (!CurObj)
 			{
-				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
@@ -1203,7 +1231,7 @@ rStatus InitConfig(void)
 				
 				if (!(TmpTarget = PriorityAlias_Lookup(DelimCurr)))
 				{
-					ConfigProblem(CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+					ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 					continue;
 				}
 				
@@ -1215,22 +1243,22 @@ rStatus InitConfig(void)
 			
 			if (strlen(DelimCurr) >= 8)
 			{ /*An eight digit number is too high.*/
-				ConfigProblem(CONFIG_ELARGENUM, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_ELARGENUM, CurrentAttribute, NULL, LineNum);
 			}
 			
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "ObjectPIDFile"), strlen("ObjectPIDFile")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectPIDFile"), sizeof "ObjectPIDFile" - 1))
 		{ /*This really needs to be specified if Opts.StopMode is STOP_PIDFILE, or we'll reset the object to STOP_PID.*/
 			if (!CurObj)
 			{
-				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
@@ -1243,24 +1271,24 @@ rStatus InitConfig(void)
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
-				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
 			}
 			
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "ObjectUser"), strlen("ObjectUser")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectUser"), sizeof "ObjectUser" - 1))
 		{
 			struct passwd *UserStruct = NULL;
 			
 			if (CurObj == NULL)
 			{
-				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
@@ -1268,7 +1296,7 @@ rStatus InitConfig(void)
 			{ /*getpwnam_r() is more trouble than it's worth in single-threaded Epoch.*/
 				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT
 						"Unable to lookup requested USER \"%s\" for object \"%s\".\n"
-						"Line %lu in %s", DelimCurr, CurObj->ObjectID, LineNum, ConfigFile);
+						"Line %lu in %s", DelimCurr, CurObj->ObjectID, LineNum, CurConfigFile);
 				WriteLogLine(ErrBuf, true);
 				SpitWarning(ErrBuf);
 				continue;
@@ -1278,24 +1306,24 @@ rStatus InitConfig(void)
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
-				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
 			}
 			
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "ObjectGroup"), strlen("ObjectGroup")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectGroup"), sizeof "ObjectGroup" - 1))
 		{
 			struct group *GroupStruct = NULL;
 			
 			if (CurObj == NULL)
 			{
-				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
@@ -1303,7 +1331,7 @@ rStatus InitConfig(void)
 			{ /*getpwnam_r() is more trouble than it's worth in single-threaded Epoch.*/
 				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT
 						"Unable to lookup requested GROUP \"%s\" for object \"%s\".\n"
-						"Line %lu in %s", DelimCurr, CurObj->ObjectID, LineNum, ConfigFile);
+						"Line %lu in %s", DelimCurr, CurObj->ObjectID, LineNum, CurConfigFile);
 				WriteLogLine(ErrBuf, true);
 				SpitWarning(ErrBuf);
 				continue;
@@ -1313,21 +1341,21 @@ rStatus InitConfig(void)
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
-				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
 			}
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStdout"), strlen("ObjectStdout")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStdout"), sizeof "ObjectStdout" - 1))
 		{
 			if (CurObj == NULL)
 			{
-				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
@@ -1347,22 +1375,22 @@ rStatus InitConfig(void)
 				
 				if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 				{
-					ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+					ConfigProblem(CurConfigFile, CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
 				}
 			}
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStderr"), strlen("ObjectStderr")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectStderr"), sizeof "ObjectStderr" - 1))
 		{
 			if (CurObj == NULL)
 			{
-				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
@@ -1382,19 +1410,19 @@ rStatus InitConfig(void)
 				
 				if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 				{
-					ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+					ConfigProblem(CurConfigFile, CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
 				}
 			}
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "ObjectRunlevels"), strlen("ObjectRunlevels")))
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectRunlevels"), sizeof "ObjectRunlevels" - 1))
 		{ /*Runlevel.*/
 			char *TWorker;
 			char TRL[MAX_DESCRIPT_SIZE], *TRL2;
 			
 			if (!CurObj)
 			{
-				ConfigProblem(CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
@@ -1404,14 +1432,14 @@ rStatus InitConfig(void)
 						"This is not advised because the config file editing code is not smart enough\n"
 						"to handle multiple lines. You should put the additional runlevels on the same line.\n"
 						"Line %lu in %s",
-						CurObj->ObjectID, LineNum, ConfigFile);
+						CurObj->ObjectID, LineNum, CurConfigFile);
 				SpitWarning(ErrBuf);
 				WriteLogLine(ErrBuf, true);
 			}
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
-				ConfigProblem(CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
 				continue;
 			}
 			
@@ -1431,7 +1459,7 @@ rStatus InitConfig(void)
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
-				ConfigProblem(CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+				ConfigProblem(CurConfigFile, CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
 			}
 			
 			continue;
@@ -1439,71 +1467,63 @@ rStatus InitConfig(void)
 		}
 		else
 		{ /*No big deal.*/
-			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Unidentified attribute in %s on line %lu.", ConfigFile, LineNum);
+			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Unidentified attribute in %s on line %lu.", CurConfigFile, LineNum);
 			SpitWarning(ErrBuf);
 			WriteLogLine(ErrBuf, true);
 			continue;
 		}
 	} while (++LineNum, (Worker = NextLine(Worker)));
 	
-	for (ObjWorker = ObjectTable; ObjWorker->Next; ObjWorker = ObjWorker->Next)
-	{
-		/*We don't need to specify a description, but if we neglect to, use the ObjectID.*/
-		if (ObjWorker->ObjectDescription == NULL)
-		{
-			ObjWorker->ObjectDescription = ObjWorker->ObjectID;
-		}
-	}
-	
 	/*This is harmless, but it's bad form and could indicate human error in writing the config file.*/
 	if (LongComment)
 	{
-		snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "No comment terminator at end of configuration file.");
+		snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "No comment terminator at end of config file \"%s\".", CurConfigFile);
 		SpitWarning(ErrBuf);
 		WriteLogLine(ErrBuf, true);
 	}
 	
-	PriorityAlias_Shutdown(); /*We don't need to keep this in memory.*/
-	
-	switch (ScanConfigIntegrity())
+	if (!strcmp(ConfigFile, CurConfigFile)) /*We are at the top level config file and therefore need to clean up.*/
 	{
-		case SUCCESS:
-			break;
-		case FAILURE:
-		{ /*We failed integrity checking.*/
-			fprintf(stderr, "Enter \"d\" to dump %s to console or strike enter to continue.\n-> ", ConfigFile);
-			fflush(NULL); /*Have an eerie feeling this will be necessary on some systems.*/
-			
-			if (getchar() == 'd')
-			{
-				fprintf(stderr, CONSOLE_COLOR_MAGENTA "Beginning dump of %s to console.\n" CONSOLE_ENDCOLOR, ConfigFile);
-				fprintf(stderr, "%s", ConfigStream);
-				fflush(NULL);
-			}
-			else
-			{
-				printf("Not dumping %s.\n", ConfigFile);
-			}
-			
-			ShutdownConfig();
-			free(ConfigStream);
-			
-			return FAILURE;
-		}
-		case WARNING:
-		{
-			const char *WarnTxt = "Noncritical configuration problems exist.\nPlease edit Epoch's configuration file to resolve these.";
-			WriteLogLine(WarnTxt, true);
-			SpitWarning(WarnTxt);
-			break;
-
-		}
-	}
+		PriorityAlias_Shutdown();
 		
-	free(ConfigStream); /*Release ConfigStream, since we only use the object table now.*/
-	LogInMemory = PrevLogInMemory;
-	EnableLogging = TrueLogEnable;
+		for (ObjWorker = ObjectTable; ObjWorker->Next; ObjWorker = ObjWorker->Next)
+		{
+			/*We don't need to specify a description, but if we neglect to, use the ObjectID.*/
+			if (ObjWorker->ObjectDescription == NULL)
+			{
+				ObjWorker->ObjectDescription = ObjWorker->ObjectID;
+			}
+		}
+		
+		switch (ScanConfigIntegrity())
+		{
+			case SUCCESS:
+				break;
+			case FAILURE:
+				/*We failed integrity checking.*/
+				ShutdownConfig();
+				free(ConfigStream);
+				
+				return FAILURE;
+			case WARNING:
+			{
+				char WarnTxt[MAX_LINE_SIZE];
+				
+				snprintf(WarnTxt, sizeof WarnTxt, "Noncritical configuration problems exist.\nPlease edit \"%s\" to resolve these.", CurConfigFile);
+				
+				WriteLogLine(WarnTxt, true);
+				SpitWarning(WarnTxt);
+				break;
 	
+			}
+		}
+		
+		LogInMemory = PrevLogInMemory;
+		EnableLogging = TrueLogEnable;
+	}
+	
+	free(ConfigStream); /*Release ConfigStream, since we only use the object table now.*/
+
 	return SUCCESS;
 }
 
@@ -1528,7 +1548,7 @@ static rStatus GetLineDelim(const char *InStream, char *OutStream)
 		}
 		ObjectInQuestion[IncT] = '\0';
 
-		snprintf(TmpBuf, 1024, "No parameter for attribute \"%s\" in %s.", ObjectInQuestion, ConfigFile);
+		snprintf(TmpBuf, 1024, "No parameter for attribute \"%s\".", ObjectInQuestion);
 
 		SpitError(TmpBuf);
 
@@ -2500,7 +2520,7 @@ rStatus ReloadConfig(void)
 	
 	WriteLogLine("CONFIG: Initializing new configuration.", true);
 	
-	if (!InitConfig())
+	if (!InitConfig(ConfigFile))
 	{
 		WriteLogLine("CONFIG: " CONSOLE_COLOR_RED "FAILED TO RELOAD CONFIGURATION." CONSOLE_ENDCOLOR 
 					" Restoring previous configuration from backup.", true);

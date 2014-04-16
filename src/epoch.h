@@ -276,7 +276,7 @@ extern char ConfigFile[MAX_LINE_SIZE];
 /**Function forward declarations.*/
 
 /*config.c*/
-extern rStatus InitConfig(void);
+extern rStatus InitConfig(const char *CurConfigFile);
 extern void ShutdownConfig(void);
 extern rStatus ReloadConfig(void);
 extern ObjTable *LookupObjectInTable(const char *ObjectID);
