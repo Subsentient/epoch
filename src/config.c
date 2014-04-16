@@ -291,10 +291,9 @@ rStatus InitConfig(const char *CurConfigFile)
 				continue;
 			}
 			
-			ConfigFileList[NumConfigFiles] = malloc(MAX_LINE_SIZE);
+			ConfigFileList[NumConfigFiles] = malloc(strlen(DelimCurr) + 1);
 			
-			strncpy(ConfigFileList[NumConfigFiles], DelimCurr, MAX_LINE_SIZE - 1);
-			ConfigFileList[NumConfigFiles][MAX_LINE_SIZE - 1] = '\0';
+			strncpy(ConfigFileList[NumConfigFiles], DelimCurr, strlen(DelimCurr) + 1);
 			
 			++NumConfigFiles;
 			
