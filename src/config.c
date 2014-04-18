@@ -291,9 +291,23 @@ rStatus InitConfig(const char *CurConfigFile)
 				continue;
 			}
 			
-			ConfigFileList[NumConfigFiles] = malloc(strlen(DelimCurr) + 1);
-			
-			strncpy(ConfigFileList[NumConfigFiles], DelimCurr, strlen(DelimCurr) + 1);
+			if (*DelimCurr == '/')
+			{ /*Absolute path?*/
+				ConfigFileList[NumConfigFiles] = malloc(strlen(DelimCurr) + 1);
+				
+				strncpy(ConfigFileList[NumConfigFiles], DelimCurr, strlen(DelimCurr) + 1);
+			}
+			else
+			{ /*A file in our config folder.*/
+				char OutBuf[MAX_LINE_SIZE];
+				
+				snprintf(OutBuf, sizeof OutBuf, CONFIGDIR "%s", DelimCurr);
+				
+				ConfigFileList[NumConfigFiles] = malloc(strlen(OutBuf) + 1);
+				
+				strncpy(ConfigFileList[NumConfigFiles], OutBuf, strlen(OutBuf) + 1);
+			}
+				
 			
 			++NumConfigFiles;
 			
