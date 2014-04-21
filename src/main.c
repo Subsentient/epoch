@@ -1051,7 +1051,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		short StartMode = 0;
 		enum { START = 1, STOP, RESTART };
 		char TOut[MAX_LINE_SIZE];
-		const char *ActionString = NULL;
+		
 
 		if (argc != 3)
 		{
@@ -1076,33 +1076,51 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		
 		if (ArgIs("start"))
 		{
-			ActionString = "Starting";
 			StartMode = START;
 		}
 		else if (ArgIs("stop"))
 		{
-			ActionString = "Stopping";
 			StartMode = STOP;
 		}
 		else
 		{
-			ActionString = "Restarting";
 			StartMode = RESTART;
 		}
 		
-		snprintf(TOut, sizeof TOut, "%s %s", ActionString, argv[2]);
-		RenderStatusReport(TOut);
 		
 		if (StartMode < RESTART)
 		{
+			const char *ActionString = StartMode == START ? "Starting" : "Stopping";
+			
+			snprintf(TOut, sizeof TOut, "%s %s", ActionString, argv[2]);
+			RenderStatusReport(TOut);
+			
 			RV = ObjControl(argv[2], (StartMode == START ? MEMBUS_CODE_OBJSTART : MEMBUS_CODE_OBJSTOP));
+			
+			CompleteStatusReport(TOut, RV, false);
 		}
 		else
 		{
-			RV = (ObjControl(argv[2], MEMBUS_CODE_OBJSTOP) && ObjControl(argv[2], MEMBUS_CODE_OBJSTART));
+			snprintf(TOut, sizeof TOut, "Stopping %s", argv[2]);
+			
+			RenderStatusReport(TOut);
+			RV = ObjControl(argv[2], MEMBUS_CODE_OBJSTOP);
+			CompleteStatusReport(TOut, RV, false);
+			
+			if (!RV)
+			{ /*Stop failed so...*/
+				ShutdownMemBus(false);
+				return FAILURE;
+			}
+			
+			snprintf(TOut, sizeof TOut, "Starting %s", argv[2]);
+			
+			RenderStatusReport(TOut);
+			RV = ObjControl(argv[2], MEMBUS_CODE_OBJSTART);
+			CompleteStatusReport(TOut, RV, false);
 		}
 		
-		CompleteStatusReport(TOut, RV, false);
+		
 		
 		ShutdownMemBus(false);
 		return RV;
