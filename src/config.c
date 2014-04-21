@@ -32,7 +32,7 @@ static struct _PriorityAliasTree
 	
 	struct _PriorityAliasTree *Next;
 	struct _PriorityAliasTree *Prev;
-} *PriorityAliasTree = NULL;
+} *PriorityAliasTree;
 
 /*Used to allow runlevels to be inherited by other runlevels.*/
 static struct _RunlevelInheritance
@@ -43,10 +43,10 @@ Epoch is just a linked list of linked lists anymore.*/
 	
 	struct _RunlevelInheritance *Next;
 	struct _RunlevelInheritance *Prev;
-} *RunlevelInheritance = NULL;
+} *RunlevelInheritance;
 
 /*Holds the system hostname.*/
-char Hostname[MAX_LINE_SIZE] = { '\0' };
+char Hostname[MAX_LINE_SIZE];
 
 /*Function forward declarations for all the statics.*/
 static ObjTable *AddObjectToTable(const char *ObjectID, const char *File);
