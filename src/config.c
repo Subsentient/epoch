@@ -17,6 +17,7 @@
 #include "epoch.h"
 
 #define CONFIGWARNTXT "CONFIG: " CONSOLE_COLOR_YELLOW "WARNING: " CONSOLE_ENDCOLOR
+#define CONFIGERRORTXT  "CONFIG: "CONSOLE_COLOR_RED "ERROR: " CONSOLE_ENDCOLOR
 
 /*We want the only interface for this to be LookupObjectInTable().*/
 ObjTable *ObjectTable;
@@ -158,8 +159,9 @@ rStatus InitConfig(const char *CurConfigFile)
 	Bool TrueLogEnable = EnableLogging;
 	Bool PrevLogInMemory = LogInMemory;
 	char ErrBuf[MAX_LINE_SIZE];
+	const Bool IsPrimaryConfigFile = !strcmp(ConfigFile, CurConfigFile);
 	
-	if (!strcmp(ConfigFile, CurConfigFile))
+	if (IsPrimaryConfigFile)
 	{
 		EnableLogging = true; /*To temporarily turn on the logging system.*/
 		LogInMemory = true;
@@ -168,8 +170,11 @@ rStatus InitConfig(const char *CurConfigFile)
 	/*Get the file size of the config file.*/
 	if (stat(CurConfigFile, &FileStat) != 0)
 	{ /*Failure?*/
-		snprintf(ErrBuf, sizeof ErrBuf, "Failed to obtain information about config file \"%s\".\nDoes it exist?", CurConfigFile);
+		snprintf(ErrBuf, sizeof ErrBuf, CONFIGERRORTXT "Failed to obtain information about config file \"%s\".\nDoes it exist?", CurConfigFile);
+		
 		SpitError(ErrBuf);
+		if (!IsPrimaryConfigFile) WriteLogLine(ErrBuf, true);
+		
 		return FAILURE;
 	}
 	else
@@ -180,8 +185,9 @@ rStatus InitConfig(const char *CurConfigFile)
 
 	if (!(Descriptor = fopen(CurConfigFile, "r"))) /*Open the configuration file.*/
 	{
-		snprintf(ErrBuf, sizeof ErrBuf, "Unable to open configuration file \"%s\"! Permissions?", CurConfigFile);
+		snprintf(ErrBuf, sizeof ErrBuf, CONFIGERRORTXT "Unable to open configuration file \"%s\"! Permissions?", CurConfigFile);
 		SpitError(ErrBuf);
+		if (!IsPrimaryConfigFile) WriteLogLine(ErrBuf, true);
 		EmergencyShell();
 	}
 	
@@ -200,12 +206,11 @@ rStatus InitConfig(const char *CurConfigFile)
 		if ((*(unsigned char*)Worker & 128) == 128)
 		{ /*Check for a sign bit or >= 128. Works for one's complement systems
 			too if we have signed char by default, but who uses one's complement?*/
-			char OutBuf[MAX_LINE_SIZE];
 			
-			snprintf(OutBuf, sizeof OutBuf, "Non-ASCII characters detected in configuration file \"%s\"!\n"
+			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Non-ASCII characters detected in configuration file \"%s\"!\n"
 						"Epoch does not support Unicode or the like!", CurConfigFile);
-			free(ConfigStream);
-			EmergencyShell();
+			SpitWarning(ErrBuf);
+			WriteLogLine(ErrBuf, true);
 			break;
 		}
 	}
@@ -215,7 +220,9 @@ rStatus InitConfig(const char *CurConfigFile)
 	/*Empty file?*/
 	if ((*Worker == '\n' && *(Worker + 1) == '\0') || *Worker == '\0')
 	{
-		SpitError("Seems that the configuration file is empty or corrupted.");
+		snprintf(ErrBuf, sizeof ErrBuf, "Seems that the config file \"%s\" is empty or corrupted.", CurConfigFile);
+		SpitError(ErrBuf);
+		if (!IsPrimaryConfigFile) WriteLogLine(ErrBuf, true);
 		free(ConfigStream);
 		return FAILURE;
 	}
@@ -241,7 +248,7 @@ rStatus InitConfig(const char *CurConfigFile)
 		{ /*It's probably not good to have stray multi-line comment terminators around.*/
 			if (!LongComment)
 			{
-				snprintf(ErrBuf, MAX_LINE_SIZE, CONFIGWARNTXT "Stray multi-line comment terminator on line %lu\n", LineNum);
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Stray multi-line comment terminator in \"%s\" line %lu\n", CurConfigFile, LineNum);
 				SpitWarning(ErrBuf);
 				WriteLogLine(ErrBuf, true);
 				continue;
@@ -309,18 +316,17 @@ rStatus InitConfig(const char *CurConfigFile)
 			}
 				
 			
-			++NumConfigFiles;
+			++NumConfigFiles; /*This is incremented prior to the call to InitConfig() for a reason.*/
 			
 			if (!InitConfig(ConfigFileList[NumConfigFiles - 1])) /*It's very important we pass this pointer and not DelimCurr.*/
 			{
-				if (!strcmp(ConfigFile, CurConfigFile))
-				{
-					ShutdownConfig();
-					PriorityAlias_Shutdown();
-				}
-				free(ConfigStream);
-					
-				return FAILURE;
+				
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGERRORTXT
+						"Failed to load imported config file \"%s\"! File is imported on line %lu in \"%s\"\n"
+						"Please correct your configuration! Attempting to continue.",
+						ConfigFileList[NumConfigFiles - 1], LineNum, CurConfigFile);
+				SpitError(ErrBuf);
+				WriteLogLine(ErrBuf, true);
 			}
 			continue;
 		}
@@ -342,7 +348,7 @@ rStatus InitConfig(const char *CurConfigFile)
 				DisableCAD = false;
 			}
 			else
-			{				
+			{
 				DisableCAD = true;
 				
 				ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
@@ -680,8 +686,8 @@ rStatus InitConfig(const char *CurConfigFile)
 			if (strstr(Hostname, " ") != NULL || strstr(Hostname, "\t") != NULL)
 			{
 				const char *const ErrString = "Tabs and/or spaces in hostname file. Cannot set hostname.";
-				SpitWarning((const char*)ErrString);
-				WriteLogLine((const char*)ErrString, true);
+				SpitWarning(ErrString);
+				WriteLogLine(ErrString, true);
 				*Hostname = '\0'; /*Set the hostname back to nothing.*/
 				continue;
 			}
@@ -837,9 +843,10 @@ rStatus InitConfig(const char *CurConfigFile)
 					CurObj->Opts.Fork = true;
 			#else
 					snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Object \"%s\" has specified the FORK option,\n"
-							"but this is not supported on NOMMU builds.", CurObj->ObjectID);
+							"but this is not supported on NOMMU builds. Disabling the object.", CurObj->ObjectID);
 					SpitWarning(ErrBuf);
 					WriteLogLine(ErrBuf, true);
+					CurObj->Enabled = false;
 			#endif /*NOMMU*/
 				}
 				else if (!strcmp(CurArg, "EXEC"))
@@ -1366,7 +1373,7 @@ rStatus InitConfig(const char *CurConfigFile)
 			}
 			
 			if (!(GroupStruct = getgrnam(DelimCurr)))
-			{ /*getpwnam_r() is more trouble than it's worth in single-threaded Epoch.*/
+			{ /*getgrnam_r() is more trouble than it's worth in single-threaded Epoch.*/
 				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT
 						"Unable to lookup requested GROUP \"%s\" for object \"%s\".\n"
 						"Line %lu in %s", DelimCurr, CurObj->ObjectID, LineNum, CurConfigFile);
@@ -1520,7 +1527,7 @@ rStatus InitConfig(const char *CurConfigFile)
 		WriteLogLine(ErrBuf, true);
 	}
 	
-	if (!strcmp(ConfigFile, CurConfigFile)) /*We are at the top level config file and therefore need to clean up.*/
+	if (IsPrimaryConfigFile) /*We are at the top level config file and therefore need to clean up.*/
 	{
 		PriorityAlias_Shutdown();
 		
@@ -1545,9 +1552,7 @@ rStatus InitConfig(const char *CurConfigFile)
 				return FAILURE;
 			case WARNING:
 			{
-				char WarnTxt[MAX_LINE_SIZE];
-				
-				snprintf(WarnTxt, sizeof WarnTxt, "Noncritical configuration problems exist.\nPlease edit \"%s\" to resolve these.", CurConfigFile);
+				const char *const WarnTxt = "Noncritical configuration problems exist. Check your logs.";
 				
 				WriteLogLine(WarnTxt, true);
 				SpitWarning(WarnTxt);
