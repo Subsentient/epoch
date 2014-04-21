@@ -1505,8 +1505,6 @@ int main(int argc, char **argv)
 	{ /*Just us, as init. That means, begin bootup.*/
 		const char *TRunlevel = NULL, *TConfigFile = getenv("epochconfig");
 		
-		signal(SIGUSR2, SigHandler); /**If we receive this, we reexecute. Mostly in case something is wrong.**/
-
 		if (TConfigFile != NULL)
 		{ /*Someone specified a config file from disk?*/
 			snprintf(ConfigFile, MAX_LINE_SIZE, "%s", TConfigFile);
@@ -1522,7 +1520,6 @@ int main(int argc, char **argv)
 			SetDefaultProcessTitle(argc, argv);
 			RecoverFromReexec(RecoverType != NULL);	
 		}
-		
 		else if (argc > 1)
 		{
 			short ArgCount = (short)argc, Inc = 1;
@@ -1537,6 +1534,8 @@ int main(int argc, char **argv)
 				}
 			}
 		}
+		
+		signal(SIGUSR2, SigHandler); /**If we receive this, we reexecute. Mostly in case something is wrong.**/
 		
 		/*Need we set a default runlevel?*/
 		if ((TRunlevel = getenv("runlevel")) != NULL)

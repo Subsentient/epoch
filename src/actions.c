@@ -264,6 +264,12 @@ void RecoverFromReexec(Bool ViaMemBus)
 	
 	MemBusKey = MEMKEY + 1;
 	
+	/*Restore any goobled up environ vars.*/
+	setenv("USER", ENVVAR_USER, true);
+	setenv("PATH", ENVVAR_PATH, true);
+	setenv("HOME", ENVVAR_HOME, true);
+	setenv("SHELL", ENVVAR_SHELL, true);
+	
 	if (!InitConfig(ConfigFile))
 	{
 		EmulWall("Epoch: "CONSOLE_COLOR_RED "ERROR: " CONSOLE_ENDCOLOR
