@@ -228,6 +228,10 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		  "Enter start, stop, or restart followed by an object ID to control\n\tthat object."
 		),
 		
+		( "reload objectid:\n\t" CONSOLE_ENDCOLOR
+		  "If a reload command exists for the object specified,\n\tthe object is reloaded."
+		),
+		
 		( "objrl objectid [del/add/check] runlevel:\n\t" CONSOLE_ENDCOLOR
 		
 		  "runlevel del and add do pretty much what it sounds like,\n\t"
@@ -244,8 +248,8 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		
 		  "Sets Ctrl-Alt-Del instant reboot modes. If set to on,\n\t"
 		  "striking Ctrl-Alt-Del at a console will instantly reboot the system\n\t"
-		  "without intervention by Epoch. Otherwise, if set to off, Epoch will perform\n\t"
-		  "a normal reboot when Ctrl-Alt-Del is pressed."
+		  "without intervention by Epoch. Otherwise, if set to off, Epoch will\n\t"
+		  "perform a normal reboot when Ctrl-Alt-Del is pressed."
 		),
 			
 		
@@ -287,7 +291,7 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		)
 	};
 	
-	enum { HCMD, ENDIS, STAP, OBJRL, STATUS, SETCAD, CONFRL, REEXEC,
+	enum { HCMD, ENDIS, STAP, REL, OBJRL, STATUS, SETCAD, CONFRL, REEXEC,
 		RLCTL, GETPID, KILLOBJ, VER, ENUM_MAX };
 	
 	
@@ -342,6 +346,11 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 	else if (!strcmp(InCmd, "reexec"))
 	{
 		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[REEXEC]);
+		return;
+	}
+	else if (!strcmp(InCmd, "reload"))
+	{
+		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[REL]);
 		return;
 	}
 	else if (!strcmp(InCmd, "runlevel"))
