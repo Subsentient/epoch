@@ -330,7 +330,27 @@ rStatus InitConfig(const char *CurConfigFile)
 			}
 			continue;
 		}
-		if (!strncmp(Worker, (CurrentAttribute = "DisableCAD"), sizeof "DisableCAD" - 1))
+		else if (!strncmp(Worker, (CurrentAttribute = "GlobalEnvVar"), sizeof "GlobalEnvVar" - 1))
+		{
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!strchr(DelimCurr, '='))
+			{
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Malformed global environment variable, line %lu in \"%s\".\n"
+						"Cannot set this environment variable.", LineNum, CurConfigFile);
+				SpitWarning(ErrBuf);
+				WriteLogLine(ErrBuf, true);
+				continue;
+			}
+			
+			EnvVarList_Add(DelimCurr, &GlobalEnvVars);
+			continue;
+		}
+		else if (!strncmp(Worker, (CurrentAttribute = "DisableCAD"), sizeof "DisableCAD" - 1))
 		{ /*Should we disable instant reboots on CTRL-ALT-DEL?*/
 			
 			if (!GetLineDelim(Worker, DelimCurr))
@@ -1460,6 +1480,32 @@ rStatus InitConfig(const char *CurConfigFile)
 			}
 			continue;
 		}
+		else if (!strncmp(Worker, (CurrentAttribute = "ObjectEnvVar"), sizeof "ObjectEnvVar" - 1))
+		{
+			if (!CurObj)
+			{
+				ConfigProblem(CurConfigFile, CONFIG_EBEFORE, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!strchr(DelimCurr, '='))
+			{
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT"Malformed environment variable for object %s,\n"
+						"in file \"%s\" line %lu. Not setting this environment variable.", CurObj->ObjectID, CurConfigFile, LineNum);
+				SpitWarning(ErrBuf);
+				WriteLogLine(ErrBuf, true);
+				continue;
+			}
+			
+			EnvVarList_Add(DelimCurr, &CurObj->EnvVars);
+			continue;
+		}
 		else if (!strncmp(Worker, (CurrentAttribute = "ObjectRunlevels"), sizeof "ObjectRunlevels" - 1))
 		{ /*Runlevel.*/
 			char *TWorker;
@@ -2160,6 +2206,83 @@ unsigned long GetHighestPriority(Bool WantStartPriority)
 	return CurHighest;
 }
 
+/*Functions for environment variable management.*/
+void EnvVarList_Add(const char *Var, struct _EnvVarList **const List)
+{
+	struct _EnvVarList *Worker = *List;
+	
+	if (!*List)
+	{
+		Worker = *List = malloc(sizeof(struct _EnvVarList));
+		Worker->Next = NULL;
+		Worker->Prev = NULL;
+		
+	}
+	
+	while (Worker->Next) Worker = Worker->Next;
+	
+	Worker->Next = malloc(sizeof(struct _EnvVarList));
+	Worker->Next->Next = NULL;
+	Worker->Next->Prev = Worker;
+	
+	/*Copy in the environment variable.*/
+	strncpy(Worker->EnvVar, Var, sizeof Worker->EnvVar - 1);
+	Worker->EnvVar[sizeof Worker->EnvVar - 1] = '\0';
+}
+
+Bool EnvVarList_Del(const char *const Check, struct _EnvVarList **const List) /*Check if either the object or the envvar are the same pointer, delete those that match.*/
+{
+	struct _EnvVarList *Worker = NULL;
+	
+	if (!Check || !List || !*List) return false;
+	
+	Worker = *List;
+	
+	for (; Worker->Next; Worker = Worker->Next)
+	{
+		if (Worker->EnvVar == Check)
+		{
+			if (Worker == *List)
+			{
+				if (!Worker->Next->Next)
+				{
+					EnvVarList_Shutdown(List);
+				}
+				else
+				{
+					Worker->Next->Prev = NULL;
+					*List = Worker->Next;
+					free(Worker);
+				}
+			}
+			else
+			{
+				Worker->Next->Prev = Worker->Prev;
+				Worker->Prev->Next = Worker->Next;
+				free(Worker);
+			}
+			return true;
+		}
+	}
+	
+	return false;
+}
+
+void EnvVarList_Shutdown(struct _EnvVarList **const List)
+{
+	struct _EnvVarList *Worker = NULL, *Del = NULL;
+	
+	if (!List) return;
+	
+	for (Worker = *List; Worker; Worker = Del)
+	{
+		Del = Worker->Next;
+		free(Worker);
+	}
+	
+	*List = NULL;
+}
+
 /*Functions for runlevel management.*/
 Bool ObjRL_CheckRunlevel(const char *InRL, const ObjTable *InObj, Bool CountInherited)
 {
@@ -2193,7 +2316,7 @@ Bool ObjRL_CheckRunlevel(const char *InRL, const ObjTable *InObj, Bool CountInhe
 	
 	return RetVal;
 }
-	
+
 void ObjRL_AddRunlevel(const char *InRL, ObjTable *InObj)
 {
 	struct _RLTree *Worker = InObj->ObjectRunlevels;
@@ -2436,6 +2559,8 @@ void ShutdownConfig(void)
 	ObjTable *Worker = ObjectTable, *Temp;
 	unsigned long Inc = 1;
 	
+	EnvVarList_Shutdown(&GlobalEnvVars);
+	
 	for (; Worker != NULL; Worker = Temp)
 	{
 		if (Worker->Next)
@@ -2455,6 +2580,7 @@ void ShutdownConfig(void)
 			if (Worker->ObjectStderr) free(Worker->ObjectStderr);
 			
 			ObjRL_ShutdownRunlevels(Worker);
+			EnvVarList_Shutdown(&Worker->EnvVars);
 		}
 		
 		Temp = Worker->Next;
@@ -2481,12 +2607,32 @@ rStatus ReloadConfig(void)
 	struct _RunlevelInheritance *RLIRoot = NULL, *RLIWorker[2] = { NULL };
 	char RunlevelBackup[MAX_DESCRIPT_SIZE];
 	void *TempPtr = NULL, *TempPtr2 = NULL;
+	struct _EnvVarList *GlobalEnvWorker, *GlobalEnvRoot = NULL;
+	char *BackupConfigFileList[MAX_CONFIG_FILES] = { ConfigFile };
+	int Inc = 1;
 	
 	WriteLogLine("CONFIG: Reloading configuration.\n", true);
 	WriteLogLine("CONFIG: Backing up current configuration.", true);
 	
 	/*Backup the current runlevel.*/
 	snprintf(RunlevelBackup, MAX_DESCRIPT_SIZE, "%s", CurRunlevel);
+	
+	/*Backup the config file names.*/
+	for (; Inc < MAX_CONFIG_FILES; ++Inc)
+	{
+		BackupConfigFileList[Inc] = ConfigFileList[Inc];
+		ConfigFileList[Inc] = NULL;
+	}
+	
+	/*Backup the global environment variables.*/
+	if (GlobalEnvVars)
+	{
+		for (GlobalEnvWorker = GlobalEnvVars; GlobalEnvWorker->Next; GlobalEnvWorker = GlobalEnvWorker->Next)
+		{
+			EnvVarList_Add(GlobalEnvWorker->EnvVar, &GlobalEnvRoot);
+		}
+		GlobalEnvVars = NULL;
+	}
 	
 	for (; Worker->Next != NULL; Worker = Worker->Next, SWorker = SWorker->Next)
 	{
@@ -2526,6 +2672,9 @@ rStatus ReloadConfig(void)
 		
 		SWorker->ObjectStderr = Worker->ObjectStderr;
 		Worker->ObjectStderr = NULL;
+	
+		SWorker->EnvVars = Worker->EnvVars;
+		Worker->EnvVars = NULL;
 		
 		if (!Worker->ObjectRunlevels)
 		{
@@ -2587,8 +2736,15 @@ rStatus ReloadConfig(void)
 		
 		ShutdownConfig();
 		
+		GlobalEnvVars = GlobalEnvRoot;
 		ObjectTable = TRoot; /*Point ObjectTable to our new, identical copy of the old tree.*/
 		RunlevelInheritance = RLIRoot; /*Restore runlevel inheritance.*/
+		
+		/*Restore config file names.*/
+		for (Inc = 1; Inc < MAX_CONFIG_FILES; ++Inc)
+		{
+			ConfigFileList[Inc] = BackupConfigFileList[Inc];
+		}
 		
 		/*Restore current runlevel*/
 		snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", RunlevelBackup);
@@ -2631,18 +2787,22 @@ rStatus ReloadConfig(void)
 			if (SWorker->ObjectWorkingDirectory) free(SWorker->ObjectWorkingDirectory);
 			if (SWorker->ObjectStdout) free(SWorker->ObjectStdout);
 			if (SWorker->ObjectStderr) free(SWorker->ObjectStderr);
+			EnvVarList_Shutdown(&SWorker->EnvVars);
 		}
 		
 		Temp = SWorker->Next;
 		free(SWorker);
 	}
 	
-	/*Release the runlevel inheritance table.*/
+	/*Release the backup runlevel inheritance table.*/
 	for (; RLIRoot != NULL; RLIRoot = RLIWorker[0])
 	{
 		RLIWorker[0] = RLIRoot->Next;
 		free(RLIRoot);
 	}
+	
+	/*Release the backup global envvars.*/
+	EnvVarList_Shutdown(&GlobalEnvRoot);
 	
 	WriteLogLine("CONFIG: " CONSOLE_COLOR_GREEN "Configuration reload successful." CONSOLE_ENDCOLOR, true);
 	puts(CONSOLE_COLOR_GREEN "Epoch: Configuration reloaded." CONSOLE_ENDCOLOR);

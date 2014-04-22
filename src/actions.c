@@ -24,11 +24,13 @@
 /*Prototypes.*/
 static void MountVirtuals(void);
 static void PrimaryLoop(void);
+static void ApplyGlobalEnvVars(void);
 
 /*Globals.*/
 struct _HaltParams HaltParams = { -1 };
 Bool AutoMountOpts[5];
 static Bool ContinuePrimaryLoop = true;
+struct _EnvVarList *GlobalEnvVars;
 
 /*Functions.*/
 static void MountVirtuals(void)
@@ -277,6 +279,8 @@ void RecoverFromReexec(Bool ViaMemBus)
 		EmergencyShell();
 	}
 
+	ApplyGlobalEnvVars(); /*Set global environment variables.*/
+	
 	if (!InitMemBus(false))
 	{
 		EmulWall("Epoch: "CONSOLE_COLOR_RED "ERROR: " CONSOLE_ENDCOLOR
@@ -660,7 +664,7 @@ void LaunchBootup(void)
 	setenv("PATH", ENVVAR_PATH, true);
 	setenv("HOME", ENVVAR_HOME, true);
 	setenv("SHELL", ENVVAR_SHELL, true);
-	
+		
 	/*Add tiny message if we passed epochconfig= on the kernel cli.*/
 	if (strcmp(ConfigFile, CONFIGDIR CONF_NAME) != 0)
 	{
@@ -678,6 +682,8 @@ void LaunchBootup(void)
 		EmergencyShell();
 	}
 	
+	ApplyGlobalEnvVars(); /*Use the global environment variables we have set.*/
+
 	PrintBootBanner();
 
 	if (EnableLogging)
@@ -852,4 +858,20 @@ void LaunchShutdown(signed long Signal)
 	
 	SpitError("Failed to reboot/halt/power down!");
 	EmergencyShell();
+}
+
+static void ApplyGlobalEnvVars(void)
+{
+	struct _EnvVarList *Worker = GlobalEnvVars;
+	
+	if (!Worker) return;
+	
+	for (; Worker->Next; Worker = Worker->Next)
+	{
+		char OutBuf[MAX_LINE_SIZE];
+		
+		putenv(Worker->EnvVar);
+		snprintf(OutBuf, sizeof OutBuf, "Set global environment variable \"%s\"", Worker->EnvVar);
+		WriteLogLine(OutBuf, true);
+	}
 }

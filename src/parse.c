@@ -191,7 +191,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	
 	if (LaunchPID == 0) /**Child process code.**/
 	{ /*Child does all this.*/
-		char TmpBuf[1024];
+		char TmpBuf[1024];		
 		int Inc = 0;
 		sigset_t Sig2;
 		
@@ -204,7 +204,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 		}
 		
 		sigprocmask(SIG_UNBLOCK, &Sig2, NULL); /*Unblock signals.*/
-		
+				
 #ifndef NOMMU /*Can't do this because vfork() blocks the parent.*/
 		/*If we are supposed to spawn off as a daemon, do this.*/
 		if (InObj->Opts.Fork && CurCmd == InObj->ObjectStartCommand)
@@ -227,6 +227,20 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 
 		/*Change our session id.*/
 		setsid();
+		
+		/*Set environment variables.*/
+		/**The thing that always bothered me here is the idea that we are likely duplicating
+		 * the entire process on MMU platforms, and as much as I like the idea of immediately nuking
+		 * all that data (as if exec won't do it for us), I need it for this.*/
+		if (InObj->EnvVars)
+		{
+			struct _EnvVarList *Worker = InObj->EnvVars;
+			
+			for (; Worker->Next; Worker = Worker->Next)
+			{
+				putenv(Worker->EnvVar);
+			}
+		}
 		
 		if (InObj->ObjectWorkingDirectory != NULL && CurCmd == InObj->ObjectStartCommand)
 		{ /*Switch directories if desired.*/

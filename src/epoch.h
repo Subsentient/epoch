@@ -212,6 +212,7 @@ typedef struct _EpochObjectTable
 #endif
 	} Opts;
 	
+	struct _EnvVarList *EnvVars; /*List of environment variables.*/
 	struct _RLTree *ObjectRunlevels; /*Dynamically allocated, needless to say.*/
 	
 	struct _EpochObjectTable *Prev;
@@ -259,6 +260,14 @@ struct _MemBusInterface
 	} Server, Client;
 };
 
+struct _EnvVarList
+{
+	char EnvVar[MAX_LINE_SIZE];
+
+	struct _EnvVarList *Next;
+	struct _EnvVarList *Prev;
+};
+	
 /**Globals go here.**/
 
 extern ObjTable *ObjectTable;
@@ -280,6 +289,7 @@ extern Bool BusRunning;
 extern char ConfigFile[MAX_LINE_SIZE];
 extern char *ConfigFileList[MAX_CONFIG_FILES];
 extern int NumConfigFiles;
+extern struct _EnvVarList *GlobalEnvVars;
 
 /**Function forward declarations.*/
 
@@ -298,6 +308,10 @@ extern Bool ObjRL_DelRunlevel(const char *InRL, ObjTable *InObj);
 extern Bool ObjRL_ValidRunlevel(const char *InRL);
 extern void ObjRL_ShutdownRunlevels(ObjTable *InObj);
 extern char *WhitespaceArg(const char *InStream);
+extern void EnvVarList_Shutdown(struct _EnvVarList **const List);
+extern void EnvVarList_Add(const char *Var, struct _EnvVarList **const List);
+extern Bool EnvVarList_Del(const char *const Check, struct _EnvVarList **const List);
+extern void EnvVarList_Shutdown(struct _EnvVarList **const List);
 
 /*parse.c*/
 extern rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintStatus);
