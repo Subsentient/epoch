@@ -220,6 +220,10 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		 "Enter poweroff, halt, or reboot to do the obvious."
 		),
 		
+		( "shutdown [-r/-p/-h] <time>:\n\t" CONSOLE_ENDCOLOR
+		  "Wrapper for the 'shutdown' command. See 'shutdown --help' for more."
+		),
+		
 		( "[disable/enable] objectid:\n\t" CONSOLE_ENDCOLOR
 		  "Enter disable or enable followed by an object ID to disable or enable\n\tthat object."
 		),
@@ -291,7 +295,7 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		)
 	};
 	
-	enum { HCMD, ENDIS, STAP, REL, OBJRL, STATUS, SETCAD, CONFRL, REEXEC,
+	enum { HCMD, SHTDN, ENDIS, STAP, REL, OBJRL, STATUS, SETCAD, CONFRL, REEXEC,
 		RLCTL, GETPID, KILLOBJ, VER, ENUM_MAX };
 	
 	
@@ -311,6 +315,11 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 	else if (!strcmp(InCmd, "poweroff") || !strcmp(InCmd, "halt") || !strcmp(InCmd, "reboot"))
 	{
 		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[HCMD]);
+		return;
+	}
+	else if (!strcmp(InCmd, "shutdown"))
+	{
+		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[SHTDN]);
 		return;
 	}
 	else if (!strcmp(InCmd, "disable") || !strcmp(InCmd, "enable"))
@@ -519,6 +528,10 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		
 		ShutdownMemBus(false);
 		return (int)RVal;
+	}
+	else if (ArgIs("shutdown"))
+	{
+		return EmulShutdown(argc - 1, (const char**)argv + 1);
 	}
 	else if (ArgIs("reexec"))
 	{
