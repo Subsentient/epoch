@@ -134,7 +134,7 @@ if [ "$#" != "0" ]; then
 fi
 
 if [ "$NEED_EMPTY_CFLAGS" = "0" ]; then
-	CFLAGS=$CFLAGS" -std=gnu89 -pedantic -Wall -g -O0"
+	CFLAGS=$CFLAGS" -std=gnu89 -pedantic -Wall -g -O0 -fstack-protector"
 fi
 
 if [ "$LDFLAGS" = "" ]; then
