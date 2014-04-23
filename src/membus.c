@@ -643,6 +643,13 @@ void ParseMemBus(void)
 				{
 					unsigned long TInc = 0;
 					
+					if (!ObjRLS)
+					{ /*No runlevels?*/
+						snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+						MemBus_Write(TmpBuf, true);
+						free(RLStream);
+						return;
+					}
 					/*Count number of entries.*/
 					for (; ObjRLS->Next != NULL; ++TInc) ObjRLS = ObjRLS->Next;
 					
