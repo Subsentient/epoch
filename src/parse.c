@@ -537,7 +537,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 			CurObj->StartedSince = time(NULL);
 			
 			/*RunOnce objects are supposed to run once, so disable them after a successful run.*/
-			if (CurObj->Opts.RunOnce)
+			if (CurObj->Opts.RunOnce && CurrentBootMode != BOOT_NEUTRAL) /*Don't disable if doing a manual start.*/
 			{
 				EditConfigValue(CurObj->ConfigFile, CurObj->ObjectID, "ObjectEnabled", "false");
 				CurObj->Enabled = false;
@@ -607,7 +607,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					CurObj->StartedSince = 0;
 					
 					/*We place this here and not the others because HALTONLY only supports commands.*/
-					if (CurObj->Opts.RunOnce && CurObj->Opts.HaltCmdOnly && CurObj->Enabled)
+					if (CurrentBootMode != BOOT_NEUTRAL && CurObj->Opts.RunOnce && CurObj->Opts.HaltCmdOnly && CurObj->Enabled)
 					{  /* Disable HaltCmdOnly objects with RunOnce set. We don't disable non-haltonly here for two reasons.
 						* First, it's usually unnecessary since the start command did it, and second, if someone turned it on again before the reboot,
 						* they probably want it to start again next boot.*/
