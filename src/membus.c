@@ -34,7 +34,6 @@ rStatus InitMemBus(Bool ServerSide)
 	char CheckCode = 0;
 	unsigned long Inc = 0;
 	
-	
 	if (BusRunning) return SUCCESS;
 	
 	memset(&MemBus, 0, sizeof(struct _MemBusInterface));
@@ -568,141 +567,146 @@ void ParseMemBus(void)
 	}
 	else if (BusDataIs(MEMBUS_CODE_OBJRLS))
 	{
-		unsigned long LOffset;
-		char *TWorker = NULL;
+		char *Worker = NULL;
+		char ObjectID[MAX_DESCRIPT_SIZE], SpecRunlevel[MAX_DESCRIPT_SIZE];
+		enum ObjRLS { OBJRLS_CHECK, OBJRLS_ADD, OBJRLS_DEL } Mode;
+		int LOffset = 0, Inc = 0;
+		char OutBuf[MEMBUS_MSGSIZE] = { '\0' };
 		ObjTable *CurObj = NULL;
-		char TmpBuf[MEMBUS_MSGSIZE];
-		char TRL[MAX_DESCRIPT_SIZE];
-		char TID[MAX_DESCRIPT_SIZE];
-		unsigned long Inc = 0;
+		char *RunlevelText = NULL;
+		unsigned long RequiredRLTLength = 0;
+		struct _RLTree *RLWorker = NULL;
 		
-		if (BusDataIs(MEMBUS_CODE_OBJRLS_CHECK)) LOffset = strlen(MEMBUS_CODE_OBJRLS_CHECK " ");
-		else if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD)) LOffset = strlen(MEMBUS_CODE_OBJRLS_ADD " ");
-		else if (BusDataIs(MEMBUS_CODE_OBJRLS_DEL)) LOffset = strlen(MEMBUS_CODE_OBJRLS_DEL " ");
-		else
-		{
-			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
-			MemBus_Write(TmpBuf, true);
+		if (BusDataIs(MEMBUS_CODE_OBJRLS_CHECK)) LOffset = sizeof MEMBUS_CODE_OBJRLS_CHECK " " - 1, Mode = OBJRLS_CHECK;
+		else if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD)) LOffset = sizeof MEMBUS_CODE_OBJRLS_ADD " " - 1, Mode = OBJRLS_ADD;
+		else if (BusDataIs(MEMBUS_CODE_OBJRLS_DEL)) LOffset = sizeof MEMBUS_CODE_OBJRLS_DEL " " - 1, Mode = OBJRLS_DEL;
+		
+		Worker = BusData + LOffset;
+		
+		for (; Worker[Inc] != ' ' && Worker[Inc] != '\0' && Inc < sizeof ObjectID - 1; ++Inc) 
+		{ /*Get the object ID.*/
+			ObjectID[Inc] = Worker[Inc];
+		}
+		SpecRunlevel[Inc] = '\0';
+		
+		if ((Worker += Inc) == '\0')
+		{ /*Malformed.*/
+			snprintf(OutBuf, sizeof OutBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
+			MemBus_Write(OutBuf, true);
+			return;
+		}
+		++Worker; /*Past the space.*/
+		
+		for (Inc = 0; Worker[Inc] != '\0' && Inc < sizeof SpecRunlevel - 1; ++Inc) 
+		{ /*Get the runlevel.*/
+			SpecRunlevel[Inc] = Worker[Inc];
+		}
+		SpecRunlevel[Inc] = '\0';
+		
+		if (!(CurObj = LookupObjectInTable(ObjectID)))
+		{ /*Object sent to us doesn't exist.*/
+			snprintf(OutBuf, sizeof OutBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+			MemBus_Write(OutBuf, true);
 			return;
 		}
 		
-		TWorker = BusData + LOffset;
-		
-		if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
-		{ /*No argument?*/
-			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
-			MemBus_Write(TmpBuf, true);
-
-			return;
-		}
-		
-		for (; TWorker[Inc] != ' ' && TWorker[Inc] != '\0'; ++Inc)
+		/*Now process the commands.*/
+		switch (Mode)
 		{
-			TID[Inc] = TWorker[Inc];
-		}
-		TID[Inc] = '\0';
-		
-		if ((TWorker = strstr(TWorker, " ")) == NULL)
-		{
-			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_BADPARAM, BusData);
-			MemBus_Write(TmpBuf, true);
-
-			return;
-		}
-		++TWorker;
-		
-		snprintf(TRL, sizeof TRL, "%s", TWorker);
-		
-		if ((CurObj = LookupObjectInTable(TID)))
-		{
-			if (CurObj->Opts.HaltCmdOnly)
-			{ /*These objects have no runlevels.*/
-				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
-				MemBus_Write(TmpBuf, true);
+			case OBJRLS_CHECK:
+				snprintf(OutBuf, sizeof OutBuf, MEMBUS_CODE_OBJRLS_CHECK " %s %s %d",
+						ObjectID, SpecRunlevel, ObjRL_CheckRunlevel(SpecRunlevel, CurObj, true));
+				MemBus_Write(OutBuf, true);
 				return;
-			}
-			
-			if (BusDataIs(MEMBUS_CODE_OBJRLS_CHECK))
-			{
-				snprintf(TmpBuf, sizeof TmpBuf, "%s %s %s %d", MEMBUS_CODE_OBJRLS_CHECK, TID, TRL,
-						ObjRL_CheckRunlevel(TRL, CurObj, true));
-			}
-			else if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD) || BusDataIs(MEMBUS_CODE_OBJRLS_DEL))
-			{
-				char *RLStream = malloc(MAX_DESCRIPT_SIZE + 1);
-				struct _RLTree *ObjRLS = CurObj->ObjectRunlevels;
-				
-				if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD))
+			case OBJRLS_ADD:
+				/*Add the runlevel in memory.*/
+				if (!ObjRL_CheckRunlevel(SpecRunlevel, CurObj, false))
 				{
-					if (!ObjRL_CheckRunlevel(TRL, CurObj, false))
-					{
-						ObjRL_AddRunlevel(TRL, CurObj);
-					}
+					ObjRL_AddRunlevel(SpecRunlevel, CurObj);
 				}
 				else
 				{
-					unsigned long TInc = 0;
-					
-					if (!ObjRLS)
-					{ /*No runlevels?*/
-						snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
-						MemBus_Write(TmpBuf, true);
-						free(RLStream);
-						return;
-					}
-					/*Count number of entries.*/
-					for (; ObjRLS->Next != NULL; ++TInc) ObjRLS = ObjRLS->Next;
-					
-					if (TInc == 1 || !ObjRL_DelRunlevel(TRL, CurObj))
-					{
-						snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
-						MemBus_Write(TmpBuf, true);
-						free(RLStream);
-						return;
-					}
-					ObjRLS = CurObj->ObjectRunlevels;
-					if (!ObjRLS->Next)
-					{
-						ObjRLS->Next = malloc(sizeof(struct _RLTree));
-						ObjRLS->Next->Prev = ObjRLS;
-						ObjRLS->Next->Next = NULL;
-					}
+					snprintf(OutBuf, sizeof OutBuf, MEMBUS_CODE_FAILURE " %s", BusData);
+					MemBus_Write(OutBuf, true);
 				}
-				
-				*RLStream = '\0';
-
-				for (; ObjRLS->Next != NULL; ObjRLS = ObjRLS->Next)
+				break;
+			case OBJRLS_DEL:
+				if (!ObjRL_DelRunlevel(SpecRunlevel, CurObj))
 				{
-					strncat(RLStream, ObjRLS->RL, MAX_DESCRIPT_SIZE);
-						
-					if (ObjRLS->Next->Next != NULL)
-					{
-						strncat(RLStream, " ", 1);
-						RLStream = realloc(RLStream, strlen(RLStream) + MAX_DESCRIPT_SIZE);
-					}
-				}
-				
-				if (!EditConfigValue(CurObj->ConfigFile, CurObj->ObjectID, "ObjectRunlevels", RLStream))
-				{
-					snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
-					MemBus_Write(TmpBuf, true);
-					free(RLStream);
+					snprintf(OutBuf, sizeof OutBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
+					MemBus_Write(OutBuf, true);
 					return;
 				}
-				
-				free(RLStream);
-				
-				snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, BusData);
-				
+				break;
+			default:
+				break;
+		}
+		
+		/*File editing. We already returned if we were just checking, so I won't handle that here.*/
+		if (CurObj->ObjectRunlevels)
+		{
+			for (RLWorker = CurObj->ObjectRunlevels; RLWorker->Next; RLWorker = RLWorker->Next)
+			{
+				RequiredRLTLength += strlen(RLWorker->RL) + 2;
+			}
+			++RequiredRLTLength; /*For the null terminator.*/
+			
+			*(RunlevelText = malloc(RequiredRLTLength)) = '\0'; /*I'm only going to say this once.
+			* This is a Linux program. In Linux programs, most of the time, even if something is wrong,
+			* malloc will NEVER return NULL. I will not dirty up my code with a hundred thousand
+			* checks for a value that will never come to pass.*/
+			
+			for (RLWorker = CurObj->ObjectRunlevels; RLWorker->Next; RLWorker = RLWorker->Next)
+			{
+				strcat(RunlevelText, RLWorker->RL);
+				strcat(RunlevelText, " " );
 			}
 			
-			MemBus_Write(TmpBuf, true);
+			/*Get rid of the space at the end.*/
+			RunlevelText[strlen(RunlevelText) - 1] = '\0';
+		}
+		
+		if (Mode == OBJRLS_ADD)
+		{
+			if (!EditConfigValue(CurObj->ConfigFile, CurObj->ObjectID, "ObjectRunlevels", RunlevelText))
+			{
+				const int Length = MAX_LINE_SIZE + strlen(RunlevelText);
+				char *TrickyBuf = malloc(Length);
+				/*Special trick to attempt to add the ObjectRunlevels attribute.*/
+				snprintf(TrickyBuf, Length, "%s\n\tObjectRunlevels=%s",
+						CurObj->Enabled ? "true" : "false", RunlevelText);
+						
+				if (!EditConfigValue(CurObj->ConfigFile, CurObj->ObjectID, "ObjectEnabled", TrickyBuf))
+				{ /*Darn, we can't even do it the sneaky way!*/
+					free(TrickyBuf);
+					free(RunlevelText);
+					snprintf(OutBuf, sizeof OutBuf, MEMBUS_CODE_FAILURE " %s", BusData);
+					MemBus_Write(OutBuf, true);
+					return;
+				}
+				free(TrickyBuf);
+			}
+			
 		}
 		else
-		{
-			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_FAILURE, BusData);
-			MemBus_Write(TmpBuf, true);
+		{ /*OBJRLS_DEL*/
+			/*Delete the line.*/
+			if (!EditConfigValue(CurObj->ConfigFile, CurObj->ObjectID, "ObjectRunlevels",
+								CurObj->ObjectRunlevels ? RunlevelText : NULL))
+			{ /*If we pass NULL to EditConfigValue(), it means we want to DELETE that line.*/
+				if (RunlevelText) free(RunlevelText);
+				snprintf(OutBuf, sizeof OutBuf, MEMBUS_CODE_FAILURE " %s", BusData);
+				MemBus_Write(OutBuf, true);
+				return;
+			}
+		
 		}
+		
+		if (RunlevelText) free(RunlevelText), RunlevelText = NULL;
+		
+		snprintf(OutBuf, sizeof OutBuf, MEMBUS_CODE_ACKNOWLEDGED " %s", BusData);
+		MemBus_Write(OutBuf, true);
+		return;
 	}
 	/*Power functions that close everything first.*/
 	else if (BusDataIs(MEMBUS_CODE_HALT) || BusDataIs(MEMBUS_CODE_POWEROFF) || BusDataIs(MEMBUS_CODE_REBOOT))

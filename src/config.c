@@ -1839,9 +1839,32 @@ rStatus EditConfigValue(const char *File, const char *ObjectID, const char *Attr
 	}
 	
 	/*Set up the new value.*/
-	NewValue = malloc(strlen(Attribute) + NumWhiteSpaces + strlen(Value) + 1);
-	snprintf(NewValue, (strlen(Attribute) + NumWhiteSpaces + strlen(Value) + 1),
-			"%s%s%s", Attribute, WhiteSpace, Value);
+	if (Value == NULL) /**Means we are supposed to DELETE this line.**/
+	{
+		int Inc = 0;
+		NewValue = "";
+		
+		if (*HalfTwo == '\n') /*We need to delete the newline that follows.*/
+		{
+			const char *Temp = HalfTwo + 1;
+			int Jump = 1;
+			
+			/*Don't mess up our whitespace please.*/
+			while (*Temp == '\t' || *Temp == ' ') ++Jump, ++Temp;
+			
+			for (; HalfTwo[Inc + Jump] != '\0'; ++Inc)
+			{
+				HalfTwo[Inc] = HalfTwo[Inc + Jump];
+			}
+			HalfTwo[Inc] = '\0';
+		}
+	}
+	else
+	{
+		NewValue = malloc(strlen(Attribute) + NumWhiteSpaces + strlen(Value) + 1);
+		snprintf(NewValue, (strlen(Attribute) + NumWhiteSpaces + strlen(Value) + 1),
+				"%s%s%s", Attribute, WhiteSpace, Value);
+	}
 	
 	/*Wwe copied the whitespace back into the new value, so release it's memory now.*/
 	free(WhiteSpace);
@@ -1856,7 +1879,7 @@ rStatus EditConfigValue(const char *File, const char *ObjectID, const char *Attr
 				"%s%s", NewValue, (PresentHalfTwo ? HalfTwo : ""));
 				
 	/*Release the other variables now that we don't need them.*/
-	free(NewValue);
+	if (Value) free(NewValue); /*If Value is NULL, that means NewValue is a string literal.*/
 	free(HalfTwo);
 	
 	/*Write the configuration back to disk.*/
