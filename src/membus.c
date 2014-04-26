@@ -658,8 +658,8 @@ void ParseMemBus(void)
 			
 			for (RLWorker = CurObj->ObjectRunlevels; RLWorker->Next; RLWorker = RLWorker->Next)
 			{
-				strcat(RunlevelText, RLWorker->RL);
-				strcat(RunlevelText, " " );
+				strncat(RunlevelText, RLWorker->RL, 1);
+				strncat(RunlevelText, " ", 1);
 			}
 			
 			/*Get rid of the space at the end.*/

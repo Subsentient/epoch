@@ -147,6 +147,14 @@ rm -rf objects built
 mkdir objects
 cd objects
 
+if [ $(uname -s) = "Linux" ]; then
+	CFLAGS=$CFLAGS" -DLINUX"
+fi
+
+if [ $(uname -s) = "OpenBSD" ]; then
+	CFLAGS=$CFLAGS" -DOPENBSD"
+fi
+
 CMD "$CC $CFLAGS -c ../src/actions.c"
 CMD "$CC $CFLAGS -c ../src/config.c"
 CMD "$CC $CFLAGS -c ../src/console.c"

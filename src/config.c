@@ -982,8 +982,8 @@ rStatus InitConfig(const char *CurConfigFile)
 					if (TInc == sizeof CurObj->ExitStatuses / sizeof CurObj->ExitStatuses[0])
 					{
 						snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT
-								"More than %d MAPEXITSTATUS options specified for object %s.\n"
-								"Line %lu in \"%s\".", sizeof CurObj->ExitStatuses / sizeof CurObj->ExitStatuses[0],
+								"More than %u MAPEXITSTATUS options specified for object %s.\n"
+								"Line %lu in \"%s\".", (unsigned int)(sizeof CurObj->ExitStatuses / sizeof CurObj->ExitStatuses[0]),
 								CurObj->ObjectID, LineNum, CurConfigFile);
 						goto BadVal;
 					}
