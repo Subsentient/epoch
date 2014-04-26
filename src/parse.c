@@ -378,7 +378,8 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	switch (WEXITSTATUS(RawExitStatus))
 	{ /*FIXME: Make this do more later.*/
 		case 128: /*Bad exit parameter*/
-		case -1: /*Out of range for exit status. Probably shows as an unsigned value on some machines anyways.*/
+		case 255:
+			/*Out of range.*/
 			ExitStatus = WARNING;
 			break;
 		case 0:
