@@ -924,6 +924,64 @@ rStatus InitConfig(const char *CurConfigFile)
 					
 					CurObj->Opts.StopTimeout = atol(TWorker);
 				}
+				else if (!strncmp(CurArg, "MAPEXITSTATUS", sizeof "MAPEXITSTATUS" - 1))
+				{
+					const char *TWorker = CurArg + sizeof "MAPEXITSTATUS" - 1;
+					unsigned long TInc = 0;
+					char ExitStatusT[4];
+					char ValueT[32];
+					
+					if (*TWorker != '=' || *(TWorker + 1) == '\0' || !isdigit(*(TWorker + 1)))
+					{
+						goto BadVal;
+					}
+					++TWorker;
+										
+					/*Get the exit status*/
+					for (; TWorker[TInc] != ',' && TWorker[TInc] != '\0' &&
+						TInc < sizeof ExitStatusT - 1; ++TInc)
+					{
+						ExitStatusT[TInc] = TWorker[TInc];
+					}
+					ExitStatusT[TInc] = '\0';
+					
+					if (*(TWorker += TInc) != ',' || TWorker[1] == '\0')
+					{
+						goto BadVal;
+					}
+					++TWorker;
+					
+					for (TInc = 0; TWorker[TInc] != '\0' && TInc < sizeof ValueT - 1; ++TInc)
+					{ /*Get the rStatus value.*/
+						ValueT[TInc] = TWorker[TInc];
+					}
+					ValueT[TInc] = '\0';
+					
+					/*Now we save the value.*/
+					for (TInc = 0; CurObj->ExitStatuses[TInc].Value == 4 &&
+						TInc < sizeof CurObj->ExitStatuses / sizeof CurObj->ExitStatuses[0]; ++TInc);
+					
+					if (TInc == sizeof CurObj->ExitStatuses / sizeof CurObj->ExitStatuses[0])
+					{
+						snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT
+								"More than %d MAPEXITSTATUS options specified for object %s.\n"
+								"Line %lu in \"%s\".", sizeof CurObj->ExitStatuses / sizeof CurObj->ExitStatuses[0],
+								CurObj->ObjectID, LineNum, CurConfigFile);
+						goto BadVal;
+					}
+					
+					CurObj->ExitStatuses[TInc].ExitStatus = atoi(ExitStatusT);
+					
+					if (!strcmp(ValueT, "SUCCESS")) CurObj->ExitStatuses[TInc].Value = SUCCESS;
+					else if (!strcmp(ValueT, "WARNING")) CurObj->ExitStatuses[TInc].Value = WARNING;
+					else if (!strcmp(ValueT, "FAILURE")) CurObj->ExitStatuses[TInc].Value = FAILURE;
+					else goto BadVal;
+					
+					continue;
+				BadVal:
+					ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, CurArg, LineNum);
+					continue;
+				}
 				else if (!strncmp(CurArg, "TERMSIGNAL", sizeof "TERMSIGNAL" - 1))
 				{
 					const char *TWorker = CurArg + sizeof "TERMSIGNAL" - 1;
@@ -1897,7 +1955,7 @@ rStatus EditConfigValue(const char *File, const char *ObjectID, const char *Attr
 static ObjTable *AddObjectToTable(const char *ObjectID, const char *File)
 {
 	ObjTable *Worker = ObjectTable, *Next, *Prev;
-	
+	int Inc = 0;
 	/*See, we actually allocate two cells initially. The base and it's node.
 	 * We always keep a free one open. This is just more convenient.*/
 	if (ObjectTable == NULL)
@@ -1943,6 +2001,11 @@ static ObjTable *AddObjectToTable(const char *ObjectID, const char *File)
 						There's no 1 bit datatype, and in Epoch,
 						Bool is just signed char.*/
 	Worker->Opts.StopTimeout = 10; /*Ten seconds by default.*/
+	
+	for (; Inc < sizeof Worker->ExitStatuses / sizeof Worker->ExitStatuses; ++Inc)
+	{ /*Set these to their *special* zero.*/
+		Worker->ExitStatuses[Inc].Value = 3; /*One above what we will ever see.*/
+	}
 	
 	return Worker;
 }

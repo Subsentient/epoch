@@ -33,7 +33,7 @@ rStatus InitMemBus(Bool ServerSide)
 { /*Fire up the memory bus.*/
 	char CheckCode = 0;
 	unsigned long Inc = 0;
-	
+
 	if (BusRunning) return SUCCESS;
 	
 	memset(&MemBus, 0, sizeof(struct _MemBusInterface));

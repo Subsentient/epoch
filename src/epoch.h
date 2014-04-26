@@ -190,6 +190,12 @@ typedef struct _EpochObjectTable
 	Bool Enabled;
 	Bool Started;
 	
+	struct
+	{ /*Maps an object's exit statuses to a special case of an rStatus value.*/
+		unsigned char ExitStatus;
+		unsigned char Value;
+	} ExitStatuses[8];
+	
 	struct 
 	{
 		enum _StopMode StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/

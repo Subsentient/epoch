@@ -390,6 +390,18 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 			break;
 	}
 	
+	if (CurCmd == InObj->ObjectStartCommand)
+	{ /*We can only make this useful for start commands.*/
+		for (Inc = 0; InObj->ExitStatuses[Inc].Value != 3 && Inc < sizeof InObj->ExitStatuses / sizeof InObj->ExitStatuses[0]; ++Inc)
+		{ /*Handle custom exit code definitions.*/
+			if (WEXITSTATUS(RawExitStatus) == InObj->ExitStatuses[Inc].ExitStatus)
+			{
+				return InObj->ExitStatuses[Inc].Value;
+			}
+		}
+	}
+	/* deal with custom warning signals.*/
+	
 	return ExitStatus;
 }
 
