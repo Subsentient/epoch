@@ -17,7 +17,7 @@
 #include <sys/reboot.h>
 #include <sys/shm.h>
 
-#ifndef NO_EXECINFO
+#if !defined NO_EXECINFO && defined LINUX
 #include <execinfo.h>
 #endif
 
