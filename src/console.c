@@ -16,7 +16,9 @@
 /*The banner we show upon startup.*/
 struct _BootBanner BootBanner;
 /*Should we Disable CTRL-ALT-DEL instant reboots?*/
+#ifdef LINUX
 Bool DisableCAD = true;
+#endif
 
 static const char *const ExitStrings[] = { CONSOLE_COLOR_RED "FAIL" CONSOLE_ENDCOLOR,
 							CONSOLE_COLOR_GREEN "Done" CONSOLE_ENDCOLOR, 

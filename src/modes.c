@@ -41,6 +41,7 @@ rStatus SendPowerControl(const char *MembusCode)
 		PCode[1] = MEMBUS_CODE_FAILURE " " MEMBUS_CODE_REBOOT;
 		PErrMsg = "Unable to reboot.";
 	}
+#ifdef LINUX
 	else if (!strcmp(MembusCode, MEMBUS_CODE_CADON))
 	{
 		PCode[0] = MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_CADON;
@@ -53,6 +54,7 @@ rStatus SendPowerControl(const char *MembusCode)
 		PCode[1] = MEMBUS_CODE_FAILURE " " MEMBUS_CODE_CADOFF;
 		PErrMsg = "Unable to disable CTRL-ALT-DEL instant reboot.";
 	}
+#endif /*LINUX*/
 	else
 	{
 		SpitError("Invalid MEMBUS_CODE passed to SendPowerControl().");

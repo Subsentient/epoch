@@ -352,7 +352,12 @@ rStatus InitConfig(const char *CurConfigFile)
 		}
 		else if (!strncmp(Worker, (CurrentAttribute = "DisableCAD"), sizeof "DisableCAD" - 1))
 		{ /*Should we disable instant reboots on CTRL-ALT-DEL?*/
-			
+#ifndef LINUX
+			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT
+					"DisableCAD is not implemented for non-linux platforms.\nLine %lu in \"%s\".", LineNum, CurConfigFile);
+			SpitWarning(ErrBuf);
+			WriteLogLine(ErrBuf, true);
+#else
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
@@ -373,7 +378,7 @@ rStatus InitConfig(const char *CurConfigFile)
 				
 				ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 			}
-
+#endif
 			continue;
 		}
 		else if (!strncmp(Worker, (CurrentAttribute = "BlankLogOnBoot"), sizeof "BlankLogOnBoot" - 1))
@@ -2819,8 +2824,9 @@ rStatus ReloadConfig(void)
 	
 	/*Do this to prevent some weird options from being changeable by a config reload.*/
 	GlobalOpts[0] = EnableLogging;
+#ifdef LINUX
 	GlobalOpts[1] = DisableCAD;
-	
+#endif
 	WriteLogLine("CONFIG: Initializing new configuration.", true);
 	
 	if (!InitConfig(ConfigFile))
@@ -2853,7 +2859,9 @@ rStatus ReloadConfig(void)
 	
 	/*And then restore those options to their previous states.*/
 	EnableLogging = GlobalOpts[0];
+#ifdef LINUX
 	DisableCAD = GlobalOpts[1];
+#endif
 	
 	if (!ConfigOK) return ConfigOK;
 	

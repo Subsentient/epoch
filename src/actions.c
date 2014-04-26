@@ -138,17 +138,17 @@ static void PrimaryLoop(void)
 	
 					if (LastJobID != HaltParams.JobID || CurMin != LastMin)
 					{ /*Don't repeat ourselves 80 times while the second rolls over.*/
-						if (HaltParams.HaltMode == OSCTL_LINUX_HALT)
+						if (HaltParams.HaltMode == OSCTL_HALT)
 						{
 							HaltMode = "halt";
 						}
-						else if (HaltParams.HaltMode == OSCTL_LINUX_POWEROFF)
+						else if (HaltParams.HaltMode == OSCTL_POWEROFF)
 						{
 							HaltMode = "poweroff";
 						}
 						else
 						{
-							HaltParams.HaltMode = OSCTL_LINUX_REBOOT;
+							HaltParams.HaltMode = OSCTL_REBOOT;
 							HaltMode = "reboot";
 						}
 						
@@ -717,13 +717,13 @@ void LaunchBootup(void)
 		
 		WriteLogLine(TmpBuf, true);
 	}
-	
+#ifdef LINUX
 	if (DisableCAD)
 	{	
 		const char *CADMsg[2] = { "Epoch has taken control of CTRL-ALT-DEL events.",
 							"Epoch was unable to take control of CTRL-ALT-DEL events." };
 			
-		if (!reboot(OSCTL_LINUX_DISABLE_CTRLALTDEL)) /*Disable instant reboot on CTRL-ALT-DEL.*/
+		if (!reboot(OSCTL_DISABLE_CTRLALTDEL)) /*Disable instant reboot on CTRL-ALT-DEL.*/
 		{			
 			WriteLogLine(CADMsg[0], true);
 		}
@@ -737,7 +737,7 @@ void LaunchBootup(void)
 	{
 		WriteLogLine("Epoch will not request control of CTRL-ALT-DEL events.", true);
 	}
-	
+#endif
 	WriteLogLine(CONSOLE_COLOR_YELLOW "Starting all objects.\n" CONSOLE_ENDCOLOR, true);
 	
 	if (!RunAllObjects(true))
@@ -770,16 +770,16 @@ void LaunchShutdown(signed long Signal)
 	char MsgBuf[MAX_LINE_SIZE];
 	const char *HType = NULL;
 	const char *AttemptMsg = NULL;
-	const char *LogMsg = ((Signal == OSCTL_LINUX_HALT || Signal == OSCTL_LINUX_POWEROFF) ?
+	const char *LogMsg = ((Signal == OSCTL_HALT || Signal == OSCTL_POWEROFF) ?
 						CONSOLE_COLOR_RED "Shutting down." CONSOLE_ENDCOLOR :
 						CONSOLE_COLOR_RED "Rebooting." CONSOLE_ENDCOLOR);
 	
 	switch (Signal)
 	{
-		case OSCTL_LINUX_HALT:
+		case OSCTL_HALT:
 			HType = "halt";
 			break;
-		case OSCTL_LINUX_POWEROFF:
+		case OSCTL_POWEROFF:
 			HType = "poweroff";
 			break;
 		default:
@@ -825,7 +825,7 @@ void LaunchShutdown(signed long Signal)
 		SpitWarning("Failed to shut down membus interface.");
 	}
 	
-	if (Signal == OSCTL_LINUX_HALT || Signal == OSCTL_LINUX_POWEROFF)
+	if (Signal == OSCTL_HALT || Signal == OSCTL_POWEROFF)
 	{
 		printf("%s", CONSOLE_COLOR_RED "Shutting down.\n" CONSOLE_ENDCOLOR "\n");
 	}
@@ -843,11 +843,11 @@ void LaunchShutdown(signed long Signal)
 	ShutdownConfig();
 	
 	
-	if (Signal == OSCTL_LINUX_HALT)
+	if (Signal == OSCTL_HALT)
 	{
 		AttemptMsg = "Attempting to halt the system...";
 	}
-	else if (Signal == OSCTL_LINUX_POWEROFF)
+	else if (Signal == OSCTL_POWEROFF)
 	{
 		AttemptMsg = "Attempting to power down the system...";
 	}
@@ -859,7 +859,12 @@ void LaunchShutdown(signed long Signal)
 	printf("%s%s%s\n", CONSOLE_COLOR_CYAN, AttemptMsg, CONSOLE_ENDCOLOR);
 	
 	sync(); /*Force sync of disks in case somebody forgot.*/
+#ifndef LINUX
+	if (Signal == OSCTL_POWEROFF) Signal = Signal | OSCTL_HALT;
+#endif
+
 	reboot(Signal); /*Send the signal.*/
+
 	
 	/*Again, not supposed to be here.*/
 	

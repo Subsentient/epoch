@@ -711,27 +711,27 @@ void ParseMemBus(void)
 	/*Power functions that close everything first.*/
 	else if (BusDataIs(MEMBUS_CODE_HALT) || BusDataIs(MEMBUS_CODE_POWEROFF) || BusDataIs(MEMBUS_CODE_REBOOT))
 	{
-	unsigned long LOffset = 0, Signal = OSCTL_LINUX_REBOOT;
+	unsigned long LOffset = 0, Signal = OSCTL_REBOOT;
 		char *TWorker = NULL, *MSig = NULL;
 		char TmpBuf[MEMBUS_MSGSIZE];
 		
 		if (BusDataIs(MEMBUS_CODE_HALT))
 		{
 			LOffset = strlen(MEMBUS_CODE_HALT " ");
-			Signal = OSCTL_LINUX_HALT;
+			Signal = OSCTL_HALT;
 			MSig = MEMBUS_CODE_HALT;
 			
 		}
 		else if (BusDataIs(MEMBUS_CODE_POWEROFF))
 		{
 			LOffset = strlen(MEMBUS_CODE_POWEROFF " ");
-			Signal = OSCTL_LINUX_POWEROFF;
+			Signal = OSCTL_POWEROFF;
 			MSig = MEMBUS_CODE_POWEROFF;
 		}
 		else if (BusDataIs(MEMBUS_CODE_REBOOT))
 		{
 			LOffset = strlen(MEMBUS_CODE_REBOOT " ");
-			Signal = OSCTL_LINUX_REBOOT;
+			Signal = OSCTL_REBOOT;
 			MSig = MEMBUS_CODE_REBOOT;
 		}
 		
@@ -783,9 +783,9 @@ void ParseMemBus(void)
 			snprintf(TmpBuf, sizeof TmpBuf, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, BusData);
 			MemBus_Write(TmpBuf, true);
 
-			if (Signal == OSCTL_LINUX_HALT) HType = "halt";
-			else if (Signal == OSCTL_LINUX_POWEROFF) HType = "poweroff";
-			else if (Signal == OSCTL_LINUX_REBOOT) HType = "reboot";
+			if (Signal == OSCTL_HALT) HType = "halt";
+			else if (Signal == OSCTL_POWEROFF) HType = "poweroff";
+			else if (Signal == OSCTL_REBOOT) HType = "reboot";
 
 			snprintf(Hr, 16, (HaltParams.TargetHour >= 10) ? "%ld" : "0%ld", HaltParams.TargetHour);
 			snprintf(Min, 16, (HaltParams.TargetMin >= 10) ? "%ld" : "0%ld", HaltParams.TargetMin);
@@ -834,9 +834,10 @@ void ParseMemBus(void)
 		return;
 	}
 	/*Ctrl-Alt-Del control.*/
+#ifdef LINUX
 	else if (BusDataIs(MEMBUS_CODE_CADOFF))
 	{
-		if (!reboot(OSCTL_LINUX_DISABLE_CTRLALTDEL))
+		if (!reboot(OSCTL_DISABLE_CTRLALTDEL))
 		{
 			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_CADOFF, true);
 		}
@@ -847,7 +848,7 @@ void ParseMemBus(void)
 	}
 	else if (BusDataIs(MEMBUS_CODE_CADON))
 	{
-		if (!reboot(OSCTL_LINUX_ENABLE_CTRLALTDEL))
+		if (!reboot(OSCTL_ENABLE_CTRLALTDEL))
 		{
 			MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_CADON, true);
 		}
@@ -856,6 +857,7 @@ void ParseMemBus(void)
 			MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_CADON, true);
 		}
 	}
+#endif /*LINUX*/
 	else if (BusDataIs(MEMBUS_CODE_SENDPID))
 	{
 		char TmpBuf[MEMBUS_MSGSIZE];

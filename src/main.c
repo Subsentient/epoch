@@ -136,7 +136,7 @@ static void SigHandler(int Signal)
 					}
 					else
 					{
-						LaunchShutdown(OSCTL_LINUX_REBOOT);
+						LaunchShutdown(OSCTL_REBOOT);
 					}
 				}
 			}
@@ -247,7 +247,7 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		  "Prints information about the object specified.\n\t"
 		  "If an object is not specified, it prints info on all known objects."
 		),
-		
+#ifdef LINUX
 		( "setcad [on/off]:\n\t" CONSOLE_ENDCOLOR
 		
 		  "Sets Ctrl-Alt-Del instant reboot modes. If set to on,\n\t"
@@ -255,7 +255,7 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		  "without intervention by Epoch. Otherwise, if set to off, Epoch will\n\t"
 		  "perform a normal reboot when Ctrl-Alt-Del is pressed."
 		),
-			
+#endif			
 		
 		( "configreload:\n\t" CONSOLE_ENDCOLOR
 		
@@ -294,10 +294,13 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		  "Prints the current version of the Epoch Init System."
 		)
 	};
-	
+#ifdef LINUX
 	enum { HCMD, SHTDN, ENDIS, STAP, REL, OBJRL, STATUS, SETCAD, CONFRL, REEXEC,
 		RLCTL, GETPID, KILLOBJ, VER, ENUM_MAX };
-	
+#else
+	enum { HCMD, SHTDN, ENDIS, STAP, REL, OBJRL, STATUS, CONFRL, REEXEC,
+		RLCTL, GETPID, KILLOBJ, VER, ENUM_MAX };
+#endif	
 	
 	printf("%s\nCompiled %s %s\n\n", VERSIONSTRING, __DATE__, __TIME__);
 	
@@ -342,11 +345,13 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[STATUS]);
 		return;
 	}
+#ifdef LINUX
 	else if (!strcmp(InCmd, "setcad"))
 	{
 		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[SETCAD]);
 		return;
 	}
+#endif
 	else if (!strcmp(InCmd, "configreload"))
 	{
 		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[CONFRL]);
@@ -401,7 +406,7 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 		if (CmdIs("poweroff"))
 		{
 			GCode = MEMBUS_CODE_POWEROFF;
-			OSCode = OSCTL_LINUX_POWEROFF;
+			OSCode = OSCTL_POWEROFF;
 			SuccessMsg = "Power off in progress.";
 			FailMsg[0] = "Failed to request immediate poweroff.";
 			FailMsg[1] = "Failed to request poweroff.";
@@ -409,7 +414,7 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 		else if (CmdIs("reboot"))
 		{
 			GCode = MEMBUS_CODE_REBOOT;
-			OSCode = OSCTL_LINUX_REBOOT;
+			OSCode = OSCTL_REBOOT;
 			SuccessMsg = "Reboot in progress.";
 			FailMsg[0] = "Failed to request immediate reboot.";
 			FailMsg[1] = "Failed to request reboot.";
@@ -417,7 +422,7 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 		else if (CmdIs("halt"))
 		{
 			GCode = MEMBUS_CODE_HALT;
-			OSCode = OSCTL_LINUX_HALT;
+			OSCode = OSCTL_HALT;
 			SuccessMsg = "System halt in progress.";
 			FailMsg[0] = "Failed to request immediate halt.";
 			FailMsg[1] = "Failed to request halt.";
@@ -964,6 +969,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		ShutdownMemBus(false);
 		return RV;
 	}
+#ifdef LINUX
 	else if (ArgIs("setcad"))
 	{
 		const char *MCode = NULL, *ReportLump = NULL;
@@ -1021,6 +1027,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		ShutdownMemBus(false);
 		return RetVal;
 	}
+#endif /*LINUX*/
 	else if (ArgIs("enable") || ArgIs("disable"))
 	{
 		rStatus RV = SUCCESS;

@@ -62,12 +62,31 @@
 /*Version.*/
 #define VERSIONSTRING "Epoch Init System (git/master)"
 
-/*Power control magic. FIXME: Add support for BSD etc. here!*/
-#define OSCTL_LINUX_REBOOT 0x1234567
-#define OSCTL_LINUX_HALT 0xcdef0123
-#define OSCTL_LINUX_POWEROFF 0x4321fedc
-#define OSCTL_LINUX_DISABLE_CTRLALTDEL 0 /*Now isn't this hilarious. It's zero.*/
-#define OSCTL_LINUX_ENABLE_CTRLALTDEL 0x89abcdef
+/*Power control magic.*/
+#ifdef LINUX
+
+#define OSCTL_REBOOT 0x1234567
+#define OSCTL_HALT 0xcdef0123
+#define OSCTL_POWEROFF 0x4321fedc
+#define OSCTL_DISABLE_CTRLALTDEL 0 /*Now isn't this hilarious. It's zero.*/
+#define OSCTL_ENABLE_CTRLALTDEL 0x89abcdef
+
+#else
+
+#define OSCTL_REBOOT 0
+#define OSCTL_HALT 0x8
+
+#ifdef OPENBSD
+
+#define	OSCTL_POWEROFF 0x1000
+
+#else
+
+#define OSCTL_POWEROFF 0x4000
+
+#endif /*OPENBSD*/
+
+#endif /*LINUX*/
 
 /*Colors for text output.*/
 #define CONSOLE_COLOR_BLACK "\033[30m"
@@ -110,8 +129,10 @@
 #define MEMBUS_CODE_REBOOT "INIT_REBOOT"
 
 #define MEMBUS_CODE_RESET "EPOCH_REINIT" /*Forces a reset of the object table.*/
+#ifdef LINUX
 #define MEMBUS_CODE_CADON "CADON"
 #define MEMBUS_CODE_CADOFF "CADOFF"
+#endif /*LINUX*/
 /*Codes that one expects to find information after.*/
 #define MEMBUS_CODE_OBJSTART "OBJSTART"
 #define MEMBUS_CODE_OBJSTOP "OBJSTOP"
@@ -280,7 +301,9 @@ extern ObjTable *ObjectTable;
 extern struct _BootBanner BootBanner;
 extern char CurRunlevel[MAX_DESCRIPT_SIZE];
 extern struct _MemBusInterface MemBus;
+#ifdef LINUX
 extern Bool DisableCAD;
+#endif
 extern char Hostname[MAX_LINE_SIZE];
 extern struct _HaltParams HaltParams;
 extern Bool AutoMountOpts[5];
