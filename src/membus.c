@@ -587,7 +587,7 @@ void ParseMemBus(void)
 		{ /*Get the object ID.*/
 			ObjectID[Inc] = Worker[Inc];
 		}
-		SpecRunlevel[Inc] = '\0';
+		ObjectID[Inc] = '\0';
 		
 		if ((Worker += Inc) == '\0')
 		{ /*Malformed.*/
