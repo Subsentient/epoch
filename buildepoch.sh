@@ -155,6 +155,14 @@ if [ $(uname -s) = "OpenBSD" ]; then
 	CFLAGS=$CFLAGS" -DOPENBSD"
 fi
 
+if [ $(uname -s) = "NetBSD" ]; then
+	CFLAGS=$CFLAGS" -DNETBSD"
+fi
+
+if [ $(uname -s) = "FreeBSD" ]; then
+	CFLAGS=$CFLAGS" -DFREEBSD"
+fi
+
 CMD "$CC $CFLAGS -c ../src/actions.c"
 CMD "$CC $CFLAGS -c ../src/config.c"
 CMD "$CC $CFLAGS -c ../src/console.c"

@@ -64,27 +64,23 @@
 
 /*Power control magic.*/
 #ifdef LINUX
-
 #define OSCTL_REBOOT 0x1234567
 #define OSCTL_HALT 0xcdef0123
 #define OSCTL_POWEROFF 0x4321fedc
 #define OSCTL_DISABLE_CTRLALTDEL 0 /*Now isn't this hilarious. It's zero.*/
 #define OSCTL_ENABLE_CTRLALTDEL 0x89abcdef
-
 #else
 
 #define OSCTL_REBOOT 0
 #define OSCTL_HALT 0x8
 
-#ifdef OPENBSD
-
-#define	OSCTL_POWEROFF 0x1000
-
-#else
-
-#define OSCTL_POWEROFF 0x4000
-
-#endif /*OPENBSD*/
+	#ifdef OPENBSD
+		#define	OSCTL_POWEROFF 0x1000
+	#elif defined FREEBSD
+		#define OSCTL_POWEROFF 0x4000
+	#elif defined NETBSD
+		#define OSCTL_POWEROFF 0x800 /*Bitwise or-ed to turn on, don't worry, it matches.*/
+	#endif 
 
 #endif /*LINUX*/
 
