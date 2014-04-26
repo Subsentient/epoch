@@ -524,6 +524,12 @@ rStatus InitConfig(const char *CurConfigFile)
 		/*This will mount /dev, /proc, /sys, /dev/pts, and /dev/shm on boot time, upon request.*/
 		else if (!strncmp(Worker, (CurrentAttribute = "MountVirtual"), strlen("MountVirtual")))
 		{
+	#ifndef LINUX
+			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "MountVirtual is only useful as a Linux config attribute,\n"
+					"and is not implemented for non-linux platforms.");
+			SpitWarning(ErrBuf);
+			WriteLogLine(ErrBuf, true);
+	#else
 			const char *TWorker = DelimCurr;
 			unsigned long Inc = 0;
 			char CurArg[MAX_DESCRIPT_SIZE];
@@ -572,7 +578,7 @@ rStatus InitConfig(const char *CurConfigFile)
 			{
 				ConfigProblem(CurConfigFile, CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
 			}
-			
+		#endif
 			continue;
 		}
 		/*Now we get into the actual attribute tags.*/
@@ -871,11 +877,23 @@ rStatus InitConfig(const char *CurConfigFile)
 				}
 				else if (!strcmp(CurArg, "EXEC"))
 				{
+			#ifdef LINUX
 					CurObj->Opts.Exec = true;
+			#else
+					const char *const String = CONFIGWARNTXT "This is not a Linux build, and EXEC support is not implemented for non-linux platforms\n"
+								"because the usefulness of this outside of Linux is questionable.";
+					SpitWarning(String);
+					WriteLogLine(String, true);
+			#endif
 				}
 				else if (!strcmp(CurArg, "PIVOT"))
 				{
+			#ifdef LINUX
 					CurObj->Opts.PivotRoot = true;
+			#else
+					SpitWarning("This is not a Linux build, and PIVOT support is not implemented for non-linux platforms\n"
+								"because the usefulness of this outside of Linux is questionable.");
+			#endif
 				}
 				else if (!strcmp(CurArg, "RAWDESCRIPTION"))
 				{

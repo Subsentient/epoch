@@ -61,7 +61,7 @@ static void SigHandler(int Signal)
 	const char *ErrorM = NULL;
 	char OutMsg[MAX_LINE_SIZE * 2] = { '\0' };
 	static Bool RecursiveProblem = false;
-#ifndef NO_EXECINFO
+#if defined LINUX && !defined NO_EXECINFO
 	void *BTList[25];
 	char **BTStrings;
 	size_t BTSize;
@@ -184,7 +184,7 @@ static void SigHandler(int Signal)
 	
 	RecursiveProblem = true;
 	
-#ifndef NO_EXECINFO
+#if !defined NO_EXECINFO && defined LINUX
 	BTSize = backtrace(BTList, 25);
 	BTStrings = backtrace_symbols(BTList, BTSize);
 

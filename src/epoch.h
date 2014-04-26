@@ -331,10 +331,11 @@ extern void LaunchShutdown(signed long Signal);
 extern void EmergencyShell(void);
 extern void ReexecuteEpoch(void);
 extern void RecoverFromReexec(Bool ViaMemBus);
-extern void PerformPivotRoot(const char *NewRoot, const char *OldRootDir);
 extern void FinaliseLogStartup(Bool BlankLog);
+#ifdef LINUX
 extern void PerformExec(const char *Cmd_);
-
+extern void PerformPivotRoot(const char *NewRoot, const char *OldRootDir);
+#endif
 
 /*modes.c*/
 extern rStatus SendPowerControl(const char *MembusCode);

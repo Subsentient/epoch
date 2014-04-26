@@ -458,7 +458,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		
 		/*fflush(NULL); *//*Things tend to get clogged up when we don't flush.*/
 		
-		
+#ifdef LINUX
 		/*This means we are doing an equivalent pivot_root...*/
 		if (CurObj->Opts.PivotRoot)
 		{
@@ -488,7 +488,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 			CompleteStatusReport(PrintOutStream, FAILURE, true);
 			return FAILURE;
 		}
-			
+#endif /*LINUX*/			
 			
 		if (CurObj->ObjectPrestartCommand != NULL)
 		{
