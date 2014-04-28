@@ -641,16 +641,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 	else if (ArgIs("status"))
 	{
 		char OutBuf[MEMBUS_MSGSIZE], InBuf[MEMBUS_MSGSIZE];
-		char ObjectID[MAX_DESCRIPT_SIZE], ObjectDescription[MAX_DESCRIPT_SIZE];
 		char *Worker = NULL;
-		char RLExpect[MEMBUS_MSGSIZE ];
-		unsigned long PID = 0;
-		Bool Started = false, Running = false, Enabled = false, PivotRoot = false, Persistent = false, Exec = false;
-		enum _StopMode StopMode;
-		unsigned char TermSignal = 0, ReloadCommandSignal = 0, *BinWorker = NULL;
-		unsigned long StartedSince, UserID, GroupID, Inc = 0, StopTimeout;
-		Bool HaltCmdOnly = false, IsService = false, AutoRestart = false, NoStopWait = false;
-		Bool ForceShell = false, RawDescription = false, Fork = false, RunOnce = false;
 		const char *const YN[2] = { CONSOLE_COLOR_RED "No" CONSOLE_ENDCOLOR,
 									CONSOLE_COLOR_GREEN "Yes" CONSOLE_ENDCOLOR };
 		
@@ -690,6 +681,14 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		while (strcmp(InBuf, MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_LSOBJS) != 0)
 		{
 			Bool FoundRL = false;
+			unsigned long PID = 0;
+			Bool Started = false, Running = false, Enabled = false, PivotRoot = false, Persistent = false, Exec = false;
+			enum _StopMode StopMode;
+			unsigned char TermSignal = 0, ReloadCommandSignal = 0, *BinWorker = NULL;
+			unsigned long StartedSince, UserID, GroupID, Inc = 0, StopTimeout;
+			Bool HaltCmdOnly = false, IsService = false, AutoRestart = false, NoStopWait = false;
+			Bool ForceShell = false, RawDescription = false, Fork = false, RunOnce = false;
+			char RLExpect[MEMBUS_MSGSIZE], ObjectID[MAX_DESCRIPT_SIZE], ObjectDescription[MAX_DESCRIPT_SIZE];
 			
 			Worker = InBuf + strlen(MEMBUS_CODE_LSOBJS " ");
 			
@@ -780,7 +779,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 						break;
 					case COPT_PIVOTROOT:
 						PivotRoot = true;
-						break;
+						break; 
 					case COPT_RUNONCE:
 						RunOnce = true;
 						break;
@@ -883,10 +882,6 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			{
 				puts("-------");
 			}
-			
-			/*Clear these for the next object.*/
-			HaltCmdOnly = IsService = AutoRestart = NoStopWait = false;
-			ForceShell = Fork  = RawDescription = false;
 		}
 		
 		ShutdownMemBus(false);
