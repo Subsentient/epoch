@@ -298,7 +298,8 @@ extern struct _MemBusInterface MemBus;
 #ifdef LINUX
 extern Bool DisableCAD;
 #endif
-extern char Hostname[MAX_LINE_SIZE];
+extern char Hostname[256];
+extern char Domainname[256];
 extern struct _HaltParams HaltParams;
 extern Bool AutoMountOpts[5];
 extern Bool EnableLogging;

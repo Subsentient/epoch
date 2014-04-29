@@ -189,8 +189,11 @@ void EmulWall(const char *InStream, Bool ShowUser)
 	char HMS[3][16];
 	char MDY[3][16];
 	const char *OurUser = getenv("USER");
-	char OurHostname[256];
-	DIR *DevDir, *PtsDir;
+	char OurHostname[512] = { '\0' };
+	DIR *DevDir;
+#ifdef LINUX
+	DIR *PtsDir;
+#endif
 	struct dirent *DirPtr;
 	char FileNameBuf[MAX_LINE_SIZE];
 	
@@ -205,12 +208,22 @@ void EmulWall(const char *InStream, Bool ShowUser)
 		MDY[0], MDY[1], MDY[2], CONSOLE_ENDCOLOR);
 	
 	if (ShowUser)
-	{		
-		if (gethostname(OurHostname, sizeof OurHostname) != 0)
+	{
+		int HostnameLen = 0;		
+		if (gethostname(OurHostname, sizeof OurHostname / 2) != 0)
 		{
-			snprintf(OurHostname, sizeof OurHostname, "%s", "(unknown)");
+			strncpy(OurHostname, "(unknown)", sizeof "(unknown)");
 		}
 		
+		HostnameLen = strlen(OurHostname);
+		
+		if (getdomainname(OurHostname + HostnameLen + 1, sizeof OurHostname / 2 - 1) == 0 &&
+			strcmp(OurHostname + HostnameLen + 1, "(none)") != 0 &&
+			strcmp(OurHostname + HostnameLen + 1, "") != 0)
+		{ /*If we DO have a domain name, set it.*/
+			OurHostname[HostnameLen] = '.';
+		}
+			
 		/*I really enjoy pulling stuff off like the line below.*/
 		snprintf(&OutBuf[strlen(OutBuf)], sizeof OutBuf - strlen(OutBuf), "Broadcast message from %s@%s: ",
 				(OurUser != NULL ? OurUser : "(unknown)"), OurHostname);
@@ -222,15 +235,22 @@ void EmulWall(const char *InStream, Bool ShowUser)
 	}
 	
 	snprintf(&OutBuf[strlen(OutBuf)], sizeof OutBuf - strlen(OutBuf), "\n%s\n\n", InStream);
-	
 	if ((DevDir = opendir("/dev/")))
 	{ /*Now write to the ttys.*/
 		while ((DirPtr = readdir(DevDir))) /*See, we use fopen() as a way to check if the file exists.*/
 		{ /*Your eyes bleeding yet?*/
-			if (!strncmp(DirPtr->d_name, "tty", strlen("tty")) &&
-				strlen(DirPtr->d_name) > strlen("tty") &&
-				isdigit(DirPtr->d_name[strlen("tty")]) &&
-				atoi(DirPtr->d_name + strlen("tty")) > 0)
+#ifdef LINUX
+			if (!strncmp(DirPtr->d_name, "tty", sizeof "tty" - 1) &&
+				strlen(DirPtr->d_name) > sizeof "tty" - 1 &&
+				isdigit(DirPtr->d_name[sizeof "tty" - 1]) &&
+				atoi(DirPtr->d_name + sizeof "tty" - 1) > 0)
+#else /*BSD style.*/
+			if ((!strncmp(DirPtr->d_name, "ttyC", sizeof "ttyC" - 1) &&
+				strlen(DirPtr->d_name) > sizeof "ttyC" - 1  &&
+				strcmp(DirPtr->d_name + sizeof "ttyC" - 1, "cfg")) ||
+				( !strncmp(DirPtr->d_name, "ttyp", sizeof "ttyp" - 1) &&
+				strlen(DirPtr->d_name) > sizeof "ttyp" - 1) )
+#endif
 			{
 				snprintf(FileNameBuf, MAX_LINE_SIZE, "/dev/%s", DirPtr->d_name);
 				
@@ -249,6 +269,7 @@ void EmulWall(const char *InStream, Bool ShowUser)
 		closedir(DevDir);
 	}
 	
+#ifdef LINUX	
 	if ((PtsDir = opendir("/dev/pts/")))
 	{
 		while ((DirPtr = readdir(PtsDir)))
@@ -271,6 +292,8 @@ void EmulWall(const char *InStream, Bool ShowUser)
 		}
 		closedir(PtsDir);
 	}
+#endif
+	
 }
 
 rStatus EmulShutdown(long ArgumentCount, const char **ArgStream)

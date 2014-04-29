@@ -704,7 +704,7 @@ void LaunchBootup(void)
 	{ /*The system hostname.*/
 		char TmpBuf[MAX_LINE_SIZE];
 		
-		if (!sethostname(Hostname, strlen(Hostname)))
+		if (sethostname(Hostname, strlen(Hostname)) == 0)
 		{
 			snprintf(TmpBuf, MAX_LINE_SIZE, "Hostname set to \"%s\".", Hostname);
 		}
@@ -712,6 +712,24 @@ void LaunchBootup(void)
 		{
 			snprintf(TmpBuf, MAX_LINE_SIZE, "Unable to set hostname to \"%s\"!\n"
 					"Ensure that this is a valid hostname.", Hostname);
+			SpitWarning(TmpBuf);
+		}
+		
+		WriteLogLine(TmpBuf, true);
+	}
+	
+	if (*Domainname != '\0')
+	{ /*The domain name. Not actually used much but still an important feature.*/
+		char TmpBuf[MAX_LINE_SIZE];
+		
+		if (setdomainname(Domainname, strlen(Domainname)) == 0)
+		{
+			snprintf(TmpBuf, sizeof TmpBuf, "Domain name set to \"%s\".", Domainname);
+		}
+		else
+		{
+			snprintf(TmpBuf, sizeof TmpBuf, "Unable to set domain name to \"%s\"!\n"
+					"Ensure that this is a properly formatted domain name.", Domainname);
 			SpitWarning(TmpBuf);
 		}
 		

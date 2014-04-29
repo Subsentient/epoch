@@ -47,7 +47,9 @@ Epoch is just a linked list of linked lists anymore.*/
 } *RunlevelInheritance;
 
 /*Holds the system hostname.*/
-char Hostname[MAX_LINE_SIZE];
+char Hostname[256];
+/*Holds the system domain name.*/
+char Domainname[256];
 
 /*Function forward declarations for all the statics.*/
 static ObjTable *AddObjectToTable(const char *ObjectID, const char *File);
@@ -668,13 +670,13 @@ rStatus InitConfig(const char *CurConfigFile)
 
 			}
 			
-			if (!strncmp(DelimCurr, "FILE", strlen("FILE")))
+			if (!strncmp(DelimCurr, "FILE", sizeof "FILE" - 1))
 			{
 				FILE *TDesc;
 				unsigned long Inc = 0;
 				int TChar;
 				const char *TW = DelimCurr;
-				char THostname[MAX_LINE_SIZE];
+				char THostname[sizeof Hostname];
 				
 				TW += strlen("FILE");
 				
@@ -688,7 +690,7 @@ rStatus InitConfig(const char *CurConfigFile)
 					continue;
 				}
 				
-				for (Inc = 0; (TChar = getc(TDesc)) != EOF && Inc < MAX_LINE_SIZE - 1; ++Inc)
+				for (Inc = 0; (TChar = getc(TDesc)) != EOF && Inc < sizeof Hostname - 1; ++Inc)
 				{ /*There is a reason for this. Just trust me.*/
 					*(unsigned char*)&THostname[Inc] = (unsigned char)TChar;
 				}
@@ -709,12 +711,12 @@ rStatus InitConfig(const char *CurConfigFile)
 			}
 			else
 			{	
-				snprintf(Hostname, MAX_LINE_SIZE, "%s", DelimCurr);
+				snprintf(Hostname, sizeof Hostname, "%s", DelimCurr);
 			}
 			
 								
 			/*Check for spaces and tabs in the actual hostname.*/
-			if (strstr(Hostname, " ") != NULL || strstr(Hostname, "\t") != NULL)
+			if (strchr(Hostname, ' ') != NULL || strchr(Hostname, '\t') != NULL)
 			{
 				const char *const ErrString = "Tabs and/or spaces in hostname file. Cannot set hostname.";
 				SpitWarning(ErrString);
@@ -728,6 +730,101 @@ rStatus InitConfig(const char *CurConfigFile)
 				ConfigProblem(CurConfigFile, CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
 			}
 			
+			
+			if (strlen(Domainname) >= sizeof Domainname)
+			{ /*There is limited space most OSes will accept.*/
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "\nHostname attribute on line %lu in file \"%s\" has specified\n"
+						"that a hostname longer than %u be set.\nThe specified hostname has been truncated\n"
+						"to fit in the aforementioned space.", LineNum, CurConfigFile, sizeof Hostname - 1);
+				SpitWarning(ErrBuf);
+				WriteLogLine(ErrBuf, true);
+			}
+			continue;
+		}
+		else if (!strncmp(Worker, (CurrentAttribute = "Domainname"), sizeof "Domainname" - 1))
+		{
+			if (CurObj != NULL)
+			{
+				ConfigProblem(CurConfigFile, CONFIG_EAFTER, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!strncmp(DelimCurr, "FILE", sizeof "FILE" - 1))
+			{ /*Set from file.*/
+				char *TWorker = DelimCurr + (sizeof "FILE" - 1);
+				char TDomainname[sizeof Domainname];
+				FILE *TDesc = NULL;
+				int Inc = 0, TChar = 0;
+				
+				for (; *TWorker == ' ' || *TWorker == '\t'; ++TWorker);
+				
+				if (*TWorker == '\0')
+				{ /*Just Domainname=FILE or something*/
+					ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+					continue;
+				}
+				
+				if (!(TDesc = fopen(TWorker, "r")))
+				{
+					snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Failed to set domain name from file \"%s\".", TWorker);
+					SpitWarning(ErrBuf);
+					WriteLogLine(ErrBuf, true);
+					continue;
+				}
+				
+				for (; (TChar = getc(TDesc)) != EOF && Inc < sizeof TDomainname - 1; ++Inc)
+				{
+					*(unsigned char*)&TDomainname[Inc] = TChar;
+				}
+				TDomainname[Inc] = '\0';
+				
+				fclose(TDesc); TDesc = NULL;
+				
+				/*Skip past newlines etc.*/
+				for (TWorker = TDomainname; *TWorker ==  '\n' || *TWorker == ' ' || *TWorker == '\t'; ++TWorker);
+				
+				/*Copy the data to the master array.*/
+				for (Inc = 0; TWorker[Inc] != '\n' && TWorker[Inc] != '\0' && Inc < sizeof Domainname - 1; ++Inc)
+				{
+					Domainname[Inc] = TWorker[Inc];
+				}
+				Domainname[Inc] = '\0';
+			}
+			else
+			{
+				strncpy(Domainname, DelimCurr, sizeof Domainname - 1);
+				Domainname[sizeof Domainname - 1] = '\0';
+			}
+			
+			if (strchr(Domainname, ' ') || strchr(Domainname, '\t'))
+			{
+				const char *const ErrString = "Tabs and/or spaces in domain name file. Cannot set domain name.";
+				SpitWarning(ErrString);
+				WriteLogLine(ErrString, true);
+				*Domainname = '\0'; /*Set the hostname back to nothing.*/
+				continue;
+			}
+			
+			if (strlen(DelimCurr) >= MAX_LINE_SIZE)
+			{
+				ConfigProblem(CurConfigFile, CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
+				continue;
+			}
+
+			if (strlen(Domainname) >= sizeof Domainname)
+			{ /*There is limited space most OSes will accept.*/
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "\nDomainname attribute on line %lu in file \"%s\" has specified\n"
+						"that a domain name longer than %u be set.\nThe specified domain name has been truncated\n"
+						"to fit in the aforementioned space.", LineNum, CurConfigFile, sizeof Domainname - 1);
+				SpitWarning(ErrBuf);
+				WriteLogLine(ErrBuf, true);
+			}
 			continue;
 		}
 		else if (!strncmp(Worker, (CurrentAttribute = "ObjectID"), sizeof "ObjectID" - 1))
