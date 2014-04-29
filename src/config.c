@@ -965,6 +965,14 @@ rStatus InitConfig(const char *CurConfigFile)
 				{
 					CurObj->Opts.RunOnce = true;
 				}
+				else if (!strcmp(CurArg, "STARTFAILCRITICAL"))
+				{
+					CurObj->Opts.StartFailIsCritical = true;
+				}
+				else if (!strcmp(CurArg, "STOPFAILCRITICAL"))
+				{
+					CurObj->Opts.StopFailIsCritical = true;
+				}
 				else if (!strcmp(CurArg, "FORK"))
 				{
 			#ifndef NOMMU

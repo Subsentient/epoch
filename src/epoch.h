@@ -228,6 +228,8 @@ typedef struct _EpochObjectTable
 		unsigned int PivotRoot : 1; /*Says that ObjectStartCommand is actually used to pivot_root. See actions.c.*/
 		unsigned int Exec : 1; /*Says that we are gerbils.*/
 		unsigned int RunOnce : 1; /*Tells us to disable ourselves upon completion whenever we are started.*/
+		unsigned int StartFailIsCritical : 1; /*Starting this object is so important we're going to drop you to a shell if it fails.*/
+		unsigned int StopFailIsCritical : 1; /*Same but for stopping.*/
 #ifndef NOMMU
 		unsigned int Fork : 1; /*Essentially do the same thing (with an Epoch twist) as Command& in sh.*/
 #endif

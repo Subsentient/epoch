@@ -486,7 +486,10 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 			PerformExec(CurObj->ObjectStartCommand);
 			
 			CompleteStatusReport(PrintOutStream, FAILURE, true);
-			return FAILURE;
+			ExitStatus = FAILURE;
+			
+			/*Jump to a certain option*/
+			goto JumpStartCheck;
 		}
 #endif /*LINUX*/			
 			
@@ -560,6 +563,16 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		if (PrintStatus)
 		{
 			CompleteStatusReport(PrintOutStream, ExitStatus, true);
+		}
+#ifdef LINUX
+	JumpStartCheck:
+#endif
+		/* *//**Means we failed to launch it.**//* */
+		if (CurObj->Opts.StartFailIsCritical && !ExitStatus && CurrentBootMode == BOOT_BOOTUP)
+		{
+			fprintf(stderr, "\n" CONSOLE_COLOR_RED "CRITICAL: " CONSOLE_ENDCOLOR
+					"start of critically important object \"%s\" has failed.", CurObj->ObjectID);
+			EmergencyShell();
 		}
 	}
 	else
@@ -806,6 +819,14 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				
 				break;
 			}
+		}
+		
+		/**Check if it failed.**/
+		if (!ExitStatus && CurrentBootMode == BOOT_SHUTDOWN && CurObj->Opts.StopFailIsCritical)
+		{
+			fprintf(stderr, "\n" CONSOLE_COLOR_RED "CRITICAL: " CONSOLE_ENDCOLOR
+					"stop of critically important object \"%s\" has failed.", CurObj->ObjectID);
+			EmergencyShell();
 		}
 		
 		/*Now that the object is stopped, we should reset the autorestart to it's previous state.*/
