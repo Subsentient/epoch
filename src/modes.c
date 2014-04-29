@@ -14,6 +14,7 @@
 #include <signal.h>
 #include <ctype.h>
 #include <dirent.h>
+#include <fcntl.h>
 #include "epoch.h"
 
 /*To shut up some weird compilers. I don't know what this thing wants from me.*/
@@ -184,7 +185,6 @@ rStatus EmulKillall5(unsigned long InSignal)
 
 void EmulWall(const char *InStream, Bool ShowUser)
 { /*We not only use this as a CLI applet, we use it to notify of impending shutdown too.*/
-	FILE *Descriptor = NULL;
 	char OutBuf[8192];
 	char HMS[3][16];
 	char MDY[3][16];
@@ -196,6 +196,7 @@ void EmulWall(const char *InStream, Bool ShowUser)
 #endif
 	struct dirent *DirPtr;
 	char FileNameBuf[MAX_LINE_SIZE];
+	int FileDescriptor = 0;
 	
 	if (getuid() != 0)
 	{ /*Not root?*/
@@ -254,16 +255,14 @@ void EmulWall(const char *InStream, Bool ShowUser)
 			{
 				snprintf(FileNameBuf, MAX_LINE_SIZE, "/dev/%s", DirPtr->d_name);
 				
-				if (!(Descriptor = fopen(FileNameBuf, "w")))
-				{
+				if ((FileDescriptor = open(FileNameBuf, O_WRONLY | O_NONBLOCK)) == -1)
+				{ /*Screw it, we don't care.*/
 					continue;
 				}
 				
-				fwrite(OutBuf, 1, strlen(OutBuf), Descriptor);
-				fflush(NULL);
+				write(FileDescriptor, OutBuf, strlen(OutBuf));
 				
-				fclose(Descriptor);
-				Descriptor = NULL;
+				close(FileDescriptor); FileDescriptor = 0;
 			}
 		}
 		closedir(DevDir);
@@ -278,16 +277,13 @@ void EmulWall(const char *InStream, Bool ShowUser)
 			{
 				snprintf(FileNameBuf, MAX_LINE_SIZE, "/dev/pts/%s", DirPtr->d_name);
 				
-				if (!(Descriptor = fopen(FileNameBuf, "w")))
+				if ((FileDescriptor = open(FileNameBuf, O_WRONLY | O_NONBLOCK)) == -1)
 				{
 					continue;
 				}
 				
-				fwrite(OutBuf, 1, strlen(OutBuf), Descriptor);
-				fflush(NULL);
-				
-				fclose(Descriptor);
-				Descriptor = NULL;
+				write(FileDescriptor, OutBuf, strlen(OutBuf));
+				close(FileDescriptor); FileDescriptor = 0;
 			}
 		}
 		closedir(PtsDir);
