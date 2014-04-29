@@ -734,8 +734,8 @@ rStatus InitConfig(const char *CurConfigFile)
 			if (strlen(Domainname) >= sizeof Domainname)
 			{ /*There is limited space most OSes will accept.*/
 				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "\nHostname attribute on line %lu in file \"%s\" has specified\n"
-						"that a hostname longer than %u be set.\nThe specified hostname has been truncated\n"
-						"to fit in the aforementioned space.", LineNum, CurConfigFile, sizeof Hostname - 1);
+						"that a hostname longer than %lu be set.\nThe specified hostname has been truncated\n"
+						"to fit in the aforementioned space.", LineNum, CurConfigFile, (unsigned long)sizeof Hostname - 1);
 				SpitWarning(ErrBuf);
 				WriteLogLine(ErrBuf, true);
 			}
@@ -820,8 +820,8 @@ rStatus InitConfig(const char *CurConfigFile)
 			if (strlen(Domainname) >= sizeof Domainname)
 			{ /*There is limited space most OSes will accept.*/
 				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "\nDomainname attribute on line %lu in file \"%s\" has specified\n"
-						"that a domain name longer than %u be set.\nThe specified domain name has been truncated\n"
-						"to fit in the aforementioned space.", LineNum, CurConfigFile, sizeof Domainname - 1);
+						"that a domain name longer than %lu be set.\nThe specified domain name has been truncated\n"
+						"to fit in the aforementioned space.", LineNum, CurConfigFile, (unsigned long)sizeof Domainname - 1);
 				SpitWarning(ErrBuf);
 				WriteLogLine(ErrBuf, true);
 			}
