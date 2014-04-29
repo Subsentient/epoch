@@ -63,25 +63,23 @@
 #define VERSIONSTRING "Epoch Init System (git/master)"
 
 /*Power control magic.*/
-#ifdef LINUX
-#define OSCTL_REBOOT 0x1234567
-#define OSCTL_HALT 0xcdef0123
-#define OSCTL_POWEROFF 0x4321fedc
-#define OSCTL_DISABLE_CTRLALTDEL 0 /*Now isn't this hilarious. It's zero.*/
-#define OSCTL_ENABLE_CTRLALTDEL 0x89abcdef
-#else
-
-#define OSCTL_REBOOT 0
-#define OSCTL_HALT 0x8
+#ifndef LINUX /*BSD.*/
+	#define OSCTL_REBOOT 0
+	#define OSCTL_HALT 0x8
 
 	#ifdef OPENBSD
 		#define	OSCTL_POWEROFF 0x1000
 	#elif defined FREEBSD
 		#define OSCTL_POWEROFF 0x4000
-	#elif defined NETBSD
+	#else /*This is probably not correct for anything beyond netbsd, but we need a generic else so I can hit F8 in Geany and build.*/
 		#define OSCTL_POWEROFF 0x800 /*Bitwise or-ed to turn on, don't worry, it matches.*/
 	#endif 
-
+#else /*We're Linux*/
+	#define OSCTL_REBOOT 0x1234567
+	#define OSCTL_HALT 0xcdef0123
+	#define OSCTL_POWEROFF 0x4321fedc
+	#define OSCTL_DISABLE_CTRLALTDEL 0 /*Now isn't this hilarious. It's zero.*/
+	#define OSCTL_ENABLE_CTRLALTDEL 0x89abcdef
 #endif /*LINUX*/
 
 /*Colors for text output.*/
