@@ -153,14 +153,17 @@ fi
 
 if [ $(uname -s) = "OpenBSD" ]; then
 	CFLAGS=$CFLAGS" -DOPENBSD"
+	LDFLAGS=$LDFLAGS" -lutil -static"
 fi
 
 if [ $(uname -s) = "NetBSD" ]; then
 	CFLAGS=$CFLAGS" -DNETBSD"
+	LDFLAGS=$LDFLAGS" -lutil -static"
 fi
 
 if [ $(uname -s) = "FreeBSD" ]; then
 	CFLAGS=$CFLAGS" -DFREEBSD"
+	LDFLAGS=$LDFLAGS" -lutil -static"
 fi
 
 CMD "$CC $CFLAGS -c ../src/actions.c"
@@ -177,8 +180,8 @@ printf "\nBuilding main executable.\n\n"
 mkdir -p $outdir/sbin/
 mkdir -p $outdir/bin/
 
-CMD "$CC $LDFLAGS $CFLAGS -o $outdir/sbin/epoch\
- actions.o config.o console.o main.o membus.o modes.o parse.o utilfuncs.o"
+CMD "$CC $CFLAGS -o $outdir/sbin/epoch\
+ actions.o config.o console.o main.o membus.o modes.o parse.o utilfuncs.o $LDFLAGS"
 
 printf "\nCreating symlinks.\n"
 cd $outdir/sbin/
