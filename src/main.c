@@ -18,7 +18,7 @@
 #include <sys/shm.h>
 #ifndef LINUX
 #include <fcntl.h>
-#include <utmp.h>
+#include <util.h>
 #endif
 
 #if !defined NO_EXECINFO && defined LINUX
