@@ -16,6 +16,10 @@
 #include <pwd.h>
 #include <sys/reboot.h>
 #include <sys/shm.h>
+#ifndef LINUX
+#include <fcntl.h>
+#include <utmp.h>
+#endif
 
 #if !defined NO_EXECINFO && defined LINUX
 #include <execinfo.h>
@@ -1537,7 +1541,14 @@ int main(int argc, char **argv)
 	if (getpid() == 1)
 	{ /*Just us, as init. That means, begin bootup.*/
 		const char *TRunlevel = NULL, *TConfigFile = getenv("epochconfig");
+	#ifndef LINUX		/*For non-linux we need to set up the console.*/
+		int Desc = open("/dev/console", O_RDWR);
 		
+		if (Desc != -1) /*Dunno how we expect to warn anyone about this if we can't print.*/
+		{
+			login_tty(Desc);
+		}
+	#endif
 		if (TConfigFile != NULL)
 		{ /*Someone specified a config file from disk?*/
 			snprintf(ConfigFile, MAX_LINE_SIZE, "%s", TConfigFile);
