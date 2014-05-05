@@ -434,7 +434,9 @@ void ParseMemBus(void)
 			if (Worker->Opts.RawDescription) *BinWorker++ = COPT_RAWDESCRIPTION;
 			if (Worker->Opts.HaltCmdOnly) *BinWorker++ = COPT_HALTONLY;
 			if (Worker->Opts.Persistent) *BinWorker++ = COPT_PERSISTENT;
+#ifndef NOMMU
 			if (Worker->Opts.Fork) *BinWorker++ = COPT_FORK;
+#endif /*NOMMU*/
 			if (Worker->Opts.IsService) *BinWorker++ = COPT_SERVICE;
 			if (Worker->Opts.AutoRestart) *BinWorker++ = COPT_AUTORESTART;
 			if (Worker->Opts.ForceShell) *BinWorker++ = COPT_FORCESHELL;
