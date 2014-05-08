@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <signal.h>
+#include <sys/stat.h>
 
 #include "epoch.h"
 
@@ -276,6 +277,9 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 	unsigned long Inc = 0, Streamsize = 0, Countdown = 0;
 	FILE *Descriptor = NULL;
 	
+	/*No point if there's no /proc you know.*/
+	if (!ProcAvailable()) return 0;
+	
 	if (InObj->ObjectStartCommand == NULL)
 	{
 		return 0;
@@ -427,4 +431,11 @@ short GetStateOfTime(unsigned long Hr, unsigned long Min, unsigned long Sec,
 		return 0;
 	}
 	
+}
+
+Bool ProcAvailable(void)
+{
+	struct stat FileStat;
+	
+	return !stat("/proc/cmdline", &FileStat);
 }

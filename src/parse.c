@@ -366,7 +366,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 
 		/*Check if the PID we found is accurate and update it if not. This method is very,
 		 * very accurate compared to the buggy morass above.*/
-		if (!InObj->Opts.NoTrack)
+		if (!InObj->Opts.NoTrack && ProcAvailable())
 		{
 #ifndef NOMMU
 			if (InObj->Opts.Fork && !InObj->Opts.ForkScanOnce)
@@ -379,7 +379,17 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 				CurrentTask.Node = (void*)&Abort;
 				
 				/*Ten seconds should be enough for anybody.*/
-				for (; !AdvancedPIDFind(InObj, true) && Inc < 10000; ++Inc) usleep(1000);
+				for (; !AdvancedPIDFind(InObj, true) && Inc < 10000 && !Abort; ++Inc) usleep(1000);
+				
+				if (Inc == 10000)
+				{
+					char ErrBuf[MAX_LINE_SIZE];
+					snprintf(ErrBuf, sizeof ErrBuf, CONSOLE_COLOR_YELLOW "ALERT: " CONSOLE_ENDCOLOR
+							"Cannot locate running PID of object %s with option FORK set.\n"
+							"If this object is intended to exit soon after launch, use FORKN instead.", InObj->ObjectID);
+					SpitWarning(ErrBuf);
+					WriteLogLine(ErrBuf, true);
+				}
 			}
 			else
 #endif /*NOMMU*/
