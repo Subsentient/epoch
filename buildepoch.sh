@@ -147,25 +147,6 @@ rm -rf objects built
 mkdir objects
 cd objects
 
-if [ $(uname -s) = "Linux" ]; then
-	CFLAGS=$CFLAGS" -DLINUX"
-fi
-
-if [ $(uname -s) = "OpenBSD" ]; then
-	CFLAGS=$CFLAGS" -DOPENBSD"
-	LDFLAGS=$LDFLAGS" -lutil -static"
-fi
-
-if [ $(uname -s) = "NetBSD" ]; then
-	CFLAGS=$CFLAGS" -DNETBSD"
-	LDFLAGS=$LDFLAGS" -lutil -static"
-fi
-
-if [ $(uname -s) = "FreeBSD" ]; then
-	CFLAGS=$CFLAGS" -DFREEBSD"
-	LDFLAGS=$LDFLAGS" -lutil -static"
-fi
-
 CMD "$CC $CFLAGS -c ../src/actions.c"
 CMD "$CC $CFLAGS -c ../src/config.c"
 CMD "$CC $CFLAGS -c ../src/console.c"

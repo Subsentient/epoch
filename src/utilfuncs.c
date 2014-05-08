@@ -15,25 +15,7 @@
 #include <dirent.h>
 #include <signal.h>
 
-#ifndef LINUX
-#include <sys/param.h>
-#include <sys/sysctl.h>
-#endif
-
 #include "epoch.h"
-
-#ifndef LINUX
-	#ifdef OPENBSD
-		#define STRUCT_KINFO_PROC struct kinfo_proc
-		#define _KERN_PROC KERN_PROC
-		#define KPSTRING "kern.proc"
-	#else
-		#define STRUCT_KINFO_PROC struct kinfo_proc2
-		#define _KERN_PROC KERN_PROC2
-		#define KPSTRING "kern.proc2"
-	#endif
-
-#endif /*LINUX*/
 
 /**Constants**/
 Bool EnableLogging = true;
@@ -284,7 +266,6 @@ void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutYear, char
 }
 
 unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
-#ifdef LINUX /**Linux half.**/
 { /*Advaaaanced! Ooh, shiney!
 	*Ok, seriously now, it finds PIDs by scanning /proc/somenumber/cmdline.*/
 	DIR *ProcDir = NULL;
@@ -367,121 +348,7 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 	closedir(ProcDir);
 	
 	return 0;
-}		
-#else /**BSD Half.**/
-{ /*This function's BSD side was written by following inspiration in the
-	xfce4-taskmanager source code. It's not a derivative, but
-	a lot of it might as well be near identical.
-	I do not like BSD's way of getting task information. -Subsentient*/
-	int Chunk[6] = { 0 };
-	size_t Size = 0;
-	char **Arguments = NULL, **TempPtr = NULL;
-	char CommandLine[MAX_LINE_SIZE] = { '\0' }, StartCommand[MAX_LINE_SIZE];
-	int NumProcesses = 0, Inc = 0;
-	unsigned long Countdown = 0;
-	STRUCT_KINFO_PROC *KernProc = NULL;
-	
-	if (!InObj->ObjectStartCommand)
-	{
-		return 0;
-	}
-	
-	/*Strip forbidden characters.*/
-	strncpy(StartCommand, InObj->ObjectStartCommand, sizeof StartCommand - 1);
-	StartCommand[sizeof StartCommand - 1] = '\0';
-	
-	for (Countdown = strlen(StartCommand) - 1; Countdown > 0 &&
-		(StartCommand[Countdown] == ' ' || StartCommand[Countdown] == '\t' ||
-		StartCommand[Countdown] == '&' || StartCommand[Countdown] == ';'); --Countdown)
-	{
-		StartCommand[Countdown] = '\0';
-	}
-	
-	
-	Chunk[0] = CTL_KERN;
-	Chunk[1] = _KERN_PROC;
-	Chunk[2] = KERN_PROC_ALL;
-	Chunk[3] = Chunk[5] = 0;
-	Chunk[4] = sizeof(STRUCT_KINFO_PROC);
-	
-	if (sysctl(Chunk, 6, NULL, &Size, NULL, 0) == -1)
-	{
-		const char *const Err = "Unable to get size of " KPSTRING "!";
-		SpitError(Err);
-		WriteLogLine(Err, true);
-		return 0;
-	}
-	
-	Size = (5 * Size / 4);
-	
-	KernProc = malloc(Size);
-	
-	Chunk[5] = Size / sizeof(STRUCT_KINFO_PROC);
-	
-	if (sysctl(Chunk, 6, KernProc, &Size, NULL, 0) == -1)
-	{
-		const char *const Err = "Unable to read " KPSTRING "!";
-		SpitError(Err);
-		WriteLogLine(Err, true);
-		return 0;
-	}
-	
-	NumProcesses = Size / sizeof(STRUCT_KINFO_PROC);
-	
-	for (; Inc < NumProcesses; ++Inc)
-	{		
-		Arguments = malloc((Size = 128));
-		
-		while (1)
-		{
-			Arguments = realloc(Arguments, Size);
-			
-			Chunk[0] = CTL_KERN;
-			Chunk[1] = KERN_PROC_ARGS;
-			Chunk[2] = KernProc[Inc].p_pid;
-			Chunk[3] = KERN_PROC_ARGV;
-			Chunk[4] = Chunk[5] = 0;
-			
-			if (sysctl(Chunk, 4, Arguments, &Size, NULL, 0) == 0) break;
-			
-			Size *= 2;
-		}
-		
-		for (*CommandLine = 0, TempPtr = Arguments; *TempPtr != NULL; ++TempPtr)
-		{
-			if (TempPtr != Arguments)
-			{
-				snprintf(CommandLine + strlen(CommandLine),
-						sizeof CommandLine - strlen(CommandLine), " ");
-			}
-			
-			if (strlen(*TempPtr) >= sizeof CommandLine)
-			{
-				(*TempPtr)[strlen(*TempPtr) - 1] = '\0';
-			}
-			
-			snprintf(CommandLine + strlen(CommandLine),
-					sizeof CommandLine - strlen(CommandLine), "%s", *TempPtr);
-		}
-		
-		if (!strcmp(CommandLine, StartCommand))
-		{
-			const unsigned long PID = KernProc[Inc].p_pid;
-			
-			if (UpdatePID) InObj->ObjectPID = PID;
-			
-			return PID;
-		}
-		
-		free(Arguments); Arguments = NULL;
-
-	}
-	free(KernProc);
-	
-	return 0;
 }
-#endif /*LINUX*/
-
 
 unsigned long ReadPIDFile(const ObjTable *InObj)
 {

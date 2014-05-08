@@ -354,12 +354,7 @@ rStatus InitConfig(const char *CurConfigFile)
 		}
 		else if (!strncmp(Worker, (CurrentAttribute = "DisableCAD"), sizeof "DisableCAD" - 1))
 		{ /*Should we disable instant reboots on CTRL-ALT-DEL?*/
-#ifndef LINUX
-			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT
-					"DisableCAD is not implemented for non-linux platforms.\nLine %lu in \"%s\".", LineNum, CurConfigFile);
-			SpitWarning(ErrBuf);
-			WriteLogLine(ErrBuf, true);
-#else
+
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
 				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
@@ -380,7 +375,6 @@ rStatus InitConfig(const char *CurConfigFile)
 				
 				ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 			}
-#endif
 			continue;
 		}
 		else if (!strncmp(Worker, (CurrentAttribute = "BlankLogOnBoot"), sizeof "BlankLogOnBoot" - 1))
@@ -531,12 +525,6 @@ rStatus InitConfig(const char *CurConfigFile)
 		/*This will mount /dev, /proc, /sys, /dev/pts, and /dev/shm on boot time, upon request.*/
 		else if (!strncmp(Worker, (CurrentAttribute = "MountVirtual"), strlen("MountVirtual")))
 		{
-	#ifndef LINUX
-			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "MountVirtual is only useful as a Linux config attribute,\n"
-					"and is not implemented for non-linux platforms.");
-			SpitWarning(ErrBuf);
-			WriteLogLine(ErrBuf, true);
-	#else
 			const char *TWorker = DelimCurr;
 			unsigned long Inc = 0;
 			char CurArg[MAX_DESCRIPT_SIZE];
@@ -585,7 +573,6 @@ rStatus InitConfig(const char *CurConfigFile)
 			{
 				ConfigProblem(CurConfigFile, CONFIG_ETRUNCATED, CurrentAttribute, DelimCurr, LineNum);
 			}
-		#endif
 			continue;
 		}
 		/*Now we get into the actual attribute tags.*/
@@ -973,10 +960,11 @@ rStatus InitConfig(const char *CurConfigFile)
 				{
 					CurObj->Opts.StopFailIsCritical = true;
 				}
-				else if (!strcmp(CurArg, "FORK"))
+				else if (!strncmp(CurArg, "FORK", sizeof "FORK" - 1))
 				{
 			#ifndef NOMMU
 					CurObj->Opts.Fork = true;
+					if (!strcmp(CurArg, "FORKN")) CurObj->Opts.ForkScanOnce = true;
 			#else
 					snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Object \"%s\" has specified the FORK option,\n"
 							"but this is not supported on NOMMU builds. Disabling the object.", CurObj->ObjectID);
@@ -987,23 +975,11 @@ rStatus InitConfig(const char *CurConfigFile)
 				}
 				else if (!strcmp(CurArg, "EXEC"))
 				{
-			#ifdef LINUX
 					CurObj->Opts.Exec = true;
-			#else
-					const char *const String = CONFIGWARNTXT "This is not a Linux build, and EXEC support is not implemented for non-linux platforms\n"
-								"because the usefulness of this outside of Linux is questionable.";
-					SpitWarning(String);
-					WriteLogLine(String, true);
-			#endif
 				}
 				else if (!strcmp(CurArg, "PIVOT"))
 				{
-			#ifdef LINUX
 					CurObj->Opts.PivotRoot = true;
-			#else
-					SpitWarning("This is not a Linux build, and PIVOT support is not implemented for non-linux platforms\n"
-								"because the usefulness of this outside of Linux is questionable.");
-			#endif
 				}
 				else if (!strcmp(CurArg, "RAWDESCRIPTION"))
 				{
@@ -1016,6 +992,10 @@ rStatus InitConfig(const char *CurConfigFile)
 				else if (!strcmp(CurArg, "AUTORESTART"))
 				{
 					CurObj->Opts.AutoRestart = true;
+				}
+				else if (!strcmp(CurArg, "NOTRACK"))
+				{
+					CurObj->Opts.NoTrack = true;
 				}
 				else if (!strcmp(CurArg, "FORCESHELL"))
 				{
@@ -2929,9 +2909,8 @@ rStatus ReloadConfig(void)
 	
 	/*Do this to prevent some weird options from being changeable by a config reload.*/
 	GlobalOpts[0] = EnableLogging;
-#ifdef LINUX
 	GlobalOpts[1] = DisableCAD;
-#endif
+
 	WriteLogLine("CONFIG: Initializing new configuration.", true);
 	
 	if (!InitConfig(ConfigFile))
@@ -2964,9 +2943,7 @@ rStatus ReloadConfig(void)
 	
 	/*And then restore those options to their previous states.*/
 	EnableLogging = GlobalOpts[0];
-#ifdef LINUX
 	DisableCAD = GlobalOpts[1];
-#endif
 	
 	if (!ConfigOK) return ConfigOK;
 	

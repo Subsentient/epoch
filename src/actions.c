@@ -11,9 +11,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/reboot.h>
-#ifdef LINUX
 #include <sys/mount.h>
-#endif
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
@@ -24,9 +22,7 @@
 #include "epoch.h"
 
 /*Prototypes.*/
-#ifdef LINUX
 static void MountVirtuals(void);
-#endif
 static void PrimaryLoop(void);
 static void ApplyGlobalEnvVars(void);
 
@@ -37,7 +33,6 @@ static Bool ContinuePrimaryLoop = true;
 struct _EnvVarList *GlobalEnvVars;
 
 /*Functions.*/
-#ifdef LINUX
 static void MountVirtuals(void)
 {
 	enum { MVIRT_PROC, MVIRT_SYSFS, MVIRT_DEVFS, MVIRT_PTS, MVIRT_SHM };
@@ -84,7 +79,6 @@ static void MountVirtuals(void)
 		
 	}
 }
-#endif
 
 static void PrimaryLoop(void)
 { /*Loop that provides essentially everything we cycle through.*/
@@ -543,7 +537,6 @@ void ReexecuteEpoch(void)
 	exit(0);
 }
 
-#ifdef LINUX
 void PerformExec(const char *Cmd)
 {
 	unsigned long Inc = 0, NumSpaces = 1, cOffset = 0, Inc2 = 0;
@@ -627,7 +620,6 @@ void PerformPivotRoot(const char *NewRoot, const char *OldRootDir)
 
 	chdir("/"); /*Reset working directory*/
 }
-#endif /*LINUX*/
 
 
 void FinaliseLogStartup(Bool BlankLog)
@@ -697,9 +689,9 @@ void LaunchBootup(void)
 	{
 		WriteLogLine(CONSOLE_COLOR_CYAN VERSIONSTRING " Booting up\n" "Compiled " __DATE__ " " __TIME__ CONSOLE_ENDCOLOR "\n", true);
 	}
-#ifdef LINUX
+
 	MountVirtuals(); /*Mounts any virtual filesystems, upon request.*/
-#endif
+
 	if (Hostname[0] != '\0')
 	{ /*The system hostname.*/
 		char TmpBuf[MAX_LINE_SIZE];
@@ -735,7 +727,7 @@ void LaunchBootup(void)
 		
 		WriteLogLine(TmpBuf, true);
 	}
-#ifdef LINUX
+	
 	if (DisableCAD)
 	{	
 		const char *CADMsg[2] = { "Epoch has taken control of CTRL-ALT-DEL events.",
@@ -755,7 +747,7 @@ void LaunchBootup(void)
 	{
 		WriteLogLine("Epoch will not request control of CTRL-ALT-DEL events.", true);
 	}
-#endif
+
 	WriteLogLine(CONSOLE_COLOR_YELLOW "Starting all objects.\n" CONSOLE_ENDCOLOR, true);
 	
 	if (!RunAllObjects(true))
@@ -877,9 +869,6 @@ void LaunchShutdown(signed long Signal)
 	printf("%s%s%s\n", CONSOLE_COLOR_CYAN, AttemptMsg, CONSOLE_ENDCOLOR);
 	
 	sync(); /*Force sync of disks in case somebody forgot.*/
-#ifndef LINUX
-	if (Signal == OSCTL_POWEROFF) Signal = Signal | OSCTL_HALT;
-#endif
 
 	reboot(Signal); /*Send the signal.*/
 

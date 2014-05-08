@@ -345,33 +345,52 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	
 	/**Parent code resumes.**/
 	waitpid(LaunchPID, &RawExitStatus, 0); /*Wait for the process to exit.*/
-
-	CurrentTask.Set = false;
-	CurrentTask.Node = NULL;
-	CurrentTask.TaskName = NULL;
-	CurrentTask.PID = 0; /*Set back to zero for the next one.*/
 	
 	if (CurCmd == InObj->ObjectStartCommand)
 	{
 		InObj->ObjectPID = LaunchPID; /*Save our PID.*/
-#ifndef NOSHELL		
 		if (!ShellDissolves)
 		{
 			++InObj->ObjectPID; /*This probably won't always work, but 99.9999999% of the time, yes, it will.*/
 		}
-#endif
+
 		if (InObj->Opts.IsService)
 		{ /*If we specify that this is a service, one up the PID again.*/
 			++InObj->ObjectPID;
 		}
-#ifndef NOMMU		
+
+#ifndef NOMMU
 		/*The PID is obviously going to be one greater.*/
 		if (InObj->Opts.Fork) ++InObj->ObjectPID;
-#endif		
+#endif /*NOMMU*/	
+
 		/*Check if the PID we found is accurate and update it if not. This method is very,
 		 * very accurate compared to the buggy morass above.*/
-		AdvancedPIDFind(InObj, true);
+		if (!InObj->Opts.NoTrack)
+		{
+#ifndef NOMMU
+			if (InObj->Opts.Fork && !InObj->Opts.ForkScanOnce)
+			{ /*As inconvenient as this is, it's necessary to track properly.*/
+				int Inc = 0;
+				Bool Abort = false;
+				
+				/*We are entering something new.*/
+				CurrentTask.PID = 0;
+				CurrentTask.Node = (void*)&Abort;
+				
+				/*Ten seconds should be enough for anybody.*/
+				for (; !AdvancedPIDFind(InObj, true) && Inc < 10000; ++Inc) usleep(1000);
+			}
+			else
+#endif /*NOMMU*/
+			AdvancedPIDFind(InObj, true);
+		}
 	}
+	
+	CurrentTask.Set = false;
+	CurrentTask.Node = NULL;
+	CurrentTask.TaskName = NULL;
+	CurrentTask.PID = 0; /*Set back to zero for the next one.*/
 	
 	/**And back to normalcy after this.------------------**/
 	
@@ -458,7 +477,6 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		
 		/*fflush(NULL); *//*Things tend to get clogged up when we don't flush.*/
 		
-#ifdef LINUX
 		/*This means we are doing an equivalent pivot_root...*/
 		if (CurObj->Opts.PivotRoot)
 		{
@@ -491,7 +509,6 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 			/*Jump to a certain option*/
 			goto JumpStartCheck;
 		}
-#endif /*LINUX*/			
 			
 		if (CurObj->ObjectPrestartCommand != NULL)
 		{
@@ -564,9 +581,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		{
 			CompleteStatusReport(PrintOutStream, ExitStatus, true);
 		}
-#ifdef LINUX
 	JumpStartCheck:
-#endif
 		/* *//**Means we failed to launch it.**//* */
 		if (CurObj->Opts.StartFailIsCritical && !ExitStatus && CurrentBootMode == BOOT_BOOTUP)
 		{

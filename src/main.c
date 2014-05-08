@@ -16,12 +16,8 @@
 #include <pwd.h>
 #include <sys/reboot.h>
 #include <sys/shm.h>
-#ifndef LINUX
-#include <fcntl.h>
-#include <util.h>
-#endif
 
-#if !defined NO_EXECINFO && defined LINUX
+#ifndef NO_EXECINFO
 #include <execinfo.h>
 #endif
 
@@ -65,7 +61,7 @@ static void SigHandler(int Signal)
 	const char *ErrorM = NULL;
 	char OutMsg[MAX_LINE_SIZE * 2] = { '\0' };
 	static Bool RecursiveProblem = false;
-#if defined LINUX && !defined NO_EXECINFO
+#ifndef NO_EXECINFO
 	void *BTList[25];
 	char **BTStrings;
 	size_t BTSize;
@@ -188,7 +184,7 @@ static void SigHandler(int Signal)
 	
 	RecursiveProblem = true;
 	
-#if !defined NO_EXECINFO && defined LINUX
+#ifndef NO_EXECINFO
 	BTSize = backtrace(BTList, 25);
 	BTStrings = backtrace_symbols(BTList, BTSize);
 
@@ -251,7 +247,6 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		  "Prints information about the object specified.\n\t"
 		  "If an object is not specified, it prints info on all known objects."
 		),
-#ifdef LINUX
 		( "setcad [on/off]:\n\t" CONSOLE_ENDCOLOR
 		
 		  "Sets Ctrl-Alt-Del instant reboot modes. If set to on,\n\t"
@@ -259,7 +254,6 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		  "without intervention by Epoch. Otherwise, if set to off, Epoch will\n\t"
 		  "perform a normal reboot when Ctrl-Alt-Del is pressed."
 		),
-#endif			
 		
 		( "configreload:\n\t" CONSOLE_ENDCOLOR
 		
@@ -298,13 +292,8 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		  "Prints the current version of the Epoch Init System."
 		)
 	};
-#ifdef LINUX
 	enum { HCMD, SHTDN, ENDIS, STAP, REL, OBJRL, STATUS, SETCAD, CONFRL, REEXEC,
 		RLCTL, GETPID, KILLOBJ, VER, ENUM_MAX };
-#else
-	enum { HCMD, SHTDN, ENDIS, STAP, REL, OBJRL, STATUS, CONFRL, REEXEC,
-		RLCTL, GETPID, KILLOBJ, VER, ENUM_MAX };
-#endif	
 	
 	printf("%s\nCompiled %s %s\n\n", VERSIONSTRING, __DATE__, __TIME__);
 	
@@ -349,13 +338,11 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[STATUS]);
 		return;
 	}
-#ifdef LINUX
 	else if (!strcmp(InCmd, "setcad"))
 	{
 		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[SETCAD]);
 		return;
 	}
-#endif
 	else if (!strcmp(InCmd, "configreload"))
 	{
 		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[CONFRL]);
@@ -690,8 +677,8 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			enum _StopMode StopMode;
 			unsigned char TermSignal = 0, ReloadCommandSignal = 0, *BinWorker = NULL;
 			unsigned long StartedSince, UserID, GroupID, Inc = 0, StopTimeout;
-			Bool HaltCmdOnly = false, IsService = false, AutoRestart = false, NoStopWait = false;
-			Bool ForceShell = false, RawDescription = false, Fork = false, RunOnce = false;
+			Bool HaltCmdOnly = false, IsService = false, AutoRestart = false, NoStopWait = false, NoTrack = false;
+			Bool ForceShell = false, RawDescription = false, Fork = false, RunOnce = false, ForkScanOnce = false;
 			char RLExpect[MEMBUS_MSGSIZE], ObjectID[MAX_DESCRIPT_SIZE], ObjectDescription[MAX_DESCRIPT_SIZE];
 			
 			Worker = InBuf + strlen(MEMBUS_CODE_LSOBJS " ");
@@ -763,6 +750,9 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 					case COPT_FORK:
 						Fork = true;
 						break;
+					case COPT_FORKSCANONCE:
+						ForkScanOnce = true;
+						break;
 					case COPT_SERVICE:
 						IsService = true;
 						break;
@@ -777,6 +767,9 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 						break;
 					case COPT_NOSTOPWAIT:
 						NoStopWait = true;
+						break;
+					case COPT_NOTRACK:
+						NoTrack = true;
 						break;
 					case COPT_EXEC:
 						Exec = true;
@@ -826,7 +819,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 				printf("Started since %s, for total of %lu mins.\n", TimeBuf, Offset);
 			}
 			
-			if (IsService || AutoRestart || HaltCmdOnly || Persistent || Fork || StopTimeout != 10 || 
+			if (IsService || AutoRestart || HaltCmdOnly || Persistent || Fork || StopTimeout != 10 || NoTrack ||
 				ForceShell || RawDescription || NoStopWait || PivotRoot || RunOnce || TermSignal != SIGTERM || Exec)
 			{
 				printf("Options:");
@@ -836,13 +829,18 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 				if (HaltCmdOnly) printf(" HALTONLY");
 				if (Persistent) printf(" PERSISTENT");
 				if (ForceShell) printf(" FORCESHELL");
-				if (Fork) printf(" FORK");
+				if (Fork)
+				{
+					if (ForkScanOnce) printf(" FORKN");
+					else printf(" FORK");
+				}
 				if (RawDescription) printf(" RAWDESCRIPTION");
 				if (TermSignal != SIGTERM) printf(" TERMSIGNAL=%u", TermSignal);
 				if (NoStopWait) printf(" NOSTOPWAIT");
 				if (PivotRoot) printf(" PIVOT");
 				if (Exec) printf(" EXEC");
 				if (RunOnce) printf(" RUNONCE");
+				if (NoTrack) printf(" NOTRACK");
 				if (StopTimeout != 10) printf(" STOPTIMEOUT=%lu", StopTimeout);
 				
 				putchar('\n');
@@ -968,7 +966,6 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		ShutdownMemBus(false);
 		return RV;
 	}
-#ifdef LINUX
 	else if (ArgIs("setcad"))
 	{
 		const char *MCode = NULL, *ReportLump = NULL;
@@ -1026,7 +1023,6 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		ShutdownMemBus(false);
 		return RetVal;
 	}
-#endif /*LINUX*/
 	else if (ArgIs("enable") || ArgIs("disable"))
 	{
 		rStatus RV = SUCCESS;
@@ -1541,14 +1537,7 @@ int main(int argc, char **argv)
 	if (getpid() == 1)
 	{ /*Just us, as init. That means, begin bootup.*/
 		const char *TRunlevel = NULL, *TConfigFile = getenv("epochconfig");
-	#ifndef LINUX		/*For non-linux we need to set up the console.*/
-		int Desc = open("/dev/console", O_RDWR);
-		
-		if (Desc != -1) /*Dunno how we expect to warn anyone about this if we can't print.*/
-		{
-			login_tty(Desc);
-		}
-	#endif
+
 		if (TConfigFile != NULL)
 		{ /*Someone specified a config file from disk?*/
 			snprintf(ConfigFile, MAX_LINE_SIZE, "%s", TConfigFile);

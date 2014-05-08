@@ -436,6 +436,7 @@ void ParseMemBus(void)
 			if (Worker->Opts.Persistent) *BinWorker++ = COPT_PERSISTENT;
 #ifndef NOMMU
 			if (Worker->Opts.Fork) *BinWorker++ = COPT_FORK;
+			if (Worker->Opts.ForkScanOnce) *BinWorker++ = COPT_FORKSCANONCE;
 #endif /*NOMMU*/
 			if (Worker->Opts.IsService) *BinWorker++ = COPT_SERVICE;
 			if (Worker->Opts.AutoRestart) *BinWorker++ = COPT_AUTORESTART;
@@ -444,6 +445,7 @@ void ParseMemBus(void)
 			if (Worker->Opts.Exec) *BinWorker++ = COPT_EXEC;
 			if (Worker->Opts.PivotRoot) *BinWorker++ = COPT_PIVOTROOT;
 			if (Worker->Opts.RunOnce) *BinWorker++ = COPT_RUNONCE;
+			if (Worker->Opts.NoTrack) *BinWorker++ = COPT_NOTRACK;
 			*BinWorker = 0;
 			
 			MemBus_BinWrite(OutBuf, MEMBUS_MSGSIZE, true);
@@ -836,7 +838,6 @@ void ParseMemBus(void)
 		return;
 	}
 	/*Ctrl-Alt-Del control.*/
-#ifdef LINUX
 	else if (BusDataIs(MEMBUS_CODE_CADOFF))
 	{
 		if (!reboot(OSCTL_DISABLE_CTRLALTDEL))
@@ -859,7 +860,6 @@ void ParseMemBus(void)
 			MemBus_Write(MEMBUS_CODE_FAILURE " " MEMBUS_CODE_CADON, true);
 		}
 	}
-#endif /*LINUX*/
 	else if (BusDataIs(MEMBUS_CODE_SENDPID))
 	{
 		char TmpBuf[MEMBUS_MSGSIZE];

@@ -42,7 +42,6 @@ rStatus SendPowerControl(const char *MembusCode)
 		PCode[1] = MEMBUS_CODE_FAILURE " " MEMBUS_CODE_REBOOT;
 		PErrMsg = "Unable to reboot.";
 	}
-#ifdef LINUX
 	else if (!strcmp(MembusCode, MEMBUS_CODE_CADON))
 	{
 		PCode[0] = MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_CADON;
@@ -55,7 +54,6 @@ rStatus SendPowerControl(const char *MembusCode)
 		PCode[1] = MEMBUS_CODE_FAILURE " " MEMBUS_CODE_CADOFF;
 		PErrMsg = "Unable to disable CTRL-ALT-DEL instant reboot.";
 	}
-#endif /*LINUX*/
 	else
 	{
 		SpitError("Invalid MEMBUS_CODE passed to SendPowerControl().");
@@ -191,9 +189,7 @@ void EmulWall(const char *InStream, Bool ShowUser)
 	const char *OurUser = getenv("USER");
 	char OurHostname[512] = { '\0' };
 	DIR *DevDir;
-#ifdef LINUX
 	DIR *PtsDir;
-#endif
 	struct dirent *DirPtr;
 	char FileNameBuf[MAX_LINE_SIZE];
 	int FileDescriptor = 0;
@@ -240,18 +236,10 @@ void EmulWall(const char *InStream, Bool ShowUser)
 	{ /*Now write to the ttys.*/
 		while ((DirPtr = readdir(DevDir))) /*See, we use fopen() as a way to check if the file exists.*/
 		{ /*Your eyes bleeding yet?*/
-#ifdef LINUX
 			if (!strncmp(DirPtr->d_name, "tty", sizeof "tty" - 1) &&
 				strlen(DirPtr->d_name) > sizeof "tty" - 1 &&
 				isdigit(DirPtr->d_name[sizeof "tty" - 1]) &&
 				atoi(DirPtr->d_name + sizeof "tty" - 1) > 0)
-#else /*BSD style.*/
-			if ((!strncmp(DirPtr->d_name, "ttyC", sizeof "ttyC" - 1) &&
-				strlen(DirPtr->d_name) > sizeof "ttyC" - 1  &&
-				strcmp(DirPtr->d_name + sizeof "ttyC" - 1, "cfg")) ||
-				( !strncmp(DirPtr->d_name, "ttyp", sizeof "ttyp" - 1) &&
-				strlen(DirPtr->d_name) > sizeof "ttyp" - 1) )
-#endif
 			{
 				snprintf(FileNameBuf, MAX_LINE_SIZE, "/dev/%s", DirPtr->d_name);
 				
@@ -268,7 +256,6 @@ void EmulWall(const char *InStream, Bool ShowUser)
 		closedir(DevDir);
 	}
 	
-#ifdef LINUX	
 	if ((PtsDir = opendir("/dev/pts/")))
 	{
 		while ((DirPtr = readdir(PtsDir)))
@@ -288,8 +275,6 @@ void EmulWall(const char *InStream, Bool ShowUser)
 		}
 		closedir(PtsDir);
 	}
-#endif
-	
 }
 
 rStatus EmulShutdown(long ArgumentCount, const char **ArgStream)
