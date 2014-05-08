@@ -679,6 +679,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			unsigned long StartedSince, UserID, GroupID, Inc = 0, StopTimeout;
 			Bool HaltCmdOnly = false, IsService = false, AutoRestart = false, NoStopWait = false, NoTrack = false;
 			Bool ForceShell = false, RawDescription = false, Fork = false, RunOnce = false, ForkScanOnce = false;
+			Bool StartFailIsCritical = false, StopFailIsCritical = false;
 			char RLExpect[MEMBUS_MSGSIZE], ObjectID[MAX_DESCRIPT_SIZE], ObjectDescription[MAX_DESCRIPT_SIZE];
 			
 			Worker = InBuf + strlen(MEMBUS_CODE_LSOBJS " ");
@@ -771,6 +772,12 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 					case COPT_NOTRACK:
 						NoTrack = true;
 						break;
+					case COPT_STARTFAILCRITICAL:
+						StartFailIsCritical = true;
+						break;
+					case COPT_STOPFAILCRITICAL:
+						StopFailIsCritical = true;
+						break;
 					case COPT_EXEC:
 						Exec = true;
 						break;
@@ -820,7 +827,8 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			}
 			
 			if (IsService || AutoRestart || HaltCmdOnly || Persistent || Fork || StopTimeout != 10 || NoTrack ||
-				ForceShell || RawDescription || NoStopWait || PivotRoot || RunOnce || TermSignal != SIGTERM || Exec)
+				ForceShell || RawDescription || NoStopWait || PivotRoot || RunOnce || TermSignal != SIGTERM || Exec ||
+				StartFailIsCritical || StopFailIsCritical)
 			{
 				printf("Options:");
 				
@@ -841,11 +849,31 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 				if (Exec) printf(" EXEC");
 				if (RunOnce) printf(" RUNONCE");
 				if (NoTrack) printf(" NOTRACK");
+				if (StartFailIsCritical) printf( "STARTFAILCRITICAL");
+				if (StopFailIsCritical) printf( "STOPFAILCRITICAL");
 				if (StopTimeout != 10) printf(" STOPTIMEOUT=%lu", StopTimeout);
+			}
+
+			/*Get exit status mappings.*/
+			while (!MemBus_BinRead(InBuf, MEMBUS_MSGSIZE, false)) usleep(100);
+
+			BinWorker = (void*)(InBuf + sizeof MEMBUS_CODE_LSOBJS " MXS");
+			Inc = *BinWorker++; /*Get the count.*/
+			
+			for (; Inc; --Inc)
+			{
+				const char *Stringy = NULL;
+				unsigned char Value = *BinWorker++, ExitStatus = *BinWorker++;
 				
-				putchar('\n');
+				if (Value == SUCCESS) Stringy = "SUCCESS";
+				else if (Value == WARNING) Stringy = "WARNING";
+				else if (Value == FAILURE) Stringy = "FAILURE";
+				else Stringy = "<BAD>";
+				
+				printf(" MAPEXITSTATUS=%d,%s", ExitStatus, Stringy);
 			}
 			
+			putchar('\n');
 			snprintf(RLExpect, sizeof RLExpect, "%s %s %s", MEMBUS_CODE_LSOBJS, MEMBUS_LSOBJS_VERSION, ObjectID);
 			
 			/*Done with this, now read runlevels.*/

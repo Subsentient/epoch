@@ -21,7 +21,7 @@
 #include <time.h>
 #include "epoch.h"
 
-/*Memory bus uhh, static globals.*/
+/*Memory bus globals.*/
 
 struct _MemBusInterface MemBus;
 
@@ -376,6 +376,7 @@ void ParseMemBus(void)
 	}
 	else if (BusDataIs(MEMBUS_CODE_LSOBJS))
 	{ /*Done for mostly third party stuff.*/
+		int Inc = 0;
 		char OutBuf[MEMBUS_MSGSIZE];
 		unsigned char *BinWorker = (void*)OutBuf;
 		ObjTable *Worker = ObjectTable;
@@ -446,9 +447,29 @@ void ParseMemBus(void)
 			if (Worker->Opts.PivotRoot) *BinWorker++ = COPT_PIVOTROOT;
 			if (Worker->Opts.RunOnce) *BinWorker++ = COPT_RUNONCE;
 			if (Worker->Opts.NoTrack) *BinWorker++ = COPT_NOTRACK;
+			if (Worker->Opts.StartFailIsCritical) *BinWorker++ = COPT_STARTFAILCRITICAL;
+			if (Worker->Opts.StopFailIsCritical) *BinWorker++ = COPT_STOPFAILCRITICAL;
+			
 			*BinWorker = 0;
 			
 			MemBus_BinWrite(OutBuf, MEMBUS_MSGSIZE, true);
+			
+			/*Now onto exit status mapping.*/
+			snprintf(OutBuf, sizeof OutBuf, MEMBUS_CODE_LSOBJS " MXS");
+			
+			BinWorker = (void*)(OutBuf + sizeof MEMBUS_CODE_LSOBJS " MXS" + 1);
+
+			
+			for (Inc = 0; Worker->ExitStatuses[Inc].Value != 3 && Inc < sizeof Worker->ExitStatuses / sizeof Worker->ExitStatuses[0]; ++Inc)		
+			{ /*Found one.*/
+				*BinWorker++ = Worker->ExitStatuses[Inc].Value;
+				*BinWorker++ = Worker->ExitStatuses[Inc].ExitStatus;
+			}
+			BinWorker = (void*)(OutBuf + sizeof MEMBUS_CODE_LSOBJS " MXS");
+			*BinWorker = Inc;
+
+			MemBus_BinWrite(OutBuf, MEMBUS_MSGSIZE, true);
+			/**We know we're going to the runlevels now because we only send this one chunk before we ever do.**/
 			
 			if (RLWorker)
 			{
@@ -464,6 +485,7 @@ void ParseMemBus(void)
 		
 		/*This says we are done.*/
 		MemBus_Write(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_LSOBJS, true);
+
 		return;
 	}					
 	else if (BusDataIs(MEMBUS_CODE_GETRL))

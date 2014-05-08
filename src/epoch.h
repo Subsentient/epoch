@@ -130,7 +130,7 @@
 #define MEMBUS_CODE_RXD "RXD"
 #define MEMBUS_CODE_RXD_OPTS "ORXD"
 
-#define MEMBUS_LSOBJS_VERSION "V2"
+#define MEMBUS_LSOBJS_VERSION "V3"
 /**Types, enums, structs and whatnot**/
 
 
@@ -146,7 +146,7 @@ enum _StopMode { STOP_NONE, STOP_COMMAND, STOP_PID, STOP_PIDFILE, STOP_INVALID }
 enum { COPT_HALTONLY = 1, COPT_PERSISTENT, COPT_FORK, COPT_SERVICE, COPT_AUTORESTART,
 		COPT_FORCESHELL, COPT_NOSTOPWAIT, COPT_STOPTIMEOUT, COPT_TERMSIGNAL,
 		COPT_RAWDESCRIPTION, COPT_PIVOTROOT, COPT_EXEC, COPT_RUNONCE, COPT_FORKSCANONCE,
-		COPT_NOTRACK, COPT_MAX };
+		COPT_NOTRACK, COPT_STARTFAILCRITICAL, COPT_STOPFAILCRITICAL, COPT_MAX };
 		
 /*Trinary return values for functions.*/
 typedef enum { FAILURE, SUCCESS, WARNING } rStatus;
@@ -193,8 +193,8 @@ typedef struct _EpochObjectTable
 	
 	struct
 	{ /*Maps an object's exit statuses to a special case of an rStatus value.*/
-		unsigned char ExitStatus;
-		unsigned char Value;
+		unsigned char ExitStatus; /*The exit status of the program.*/
+		unsigned char Value; /*An rStatus trinary value, or 4 for unused.*/
 	} ExitStatuses[8];
 	
 	struct 

@@ -1066,7 +1066,7 @@ rStatus InitConfig(const char *CurConfigFile)
 					ValueT[TInc] = '\0';
 					
 					/*Now we save the value.*/
-					for (TInc = 0; CurObj->ExitStatuses[TInc].Value == 4 &&
+					for (TInc = 0; CurObj->ExitStatuses[TInc].Value != 3 &&
 						TInc < sizeof CurObj->ExitStatuses / sizeof CurObj->ExitStatuses[0]; ++TInc);
 					
 					if (TInc == sizeof CurObj->ExitStatuses / sizeof CurObj->ExitStatuses[0])
@@ -2110,7 +2110,7 @@ static ObjTable *AddObjectToTable(const char *ObjectID, const char *File)
 						Bool is just signed char.*/
 	Worker->Opts.StopTimeout = 10; /*Ten seconds by default.*/
 	
-	for (; Inc < sizeof Worker->ExitStatuses / sizeof Worker->ExitStatuses; ++Inc)
+	for (; Inc < sizeof Worker->ExitStatuses / sizeof Worker->ExitStatuses[0]; ++Inc)
 	{ /*Set these to their *special* zero.*/
 		Worker->ExitStatuses[Inc].Value = 3; /*One above what we will ever see.*/
 	}
