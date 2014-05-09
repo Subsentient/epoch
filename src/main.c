@@ -679,7 +679,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			unsigned long StartedSince, UserID, GroupID, Inc = 0, StopTimeout;
 			Bool HaltCmdOnly = false, IsService = false, AutoRestart = false, NoStopWait = false, NoTrack = false;
 			Bool ForceShell = false, RawDescription = false, Fork = false, RunOnce = false, ForkScanOnce = false;
-			Bool StartFailIsCritical = false, StopFailIsCritical = false;
+			Bool StartFailIsCritical = false, StopFailIsCritical = false, OptNewline = false;
 			char RLExpect[MEMBUS_MSGSIZE], ObjectID[MAX_DESCRIPT_SIZE], ObjectDescription[MAX_DESCRIPT_SIZE];
 			
 			Worker = InBuf + strlen(MEMBUS_CODE_LSOBJS " ");
@@ -852,6 +852,8 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 				if (StartFailIsCritical) printf( "STARTFAILCRITICAL");
 				if (StopFailIsCritical) printf( "STOPFAILCRITICAL");
 				if (StopTimeout != 10) printf(" STOPTIMEOUT=%lu", StopTimeout);
+				
+				OptNewline = true;
 			}
 
 			/*Get exit status mappings.*/
@@ -859,6 +861,8 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 
 			BinWorker = (void*)(InBuf + sizeof MEMBUS_CODE_LSOBJS " MXS");
 			Inc = *BinWorker++; /*Get the count.*/
+			
+			if (Inc > 0) OptNewline = true;
 			
 			for (; Inc; --Inc)
 			{
@@ -873,7 +877,8 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 				printf(" MAPEXITSTATUS=%d,%s", ExitStatus, Stringy);
 			}
 			
-			putchar('\n');
+			if (OptNewline) putchar('\n');
+			
 			snprintf(RLExpect, sizeof RLExpect, "%s %s %s", MEMBUS_CODE_LSOBJS, MEMBUS_LSOBJS_VERSION, ObjectID);
 			
 			/*Done with this, now read runlevels.*/
