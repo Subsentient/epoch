@@ -204,7 +204,11 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 		}
 		
 		sigprocmask(SIG_UNBLOCK, &Sig2, NULL); /*Unblock signals.*/
-				
+		
+		
+		/*Change our session id.*/
+		setsid();
+		
 #ifndef NOMMU /*Can't do this because vfork() blocks the parent.*/
 		/*If we are supposed to spawn off as a daemon, do this.*/
 		if (InObj->Opts.Fork && CurCmd == InObj->ObjectStartCommand)
@@ -225,8 +229,6 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 		}
 #endif /*NOMMU*/
 
-		/*Change our session id.*/
-		setsid();
 		
 		/*Set environment variables.*/
 		/**The thing that always bothered me here is the idea that we are likely duplicating

@@ -142,7 +142,7 @@ rStatus EmulKillall5(unsigned long InSignal)
 	DIR *ProcDir;
 	struct dirent *CurDir;
 	pid_t CurPID;
-
+	const pid_t OurPID = getpid(), OurSID = getsid(0);
 
 	if (InSignal > SIGSTOP || InSignal == 0) /*Won't be negative since we are unsigned.*/
 	{
@@ -155,19 +155,22 @@ rStatus EmulKillall5(unsigned long InSignal)
 		return FAILURE;
 	}
 	
+	/*Stop everything.*/
+	kill(-1, SIGSTOP);
+	
 	while ((CurDir = readdir(ProcDir)))
 	{
 		if (AllNumeric(CurDir->d_name) && CurDir->d_type == 4)
 		{			
-			CurPID = (pid_t)atoi(CurDir->d_name); /*Convert the new PID to a true number.*/
+			CurPID = atol(CurDir->d_name); /*Convert the new PID to a true number.*/
 			
-			if (CurPID == 1 || CurPID == getpid())
+			if (CurPID == 1 || CurPID == OurPID)
 			{ /*Don't try to kill init, or us.*/
 				continue;
 			}
 			
 			
-			if (getsid(0) == getsid(CurPID))
+			if (getsid(CurPID) == OurSID)
 			{ /*It's in our session ID, so don't touch it.*/
 				continue;
 			}
@@ -177,6 +180,9 @@ rStatus EmulKillall5(unsigned long InSignal)
 		}
 	}
 	closedir(ProcDir);
+	
+	/*Start it up again.*/
+	kill(-1, SIGCONT);
 	
 	return SUCCESS;
 }
