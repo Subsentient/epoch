@@ -302,6 +302,7 @@ extern char ConfigFile[MAX_LINE_SIZE];
 extern char *ConfigFileList[MAX_CONFIG_FILES];
 extern int NumConfigFiles;
 extern struct _EnvVarList *GlobalEnvVars;
+extern Bool AreInit;
 
 /**Function forward declarations.*/
 

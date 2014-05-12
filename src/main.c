@@ -38,6 +38,9 @@ static void SetDefaultProcessTitle(int argc, char **argv);
  * Actual functions.
  */
  
+ 
+Bool AreInit;
+
 static Bool __CmdIs(const char *CArg, const char *InCmd)
 { /*Check if we are or end in the command name specified.*/
 	const char *TWorker = CArg;
@@ -74,7 +77,7 @@ static void SigHandler(int Signal)
 		{
 			static unsigned long LastKillAttempt = 0;
 			
-			if (getpid() == 1)
+			if (AreInit)
 			{
 				if (CurrentTask.Set && CurrentBootMode != BOOT_NEUTRAL
 					&& (LastKillAttempt == 0 || CurrentBootMode == BOOT_SHUTDOWN || time(NULL) > (LastKillAttempt + 5)))
@@ -199,7 +202,7 @@ static void SigHandler(int Signal)
 	snprintf(OutMsg, sizeof OutMsg, "%s\n\nEpoch was compiled without backtrace support.", ErrorM);
 #endif
 	
-	if (getpid() == 1)
+	if (AreInit)
 	{
 		EmulWall(OutMsg, false);
 		EmergencyShell();
@@ -1567,7 +1570,19 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	
-	if (getpid() == 1)
+	/*Determines if we are init booting up.*/
+	if (getpid() == 1 || (argc == 2 && (CmdIs("epoch") || CmdIs("init")) && !strcmp(argv[1], "--init")) ||
+		(argc == 2 && !strcmp(argv[0], "!rxd") && !strcmp(argv[1], "REEXEC")))
+	{
+		if (getuid() != 0)
+		{
+			fprintf(stderr, "Can't init as non-root.");
+			_exit(1);
+		}
+		AreInit = true;
+	}
+	
+	if (AreInit)
 	{ /*Just us, as init. That means, begin bootup.*/
 		const char *TRunlevel = NULL, *TConfigFile = getenv("epochconfig");
 
