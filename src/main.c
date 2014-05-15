@@ -1576,7 +1576,7 @@ int main(int argc, char **argv)
 	{
 		if (getuid() != 0)
 		{
-			fprintf(stderr, "Can't init as non-root.");
+			fprintf(stderr, "Can't init as non-root.\n");
 			_exit(1);
 		}
 		AreInit = true;
