@@ -619,7 +619,87 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 					RenderStatusReport(PrintOutStream);
 				}
 				
-				ExitStatus = ExecuteConfigObject(CurObj, CurObj->ObjectStopCommand);
+				if (!strncmp(CurObj->ObjectStopCommand, "KILLALL5", sizeof "KILLALL5" - 1))
+				{ /*If we're trying to call Epoch's killall5.*/
+					const char *Arg = CurObj->ObjectStopCommand + sizeof "KILLALL5" - 1;
+					int Timeout = 0;
+
+					if (strlen(CurObj->ObjectStopCommand) == sizeof "KILLALL5" - 1)
+					{
+						ExitStatus = EmulKillall5(SIGTERM);
+					}
+					else
+					{
+						char RealArg[MAX_LINE_SIZE];
+						int Inc = 0;
+						const char * Timer = NULL;
+						
+						if (!(Arg = WhitespaceArg(Arg)))
+						{
+							char ErrBuf[MAX_LINE_SIZE];
+							snprintf(ErrBuf, sizeof ErrBuf, "Malformed KILLALL5 stop command for object %s", CurObj->ObjectID);
+							SmallError(ErrBuf);
+							WriteLogLine(ErrBuf, true);
+							
+							if (PrintStatus) CompleteStatusReport(PrintOutStream, FAILURE, true);
+							
+							return FAILURE;
+						}
+						
+						if ((Timer = WhitespaceArg(Arg)))
+						{
+							char RealTimer[MAX_LINE_SIZE], *Worker = RealTimer + strlen(Timer) - 1; /*Not a typo*/
+							
+							strncpy(RealTimer, Timer, MAX_LINE_SIZE - 1);
+							RealTimer[MAX_LINE_SIZE - 1] = '\0';
+							
+							/*Strip trailing whitespace.*/
+							for (; *Worker == ' ' || *Worker == '\t'; --Worker) *Worker = '\0';
+							
+							if (!AllNumeric(Timer))
+							{
+								char ErrBuf[MAX_LINE_SIZE];
+								snprintf(ErrBuf, sizeof ErrBuf, "Non-numeric sleep time for Object %s calling Epoch's killall5.", CurObj->ObjectID);
+								SmallError(ErrBuf);
+								WriteLogLine(ErrBuf, true);
+								
+								if (PrintStatus) CompleteStatusReport(PrintOutStream, FAILURE, true);
+								
+								return FAILURE;
+							}
+							Timeout = atoi(Timer);
+						}
+						
+						for (; Inc < sizeof RealArg - 1 && Arg[Inc] != ' ' && Arg[Inc] != '\t' && Arg[Inc] != '\0'; ++Inc)
+						{ /*Without the possible space for timeout.*/
+							RealArg[Inc] = Arg[Inc];
+						}
+						RealArg[Inc] = '\0';
+						
+						if (!AllNumeric(RealArg))
+						{
+							char ErrBuf[MAX_LINE_SIZE];
+							
+							snprintf(ErrBuf, sizeof ErrBuf, "Bad signal number %s for Object %s calling Epoch's killall5 via KILLALL5."
+									"The signal must be an integer.", RealArg, CurObj->ObjectID);
+							SmallError(ErrBuf);
+							WriteLogLine(ErrBuf, true);
+							
+							ExitStatus = FAILURE;
+						}
+						else
+						{
+							ExitStatus = EmulKillall5(atoi(RealArg));
+						}
+						
+					}
+					/*wait the designated time if we've been asked.*/
+					if (Timeout && ExitStatus) sleep(Timeout);
+				}
+				else
+				{ /*Normal stop command.*/
+					ExitStatus = ExecuteConfigObject(CurObj, CurObj->ObjectStopCommand);
+				}
 				
 				if (!CurObj->Opts.NoStopWait)
 				{
