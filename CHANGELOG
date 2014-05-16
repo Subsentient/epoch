@@ -1,0 +1,60 @@
+Epoch Init System 1.1 released on 2014-05-15.
+
+Notable changes since 1.0.1:
+
+Features:
+* Added support for multiple configuration files via the 'Import' config
+global attribute, due to popular request.
+
+* Added support for setting global and object-specific environment
+variables via config file via ObjectEnvVar=WIBBLE=Derp herp and
+GlobalEnvVar=DERP=Wibble hurr.
+
+* Added the RUNONCE option, which disables objects upon their first run in
+a bootup (or in the case of HALTONLY, a shutdown). Useful for
+ssh key generation and setup utilities post-install for linux distros.
+
+* Added wrapper for 'shutdown' command, making 'epoch shutdown' possible.
+Useful for testing Epoch without destroying your existing init system.
+
+* Added support for objects to be declared without any runlevels.
+
+* -fstack-protector has been added to the default CFLAGS.
+
+* Separated the stop and start halves of 'epoch restart' to add more
+verbosity to why an object did not restart.
+
+* Improved process tracking. FORKN now accompanies FORK as an option,
+the difference being that FORK will wait for the right object's PID
+to become trackable, and FORKN will not. Single-job forks should use FORKN.
+Daemons that don't auto-fork  should use FORK.
+
+* Allow running as init when not PID 1, with init/epoch --init.
+
+* Allow calling Epoch's killall5 via:
+ObjectStopCommand=KILLALL5 signum secondnum
+Both fields after KILLALL5 are optional.
+
+* Improve efficiency of killall5.
+
+* Add support for treating some objects' failure as critical
+via STOPFAILCRITICAL and STARTFAILCRITICAL options, respectively.
+Failure drops to an attempted emergency shell.
+
+* Added new option, MAPEXITSTATUS, to define what an object's
+exit code means. Syntax is ObjectOptions=MAPEXITSTATUS=1,FAILURE
+which sets exit code 1 to FAILURE. WARNING and SUCCESS are the other
+alternatives.
+
+
+Bugs:
+* Fixed missing help for 'reload' command.
+* Fixed bugs in 'epoch status' command.
+* Rewrite horrible server/init-side code for 'epoch objrl'.
+* Misc other small fixes.
+
+Report ALL bugs to thinkingrodent@gmail.com, don't be shy, or you
+can try coming into #epoch on Freenode.net.
+
+I'll also be happy to answer any questions you might have.
+

@@ -60,7 +60,7 @@
 #endif
 
 /*Version.*/
-#define VERSIONSTRING "Epoch Init System (git/master)"
+#define VERSIONSTRING "Epoch Init System 1.1 \"Sirius\""
 
 /*Power control magic.*/
 #define OSCTL_REBOOT 0x1234567
