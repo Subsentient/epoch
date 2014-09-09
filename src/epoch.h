@@ -239,7 +239,7 @@ struct _BootBanner
 
 struct _HaltParams
 {
-	signed HaltMode;
+	int HaltMode;
 	unsigned TargetHour;
 	unsigned TargetMin;
 	unsigned TargetSec;

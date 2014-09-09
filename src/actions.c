@@ -319,7 +319,7 @@ void RecoverFromReexec(Bool ViaMemBus)
 	
 	/*Retrieve the HaltParams structure.*/
 	memcpy(&OurLong, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
-	*(unsigned*)&HaltParams.HaltMode = OurLong;
+	HaltParams.HaltMode = *(long*)&OurLong;
 	
 	memcpy(&OurLong, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
 	HaltParams.TargetHour = OurLong;

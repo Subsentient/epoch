@@ -2212,7 +2212,7 @@ static ReturnCode ScanConfigIntegrity(void)
 			Worker->Opts.PivotRoot = false;
 			Worker->Enabled = false;
 			Worker->Started = false;
-			RetState = WARNING;
+			if (RetState) RetState = WARNING;
 		}
 		
 		if (Worker->Opts.HasPIDFile && Worker->Opts.StopMode == STOP_PID)
@@ -2221,7 +2221,7 @@ static ReturnCode ScanConfigIntegrity(void)
 					"but a PID file has been specified! Switching to STOP_PIDFILE from STOP_PID.", Worker->ObjectID);
 			IntegrityWarn(TmpBuf);
 			Worker->Opts.StopMode = STOP_PIDFILE;
-			RetState = WARNING;
+			if (RetState) RetState = WARNING;
 		}
 		
 		if (Worker->Opts.PivotRoot && Worker->Opts.Exec)
@@ -2230,7 +2230,7 @@ static ReturnCode ScanConfigIntegrity(void)
 					"This makes no sense. Disabling the object.", Worker->ObjectID);
 			IntegrityWarn(TmpBuf);
 			Worker->Enabled = false;
-			RetState = WARNING;
+			if (RetState) RetState = WARNING;
 		}
 
 		if (!Worker->Opts.HasPIDFile && Worker->Opts.StopMode == STOP_PIDFILE)
@@ -2239,7 +2239,7 @@ static ReturnCode ScanConfigIntegrity(void)
 					"but no PID File attribute specified! Switching to STOP_PID.", Worker->ObjectID);
 			IntegrityWarn(TmpBuf);
 			Worker->Opts.StopMode = STOP_PID;
-			RetState = WARNING;
+			if (RetState) RetState = WARNING;
 		}
 		
 		if (Worker->Enabled == 2)
@@ -2257,7 +2257,7 @@ static ReturnCode ScanConfigIntegrity(void)
 			Worker->Enabled = false;
 			Worker->Started = false;
 			Worker->Opts.StopMode = STOP_NONE;
-			RetState = WARNING;
+			if (RetState) RetState = WARNING;
 		}
 		
 		if (Worker->Opts.PivotRoot && Worker->Opts.HaltCmdOnly)
@@ -2268,7 +2268,7 @@ static ReturnCode ScanConfigIntegrity(void)
 			Worker->Enabled = false;
 			Worker->Started = false;
 			Worker->Opts.PivotRoot = false;
-			RetState = WARNING;
+			if (RetState) RetState = WARNING;
 		}
 		
 		if (Worker->Opts.Exec && Worker->Opts.HaltCmdOnly)
@@ -2279,7 +2279,7 @@ static ReturnCode ScanConfigIntegrity(void)
 			Worker->Opts.Exec = false;
 			Worker->Enabled = false;
 			Worker->Started = false;
-			RetState = WARNING;
+			if (RetState) RetState = WARNING;
 		}
 		
 		if (Worker->Opts.NoStopWait && Worker->Opts.StopTimeout != 10)
@@ -2287,7 +2287,7 @@ static ReturnCode ScanConfigIntegrity(void)
 			snprintf(TmpBuf, 1024, "Object \"%s\" has both NOSTOPWAIT and STOPTIMEOUT options set.\n"
 					"This doesn't seem very useful.", Worker->ObjectID);
 			IntegrityWarn(TmpBuf);
-			RetState = WARNING;
+			if (RetState) RetState = WARNING;
 		}
 			
 		
@@ -2306,7 +2306,7 @@ static ReturnCode ScanConfigIntegrity(void)
 				Worker->ObjectStopCommand = NULL;
 			}
 			
-			RetState = WARNING;
+			if (RetState) RetState = WARNING;
 		}
 		
 		if (Worker->Opts.PivotRoot && Worker->Opts.HasPIDFile)
@@ -2323,7 +2323,7 @@ static ReturnCode ScanConfigIntegrity(void)
 				Worker->ObjectPIDFile = NULL;
 			}
 			
-			RetState = WARNING;
+			if (RetState) RetState = WARNING;
 		}
 		
 		/*Check for duplicate ObjectIDs.*/

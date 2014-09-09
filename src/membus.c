@@ -75,7 +75,7 @@ ReturnCode InitMemBus(Bool ServerSide)
 	else
 	{ /*Client side stuff.*/
 		for (; *MemBus.Server.Status != MEMBUS_NOMSG && *MemBus.Server.Status != MEMBUS_MSG; ++Inc)
-		{ /*Wait for server-side to finish setting up it's half, if it was just starting up itself.*/
+		{ /*Wait for server-side to finish setting up its half, if it was just starting up itself.*/
 			if (Inc == 100000) /*Ten secs.*/
 			{
 				SmallError("Cannot connect to Epoch over MemBus, stream corrupted. Aborting MemBus initialization.");
