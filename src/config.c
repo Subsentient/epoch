@@ -29,7 +29,7 @@ int NumConfigFiles = 1;
 static struct _PriorityAliasTree
 { /*Start/Stop priority alias support for grouping.*/
 	char Alias[MAX_DESCRIPT_SIZE];
-	unsigned long Target;
+	unsigned Target;
 	
 	struct _PriorityAliasTree *Next;
 	struct _PriorityAliasTree *Prev;
@@ -56,9 +56,9 @@ static ObjTable *AddObjectToTable(const char *ObjectID, const char *File);
 static char *NextLine(const char *InStream);
 static rStatus GetLineDelim(const char *InStream, char *OutStream);
 static rStatus ScanConfigIntegrity(void);
-static void ConfigProblem(const char *File, short Type, const char *Attribute, const char *AttribVal, unsigned long LineNum);
-static unsigned long PriorityAlias_Lookup(const char *Alias);
-static void PriorityAlias_Add(const char *Alias, unsigned long Target);
+static void ConfigProblem(const char *File, short Type, const char *Attribute, const char *AttribVal, unsigned LineNum);
+static unsigned PriorityAlias_Lookup(const char *Alias);
+static void PriorityAlias_Add(const char *Alias, unsigned Target);
 static void PriorityAlias_Shutdown(void);
 static void RLInheritance_Add(const char *Inheriter, const char *Inherited);
 static Bool RLInheritance_Check(const char *Inheriter, const char *Inherited);
@@ -108,7 +108,7 @@ char *WhitespaceArg(const char *InStream)
 }
 
 
-static void ConfigProblem(const char *File, short Type, const char *Attribute, const char *AttribVal, unsigned long LineNum)
+static void ConfigProblem(const char *File, short Type, const char *Attribute, const char *AttribVal, unsigned LineNum)
 { /*Special little error handler used by InitConfig() to prevent repetitive duplicate errors.*/
 	char TmpBuf[1024];
 	char LogBuffer[MAX_LINE_SIZE];
@@ -116,26 +116,26 @@ static void ConfigProblem(const char *File, short Type, const char *Attribute, c
 	switch (Type)
 	{
 		case CONFIG_EMISSINGVAL:
-			snprintf(TmpBuf, 1024, "Missing or bad value for attribute %s in %s line %lu.\nIgnoring.",
+			snprintf(TmpBuf, 1024, "Missing or bad value for attribute %s in %s line %u.\nIgnoring.",
 					Attribute, File, LineNum);
 			break;
 		case CONFIG_EBADVAL:
-			snprintf(TmpBuf, 1024, "Bad value %s for attribute %s in %s line %lu.", AttribVal, Attribute, File, LineNum);
+			snprintf(TmpBuf, 1024, "Bad value %s for attribute %s in %s line %u.", AttribVal, Attribute, File, LineNum);
 			break;
 		case CONFIG_ETRUNCATED:
-			snprintf(TmpBuf, 1024, "Attribute %s in %s line %lu has\n"
-					"abnormally long value and may have been truncated.", Attribute, File, LineNum);
+			snprintf(TmpBuf, 1024, "Attribute %s in %s line %u has\n"
+					"abnormally int value and may have been truncated.", Attribute, File, LineNum);
 			break;
 		case CONFIG_EAFTER:
 			snprintf(TmpBuf, 1024, "Attribute %s cannot be set after an ObjectID attribute; "
-					"%s line %lu. Ignoring.", Attribute, File, LineNum);
+					"%s line %u. Ignoring.", Attribute, File, LineNum);
 			break;
 		case CONFIG_EBEFORE:
 			snprintf(TmpBuf, 1024, "Attribute %s comes before any ObjectID attribute.\n"
-					"%s line %lu. Ignoring.", Attribute, File, LineNum);
+					"%s line %u. Ignoring.", Attribute, File, LineNum);
 			break;
 		case CONFIG_ELARGENUM:
-			snprintf(TmpBuf, 1024, "Attribute %s in %s line %lu has\n"
+			snprintf(TmpBuf, 1024, "Attribute %s in %s line %u has\n"
 					"abnormally high numeric value and may cause malfunctions.", Attribute, File, LineNum);
 			break;
 		default:
@@ -155,7 +155,7 @@ rStatus InitConfig(const char *CurConfigFile)
 	char *ConfigStream = NULL, *Worker = NULL;
 	ObjTable *CurObj = NULL, *ObjWorker = NULL;
 	char DelimCurr[MAX_LINE_SIZE] = { '\0' };
-	unsigned long LineNum = 1;
+	unsigned LineNum = 1;
 	const char *CurrentAttribute = NULL;
 	Bool LongComment = false;
 	Bool TrueLogEnable = EnableLogging;
@@ -250,7 +250,7 @@ rStatus InitConfig(const char *CurConfigFile)
 		{ /*It's probably not good to have stray multi-line comment terminators around.*/
 			if (!LongComment)
 			{
-				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Stray multi-line comment terminator in \"%s\" line %lu\n", CurConfigFile, LineNum);
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Stray multi-line comment terminator in \"%s\" line %u\n", CurConfigFile, LineNum);
 				SpitWarning(ErrBuf);
 				WriteLogLine(ErrBuf, true);
 				continue;
@@ -324,7 +324,7 @@ rStatus InitConfig(const char *CurConfigFile)
 			{
 				
 				snprintf(ErrBuf, sizeof ErrBuf, CONFIGERRORTXT
-						"Failed to load imported config file \"%s\"! File is imported on line %lu in \"%s\"\n"
+						"Failed to load imported config file \"%s\"! File is imported on line %u in \"%s\"\n"
 						"Please correct your configuration! Attempting to continue.",
 						ConfigFileList[NumConfigFiles - 1], LineNum, CurConfigFile);
 				SpitError(ErrBuf);
@@ -342,7 +342,7 @@ rStatus InitConfig(const char *CurConfigFile)
 			
 			if (!strchr(DelimCurr, '='))
 			{
-				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Malformed global environment variable, line %lu in \"%s\".\n"
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Malformed global environment variable, line %u in \"%s\".\n"
 						"Cannot set this environment variable.", LineNum, CurConfigFile);
 				SpitWarning(ErrBuf);
 				WriteLogLine(ErrBuf, true);
@@ -434,7 +434,7 @@ rStatus InitConfig(const char *CurConfigFile)
 		{
 			char Inheriter[MAX_DESCRIPT_SIZE], Inherited[MAX_DESCRIPT_SIZE];
 			const char *TWorker = DelimCurr;
-			unsigned long TInc = 0;
+			unsigned TInc = 0;
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
@@ -471,7 +471,7 @@ rStatus InitConfig(const char *CurConfigFile)
 		else if (!strncmp(Worker, (CurrentAttribute = "DefinePriority"), sizeof "DefinePriority" - 1))
 		{
 			char Alias[MAX_DESCRIPT_SIZE] = { '\0' };
-			unsigned long Target = 0, TInc = 0;
+			unsigned Target = 0, TInc = 0;
 			const char *TWorker = DelimCurr;
 			
 			if (CurObj != NULL)
@@ -516,8 +516,8 @@ rStatus InitConfig(const char *CurConfigFile)
 		}
 		else if (!strncmp(Worker, (CurrentAttribute = "AlignStatusReports"), sizeof "AlignStatusReports" - 1))
 		{ /*Deprecated.*/
-			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Attribute AlignStatusReports is deprecated and no longer has any effect.\n"
-					"%s line %lu", CurConfigFile, LineNum);
+			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Attribute AlignStatusReports is deprecated and no inter has any effect.\n"
+					"%s line %u", CurConfigFile, LineNum);
 			SpitWarning(ErrBuf);
 			WriteLogLine(ErrBuf, true);
 			continue;
@@ -526,7 +526,7 @@ rStatus InitConfig(const char *CurConfigFile)
 		else if (!strncmp(Worker, (CurrentAttribute = "MountVirtual"), strlen("MountVirtual")))
 		{
 			const char *TWorker = DelimCurr;
-			unsigned long Inc = 0;
+			unsigned Inc = 0;
 			char CurArg[MAX_DESCRIPT_SIZE];
 			const char *VirtualID[2][5] = { { "procfs", "sysfs", "devfs", "devpts", "devshm" },
 											{ "procfs+", "sysfs+", "devfs+", "devpts+", "devshm+" } };
@@ -660,7 +660,7 @@ rStatus InitConfig(const char *CurConfigFile)
 			if (!strncmp(DelimCurr, "FILE", sizeof "FILE" - 1))
 			{
 				FILE *TDesc;
-				unsigned long Inc = 0;
+				unsigned Inc = 0;
 				int TChar;
 				const char *TW = DelimCurr;
 				char THostname[sizeof Hostname];
@@ -720,9 +720,9 @@ rStatus InitConfig(const char *CurConfigFile)
 			
 			if (strlen(Domainname) >= sizeof Domainname)
 			{ /*There is limited space most OSes will accept.*/
-				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "\nHostname attribute on line %lu in file \"%s\" has specified\n"
-						"that a hostname longer than %lu be set.\nThe specified hostname has been truncated\n"
-						"to fit in the aforementioned space.", LineNum, CurConfigFile, (unsigned long)sizeof Hostname - 1);
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "\nHostname attribute on line %u in file \"%s\" has specified\n"
+						"that a hostname inter than %u be set.\nThe specified hostname has been truncated\n"
+						"to fit in the aforementioned space.", LineNum, CurConfigFile, (unsigned)sizeof Hostname - 1);
 				SpitWarning(ErrBuf);
 				WriteLogLine(ErrBuf, true);
 			}
@@ -806,9 +806,9 @@ rStatus InitConfig(const char *CurConfigFile)
 
 			if (strlen(Domainname) >= sizeof Domainname)
 			{ /*There is limited space most OSes will accept.*/
-				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "\nDomainname attribute on line %lu in file \"%s\" has specified\n"
-						"that a domain name longer than %lu be set.\nThe specified domain name has been truncated\n"
-						"to fit in the aforementioned space.", LineNum, CurConfigFile, (unsigned long)sizeof Domainname - 1);
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "\nDomainname attribute on line %u in file \"%s\" has specified\n"
+						"that a domain name inter than %u be set.\nThe specified domain name has been truncated\n"
+						"to fit in the aforementioned space.", LineNum, CurConfigFile, (unsigned)sizeof Domainname - 1);
 				SpitWarning(ErrBuf);
 				WriteLogLine(ErrBuf, true);
 			}
@@ -827,7 +827,7 @@ rStatus InitConfig(const char *CurConfigFile)
 			if ((Temp = strpbrk(DelimCurr, " \t")) != NULL) /*We cannot allow whitespace.*/
 			{
 				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "ObjectIDs may not contain whitespace! Truncating up to occurence of whitespace\n"
-						"Line %lu in %s.", LineNum, CurConfigFile);
+						"Line %u in %s.", LineNum, CurConfigFile);
 				SpitWarning(ErrBuf);
 				WriteLogLine(ErrBuf, true);
 				*Temp = '\0';
@@ -907,7 +907,7 @@ rStatus InitConfig(const char *CurConfigFile)
 		else if (!strncmp(Worker, (CurrentAttribute = "ObjectOptions"), sizeof "ObjectOptions" - 1))
 		{
 			const char *TWorker = DelimCurr;
-			unsigned long Inc;
+			unsigned Inc;
 			char CurArg[MAX_DESCRIPT_SIZE];
 			
 			if (!CurObj)
@@ -1035,7 +1035,7 @@ rStatus InitConfig(const char *CurConfigFile)
 				else if (!strncmp(CurArg, "MAPEXITSTATUS", sizeof "MAPEXITSTATUS" - 1))
 				{
 					const char *TWorker = CurArg + sizeof "MAPEXITSTATUS" - 1;
-					unsigned long TInc = 0;
+					unsigned TInc = 0;
 					char ExitStatusT[4];
 					char ValueT[32];
 					
@@ -1073,7 +1073,7 @@ rStatus InitConfig(const char *CurConfigFile)
 					{
 						snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT
 								"More than %u MAPEXITSTATUS options specified for object %s.\n"
-								"Line %lu in \"%s\".", (unsigned int)(sizeof CurObj->ExitStatuses / sizeof CurObj->ExitStatuses[0]),
+								"Line %u in \"%s\".", (unsigned int)(sizeof CurObj->ExitStatuses / sizeof CurObj->ExitStatuses[0]),
 								CurObj->ObjectID, LineNum, CurConfigFile);
 						goto BadVal;
 					}
@@ -1318,7 +1318,7 @@ rStatus InitConfig(const char *CurConfigFile)
 					
 					snprintf(TBuf, sizeof TBuf, CONFIGWARNTXT
 							"ObjectReloadCommand starts with SIGNAL, but the argument to SIGNAL\n"
-							"is invalid. Object \"%s\" in %s line %lu", CurObj->ObjectID, CurConfigFile, LineNum);
+							"is invalid. Object \"%s\" in %s line %u", CurObj->ObjectID, CurConfigFile, LineNum);
 					SpitWarning(TBuf);
 					WriteLogLine(TBuf, true);
 					continue;
@@ -1420,7 +1420,7 @@ rStatus InitConfig(const char *CurConfigFile)
 			
 			if (!AllNumeric(DelimCurr)) /*Make sure we are getting a number, not Shakespeare.*/
 			{ /*No number? We're probably looking at an alias.*/
-				unsigned long TmpTarget = 0;
+				unsigned TmpTarget = 0;
 				
 				if (!(TmpTarget = PriorityAlias_Lookup(DelimCurr)))
 				{
@@ -1458,7 +1458,7 @@ rStatus InitConfig(const char *CurConfigFile)
 			
 			if (!AllNumeric(DelimCurr))
 			{
-				unsigned long TmpTarget = 0;
+				unsigned TmpTarget = 0;
 				
 				if (!(TmpTarget = PriorityAlias_Lookup(DelimCurr)))
 				{
@@ -1527,13 +1527,13 @@ rStatus InitConfig(const char *CurConfigFile)
 			{ /*getpwnam_r() is more trouble than it's worth in single-threaded Epoch.*/
 				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT
 						"Unable to lookup requested USER \"%s\" for object \"%s\".\n"
-						"Line %lu in %s", DelimCurr, CurObj->ObjectID, LineNum, CurConfigFile);
+						"Line %u in %s", DelimCurr, CurObj->ObjectID, LineNum, CurConfigFile);
 				WriteLogLine(ErrBuf, true);
 				SpitWarning(ErrBuf);
 				continue;
 			}
 			
-			CurObj->UserID = (unsigned long)UserStruct->pw_uid;
+			CurObj->UserID = (unsigned)UserStruct->pw_uid;
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
@@ -1562,13 +1562,13 @@ rStatus InitConfig(const char *CurConfigFile)
 			{ /*getgrnam_r() is more trouble than it's worth in single-threaded Epoch.*/
 				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT
 						"Unable to lookup requested GROUP \"%s\" for object \"%s\".\n"
-						"Line %lu in %s", DelimCurr, CurObj->ObjectID, LineNum, CurConfigFile);
+						"Line %u in %s", DelimCurr, CurObj->ObjectID, LineNum, CurConfigFile);
 				WriteLogLine(ErrBuf, true);
 				SpitWarning(ErrBuf);
 				continue;
 			}
 			
-			CurObj->GroupID = (unsigned long)GroupStruct->gr_gid;
+			CurObj->GroupID = (unsigned)GroupStruct->gr_gid;
 			
 			if ((strlen(DelimCurr) + 1) >= MAX_LINE_SIZE)
 			{
@@ -1663,7 +1663,7 @@ rStatus InitConfig(const char *CurConfigFile)
 			if (!strchr(DelimCurr, '='))
 			{
 				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT"Malformed environment variable for object %s,\n"
-						"in file \"%s\" line %lu. Not setting this environment variable.", CurObj->ObjectID, CurConfigFile, LineNum);
+						"in file \"%s\" line %u. Not setting this environment variable.", CurObj->ObjectID, CurConfigFile, LineNum);
 				SpitWarning(ErrBuf);
 				WriteLogLine(ErrBuf, true);
 				continue;
@@ -1688,7 +1688,7 @@ rStatus InitConfig(const char *CurConfigFile)
 				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Object %s has more than one ObjectRunlevels line.\n"
 						"This is not advised because the config file editing code is not smart enough\n"
 						"to handle multiple lines. You should put the additional runlevels on the same line.\n"
-						"Line %lu in %s",
+						"Line %u in %s",
 						CurObj->ObjectID, LineNum, CurConfigFile);
 				SpitWarning(ErrBuf);
 				WriteLogLine(ErrBuf, true);
@@ -1724,7 +1724,7 @@ rStatus InitConfig(const char *CurConfigFile)
 		}
 		else
 		{ /*No big deal.*/
-			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Unidentified attribute in %s on line %lu.", CurConfigFile, LineNum);
+			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Unidentified attribute in %s on line %u.", CurConfigFile, LineNum);
 			SpitWarning(ErrBuf);
 			WriteLogLine(ErrBuf, true);
 			continue;
@@ -1784,24 +1784,28 @@ rStatus InitConfig(const char *CurConfigFile)
 
 static rStatus GetLineDelim(const char *InStream, char *OutStream)
 {
-	unsigned long cOffset, Inc = 0;
-
+	const char *Worker = InStream;
+	char *W2 = OutStream;
+	const void *const EndPoint = InStream + (MAX_LINE_SIZE - 1);
+	void *const OutStreamStartPoint = OutStream;
+	
 	/*Jump to the first tab or space. If we get a newline or null, problem.*/
-	while (InStream[Inc] != '\t' && InStream[Inc] != ' ' && InStream[Inc] != '=' &&
-			InStream[Inc] != '\n' && InStream[Inc] != '\0') ++Inc;
+	while (*Worker != '\t' && *Worker != ' ' && *Worker != '=' &&
+			*Worker != '\n' && *Worker != '\0') ++Worker;
 
 	/*Hit a null or newline before tab or space. ***BAD!!!*** */
-	if (InStream[Inc] == '\0' || InStream[Inc] == '\n')
+	if (*Worker == '\0' || *Worker == '\n')
 	{
 		char TmpBuf[1024];
 		char ObjectInQuestion[1024];
-		unsigned long IncT = 0;
-
-		for (; InStream[IncT] != '\0' && InStream[IncT] != '\n'; ++IncT)
+		const char *TW = Worker;
+		unsigned Inc = 0;
+		
+		for (; *TW != '\n' && *TW != '\0'; ++Inc, ++TW)
 		{
-			ObjectInQuestion[IncT] = InStream[IncT];
+			ObjectInQuestion[Inc] = *TW;
 		}
-		ObjectInQuestion[IncT] = '\0';
+		ObjectInQuestion[Inc] = '\0';
 
 		snprintf(TmpBuf, 1024, "No parameter for attribute \"%s\".", ObjectInQuestion);
 
@@ -1810,30 +1814,28 @@ static rStatus GetLineDelim(const char *InStream, char *OutStream)
 		return FAILURE;
 	}
 	
-	if (InStream[Inc] == '=')
+	if (*Worker == '=')
 	{ /*We give the choice of using whitespace or using an equals sign. It's only nice.*/
-		++Inc;
+		++Worker;
 	}
 	else
 	{
 		/*Continue until we are past all tabs and spaces.*/
-		while (InStream[Inc] == ' ' || InStream[Inc] == '\t') ++Inc;
+		while (*Worker == ' ' || *Worker == '\t') ++Worker;
 	}
 
-	cOffset = Inc; /*Store this offset.*/
-
-	/*Copy over the argument to the parameter. Quit whining about the loop copy.*/
-	for (Inc = 0; InStream[Inc + cOffset] != '\n' && InStream[Inc + cOffset] != '\0' && Inc < MAX_LINE_SIZE - 1; ++Inc)
+	/*Copy to OutStream, pointed to by W2.*/
+	for (; Worker != EndPoint && *Worker != '\n' && *Worker != '\0'; ++Worker, ++W2)
 	{
-		OutStream[Inc] = InStream[Inc + cOffset];
+		*W2 = *Worker;
 	}
-	OutStream[Inc] = '\0';
+	*W2 = '\0';
 	
-	for (--Inc; Inc + 1 > 0 && (OutStream[Inc] == ' ' || OutStream[Inc] == '\t'); --Inc)
+	/*Nuke spaces and tabs at the end.*/
+	for (; W2 != OutStreamStartPoint && (*W2 == '\t' || *W2 == ' '); --W2)
 	{
-		OutStream[Inc] = '\0';
+		*W2 = '\0';
 	}
-
 	return SUCCESS;
 }
 
@@ -1845,8 +1847,8 @@ rStatus EditConfigValue(const char *File, const char *ObjectID, const char *Attr
 	FILE *Descriptor = NULL;
 	char *WhiteSpace = NULL, *LineWorker = NULL;
 	struct stat FileStat;
-	unsigned long Inc = 0, Inc2 = 0, LineNum = 1;
-	unsigned long NumWhiteSpaces = 0;
+	unsigned Inc = 0, Inc2 = 0, LineNum = 1;
+	unsigned NumWhiteSpaces = 0;
 	Bool PresentHalfTwo = false;
 	
 	if (stat(File, &FileStat) != 0)
@@ -1919,8 +1921,9 @@ rStatus EditConfigValue(const char *File, const char *ObjectID, const char *Attr
 		}
 		else
 		{ /*Count the number of whitespaces.*/
-			for (NumWhiteSpaces = 0 ; LineWorker[NumWhiteSpaces + Inc2] == ' ' ||
-				LineWorker[NumWhiteSpaces + Inc2] == '\t'; ++NumWhiteSpaces);
+			char *TW = LineWorker + Inc2;
+			
+			for (NumWhiteSpaces = 0; *TW == ' ' || *TW == '\t'; ++NumWhiteSpaces, ++TW);
 		}
 			
 		if (LineWorker[NumWhiteSpaces + Inc2] == '\0' ||
@@ -2365,11 +2368,11 @@ ObjTable *LookupObjectInTable(const char *ObjectID)
 }
 
 /*Get the max priority number we need to scan.*/
-unsigned long GetHighestPriority(Bool WantStartPriority)
+unsigned GetHighestPriority(Bool WantStartPriority)
 {
 	ObjTable *Worker = ObjectTable;
-	unsigned long CurHighest = 0;
-	unsigned long TempNum;
+	unsigned CurHighest = 0;
+	unsigned TempNum;
 	
 	if (!ObjectTable)
 	{
@@ -2599,7 +2602,7 @@ void ObjRL_ShutdownRunlevels(ObjTable *InObj)
 	InObj->ObjectRunlevels = NULL;
 }
 
-static void PriorityAlias_Add(const char *Alias, unsigned long Target)
+static void PriorityAlias_Add(const char *Alias, unsigned Target)
 { /*This code should be simple enough. Just routine linked list stuff.*/
 	struct _PriorityAliasTree *Worker = PriorityAliasTree;
 	
@@ -2646,7 +2649,7 @@ static void PriorityAlias_Shutdown(void)
 	PriorityAliasTree = NULL;
 }
 
-static unsigned long PriorityAlias_Lookup(const char *Alias)
+static unsigned PriorityAlias_Lookup(const char *Alias)
 { /*Return 0 if we cannot find anything.*/
 	struct _PriorityAliasTree *Worker = PriorityAliasTree;
 	
@@ -2717,10 +2720,10 @@ static void RLInheritance_Shutdown(void)
 	RunlevelInheritance = NULL;
 }
 
-ObjTable *GetObjectByPriority(const char *ObjectRunlevel, ObjTable *LastNode, Bool WantStartPriority, unsigned long ObjectPriority)
+ObjTable *GetObjectByPriority(const char *ObjectRunlevel, ObjTable *LastNode, Bool WantStartPriority, unsigned ObjectPriority)
 { /*The primary lookup function to be used when executing commands.*/
 	ObjTable *Worker = LastNode ? LastNode->Next : ObjectTable;
-	unsigned long WorkerPriority = 0;
+	unsigned WorkerPriority = 0;
 	
 	if (!ObjectTable)
 	{
@@ -2744,7 +2747,7 @@ ObjTable *GetObjectByPriority(const char *ObjectRunlevel, ObjTable *LastNode, Bo
 void ShutdownConfig(void)
 {
 	ObjTable *Worker = ObjectTable, *Temp;
-	unsigned long Inc = 1;
+	unsigned Inc = 1;
 	
 	EnvVarList_Shutdown(&GlobalEnvVars);
 	

@@ -82,7 +82,7 @@ static void MountVirtuals(void)
 
 static void PrimaryLoop(void)
 { /*Loop that provides essentially everything we cycle through.*/
-	unsigned long CurMin = 0, CurSec = 0;
+	unsigned CurMin = 0, CurSec = 0;
 	ObjTable *Worker = NULL;
 	struct tm TimeStruct;
 	time_t TimeCore;
@@ -127,7 +127,7 @@ static void PrimaryLoop(void)
 				{ /*If 20 minutes or less until shutdown, warn us every minute.*/
 					char TBuf[MAX_LINE_SIZE];
 					const char *HaltMode = NULL;
-					static unsigned long LastJobID = 0;
+					static unsigned LastJobID = 0;
 					static short LastMin = -1;
 	
 					if (LastJobID != HaltParams.JobID || CurMin != LastMin)
@@ -146,7 +146,7 @@ static void PrimaryLoop(void)
 							HaltMode = "reboot";
 						}
 						
-						snprintf(TBuf, sizeof TBuf, "System is going down for %s in %lu minutes!",
+						snprintf(TBuf, sizeof TBuf, "System is going down for %s in %u minutes!",
 								HaltMode, DateDiff(HaltParams.TargetHour, HaltParams.TargetMin, NULL, NULL, NULL));
 						EmulWall(TBuf, false);
 						
@@ -260,10 +260,10 @@ void RecoverFromReexec(Bool ViaMemBus)
 	ObjTable *CurObj = NULL;
 	char InBuf[MEMBUS_MSGSIZE] = { '\0' };
 	char *MCode = MEMBUS_CODE_RXD;
-	unsigned long MCodeLength = strlen(MCode) + 1;
+	unsigned MCodeLength = strlen(MCode) + 1;
 	short HPS = 0;
-	unsigned long TInc = 0;
-	
+	unsigned TInc = 0;
+	unsigned long OurLong; /*We write unsigned int values as unsigned long to maintan compatibility with 1.1.1 and earlier.*/
 	MemBusKey = MEMKEY + 1;
 	
 	/*Restore any goobled up environ vars.*/
@@ -298,11 +298,17 @@ void RecoverFromReexec(Bool ViaMemBus)
 	{
 		if ((CurObj = LookupObjectInTable(InBuf + MCodeLength)) != NULL)
 		{
-			unsigned long TLength = strlen(CurObj->ObjectID) + 1;
+			unsigned TLength = strlen(CurObj->ObjectID) + 1;
 			
-			memcpy(&CurObj->ObjectPID, (InBuf + MCodeLength + TLength), sizeof(long));
-			memcpy(&CurObj->Started, (InBuf + MCodeLength + TLength + sizeof(long)), sizeof(Bool));
-			memcpy(&CurObj->StartedSince, (InBuf + MCodeLength + TLength + sizeof(long) + sizeof(Bool)), sizeof(long));
+
+			memcpy(&OurLong, (InBuf + MCodeLength + TLength), sizeof(long));
+			CurObj->ObjectPID = OurLong;
+			
+			memcpy(&OurLong, (InBuf + MCodeLength + TLength + sizeof(long)), sizeof(Bool));
+			CurObj->Started = OurLong;
+			
+			memcpy(&OurLong, (InBuf + MCodeLength + TLength + sizeof(long) + sizeof(Bool)), sizeof(long));
+			CurObj->StartedSince = OurLong;
 		}
 		
 		while (!MemBus_BinRead(InBuf, sizeof InBuf, false)) usleep(100);
@@ -312,14 +318,29 @@ void RecoverFromReexec(Bool ViaMemBus)
 	MCodeLength = strlen(MCode) + 1;
 	
 	/*Retrieve the HaltParams structure.*/
-	memcpy((void*)&HaltParams.HaltMode, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
-	memcpy((void*)&HaltParams.TargetHour, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
-	memcpy((void*)&HaltParams.TargetMin, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
-	memcpy((void*)&HaltParams.TargetSec, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
-	memcpy((void*)&HaltParams.TargetMonth, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
-	memcpy((void*)&HaltParams.TargetDay, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
-	memcpy((void*)&HaltParams.TargetYear, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
-	memcpy((void*)&HaltParams.JobID, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
+	memcpy(&OurLong, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
+	*(unsigned*)&HaltParams.HaltMode = OurLong;
+	
+	memcpy(&OurLong, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
+	HaltParams.TargetHour = OurLong;
+	
+	memcpy(&OurLong, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
+	HaltParams.TargetMin = OurLong;
+	
+	memcpy(&OurLong, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
+	HaltParams.TargetSec = OurLong;
+	
+	memcpy(&OurLong, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
+	HaltParams.TargetMonth = OurLong;
+	
+	memcpy(&OurLong, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
+	HaltParams.TargetDay = OurLong;
+	
+	memcpy(&OurLong, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
+	HaltParams.TargetYear = OurLong;
+	
+	memcpy(&OurLong, InBuf + MCodeLength + (HPS++ * sizeof(long)), sizeof(long));
+	HaltParams.JobID = OurLong;
 	
 	/*Retrieve our important options.*/
 	while (!MemBus_BinRead(InBuf, sizeof InBuf, false)) usleep(100);
@@ -385,8 +406,10 @@ void ReexecuteEpoch(void)
 	char OutBuf[MEMBUS_MSGSIZE] = { '\0' };
 	ObjTable *Worker = ObjectTable;
 	const char *MCode = MEMBUS_CODE_RXD;
-	unsigned long MCodeLength = strlen(MCode) + 1;
+	unsigned MCodeLength = strlen(MCode) + 1;
 	short HPS = 0;
+	unsigned long OurLong; /*Compatibility with 1.1.1 and earlier.*/
+	
 	
 	ShutdownMemBus(true); /*We are now going to use a different MemBus key.*/
 	MemBusKey = MEMKEY + 1; /*This prevents clients from interfering.*/
@@ -471,7 +494,7 @@ void ReexecuteEpoch(void)
 	
 	while (!HandleMemBusPings())
 	{ /*Wait for the re-executed parent process to connect to receive it's config.*/
-		static unsigned long Counter = 0;
+		static unsigned Counter = 0;
 	
 		usleep(1000); /*0.001 seconds.*/
 		
@@ -497,12 +520,17 @@ void ReexecuteEpoch(void)
 	 * MemBus_*Write() blocks until they're done with the first message.*/
 	for (; Worker->Next; Worker = Worker->Next)
 	{
-		unsigned long TLength = 0;
+		unsigned TLength = 0;
 		strncpy(OutBuf + MCodeLength, Worker->ObjectID, (TLength = strlen(Worker->ObjectID) + 1));
 		
-		memcpy(OutBuf + MCodeLength + TLength, &Worker->ObjectPID, sizeof(long));
-		memcpy(OutBuf + sizeof(long) + TLength + MCodeLength, &Worker->Started, sizeof(Bool));
-		memcpy(OutBuf + sizeof(long) + sizeof(Bool) + TLength + MCodeLength, &Worker->StartedSince, sizeof(long));
+		OurLong = Worker->ObjectPID;
+		memcpy(OutBuf + MCodeLength + TLength, &OurLong, sizeof(long));
+		
+		OurLong = Worker->Started;
+		memcpy(OutBuf + sizeof(long) + TLength + MCodeLength, &OurLong, sizeof(Bool));
+		
+		OurLong = Worker->StartedSince;
+		memcpy(OutBuf + sizeof(long) + sizeof(Bool) + TLength + MCodeLength, &OurLong, sizeof(long));
 		
 		MemBus_BinWrite(OutBuf, sizeof OutBuf, true);
 	}
@@ -511,14 +539,29 @@ void ReexecuteEpoch(void)
 	strncpy(OutBuf, (MCode = MEMBUS_CODE_RXD_OPTS), (MCodeLength = strlen(MEMBUS_CODE_RXD_OPTS) + 1));
 	
 	/*HaltParams, we're lazy and just write the whole structure.*/
-	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.HaltMode, sizeof HaltParams);
-	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.TargetHour, sizeof HaltParams);
-	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.TargetMin, sizeof HaltParams);
-	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.TargetSec, sizeof HaltParams);
-	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.TargetMonth, sizeof HaltParams);
-	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.TargetDay, sizeof HaltParams);
-	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.TargetYear, sizeof HaltParams);
-	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), (void*)&HaltParams.JobID, sizeof HaltParams);
+	OurLong = HaltParams.HaltMode;
+	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), &OurLong, sizeof HaltParams);
+	
+	OurLong = HaltParams.TargetHour;
+	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), &OurLong, sizeof HaltParams);
+	
+	OurLong = HaltParams.TargetMin;
+	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), &OurLong, sizeof HaltParams);
+	
+	OurLong = HaltParams.TargetSec;
+	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), &OurLong, sizeof HaltParams);
+	
+	OurLong = HaltParams.TargetMonth;
+	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), &OurLong, sizeof HaltParams);
+	
+	OurLong = HaltParams.TargetDay;
+	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), &OurLong, sizeof HaltParams);
+	
+	OurLong = HaltParams.TargetYear;
+	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), &OurLong, sizeof HaltParams);
+	
+	OurLong = HaltParams.JobID;
+	memcpy(OutBuf + MCodeLength + (HPS++ * sizeof(long)), &OurLong, sizeof HaltParams);
 	
 	MemBus_BinWrite(OutBuf, sizeof HaltParams + MCodeLength, true);
 	
@@ -539,42 +582,49 @@ void ReexecuteEpoch(void)
 
 void PerformExec(const char *Cmd)
 {
-	unsigned long Inc = 0, NumSpaces = 1, cOffset = 0, Inc2 = 0;
+	unsigned Inc = 0, NumSpaces = 1, Inc2 = 0;
 	char **Buffer = NULL;
 	const char *Worker = Cmd;
 
 	if (!Cmd)
-	{
+	{ /*Some dipwad gave us a null pointer.*/
 		const char *ErrMsg ="NULL value passed to PerformExec()! This is likely a bug. Please report.";
 		SpitError(ErrMsg);
 		WriteLogLine(ErrMsg, true);
 		return;
 	}
-		
+	
+	/*Get the number of words in the command.*/
 	while ((Worker = WhitespaceArg(Worker))) ++NumSpaces;
 	
+	/*Allocate space for pointers to represent each word.*/
 	Buffer = malloc(sizeof(char*) * NumSpaces + 1);
 	
-	for (Worker = Cmd, Inc = 0; Inc < NumSpaces; ++Inc)
+	for (Worker = Cmd, Inc = 0; Inc < NumSpaces && Worker != NULL; ++Inc)
 	{
-		for (Inc2 = 0; Worker[Inc2 + cOffset] != ' ' && Worker[Inc2 + cOffset] != '\t' && Worker[Inc2 + cOffset] != '\0'; ++Inc2);
+		/*Count the length of this section of the command.*/
+		for (Inc2 = 0; Worker[Inc2] != ' ' && Worker[Inc2] != '\t' && Worker[Inc2] != '\0'; ++Inc2);
 		
+		/*Allocate space for it.*/
 		Buffer[Inc] = malloc(Inc2 + 1);
 		
-		for (Inc2 = 0; Worker[Inc2 + cOffset] != ' ' && Worker[Inc2 + cOffset] != '\t' && Worker[Inc2 + cOffset] != '\0'; ++Inc2)
+		/*Copy it into its Buffer cell.*/
+		for (Inc2 = 0; Worker[Inc2] != ' ' && Worker[Inc2] != '\t' && Worker[Inc2] != '\0'; ++Inc2)
 		{
-			Buffer[Inc][Inc2] = Worker[Inc2 + cOffset];
+			Buffer[Inc][Inc2] = Worker[Inc2];
 		}
 		Buffer[Inc][Inc2] = '\0';
 		
-		cOffset += Inc2 + 1;
+		/*Skip to the next word in the command.*/
+		Worker = WhitespaceArg(Worker);
 	}
 	
+	/*Fill the last cell with nothing, as mandated by execvp().*/
 	Buffer[NumSpaces] = NULL;
 	
-	sync();
+	sync(); /*Sync disks.*/
 	
-	ShutdownMemBus(true);
+	ShutdownMemBus(true); /*Shutdown membus since we won't need it anymore.*/
 
 	for (Inc = 1; Inc < NSIG; ++Inc)
 	{ /*Reset signal handlers.*/
@@ -583,6 +633,7 @@ void PerformExec(const char *Cmd)
 
 	execvp(Buffer[0], Buffer); /*Perform the exec.*/
 	
+	/**We should not still be here at this point.**/
 	SpitError("exec() failed! Starting emergency shell.");
 	EmergencyShell();
 }
@@ -775,7 +826,7 @@ void LaunchBootup(void)
 	PrimaryLoop(); /*Does everything after initial boot.*/
 }
 
-void LaunchShutdown(signed long Signal)
+void LaunchShutdown(int Signal)
 { /*Responsible for reboot, halt, power down, etc.*/
 	char MsgBuf[MAX_LINE_SIZE];
 	const char *HType = NULL;

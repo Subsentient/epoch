@@ -137,7 +137,7 @@ rStatus ObjControl(const char *ObjectID, const char *MemBusSignal)
 	}
 }
 
-rStatus EmulKillall5(unsigned long InSignal)
+rStatus EmulKillall5(unsigned InSignal)
 { /*Used as the killall5 utility.*/
 	DIR *ProcDir;
 	struct dirent *CurDir;
@@ -146,7 +146,7 @@ rStatus EmulKillall5(unsigned long InSignal)
 
 	if (InSignal > SIGSTOP || InSignal == 0) /*Won't be negative since we are unsigned.*/
 	{
-		SpitError("EmulKillall5() Bad value for unsigned long InSignal.");
+		SpitError("EmulKillall5() Bad value for unsigned InSignal.");
 	}
 	
 	/*We get everything from /proc.*/
@@ -283,10 +283,10 @@ void EmulWall(const char *InStream, Bool ShowUser)
 	}
 }
 
-rStatus EmulShutdown(long ArgumentCount, const char **ArgStream)
+rStatus EmulShutdown(int ArgumentCount, const char **ArgStream)
 { /*Eyesore, but it works.*/
 	const char **TPtr = ArgStream + 1; /*Skip past the equivalent of argv[0].*/
-	unsigned long TargetHr = 0, TargetMin = 0;
+	unsigned TargetHr = 0, TargetMin = 0;
 	const char *THalt = NULL;
 	char PossibleResponses[3][MEMBUS_MSGSIZE];
 	char TmpBuf[MEMBUS_MSGSIZE], InRecv[MEMBUS_MSGSIZE], TimeFormat[32];
@@ -324,7 +324,7 @@ rStatus EmulShutdown(long ArgumentCount, const char **ArgStream)
 		{
 			struct _HaltParams TempParams;
 			
-			if (sscanf(*TPtr, "%lu:%lu", &TargetHr, &TargetMin) != 2)
+			if (sscanf(*TPtr, "%u:%u", &TargetHr, &TargetMin) != 2)
 			{
 				puts("Bad time format. Please enter in the format of \"hh:mm\"");
 				return FAILURE;
@@ -332,7 +332,7 @@ rStatus EmulShutdown(long ArgumentCount, const char **ArgStream)
 			
 			DateDiff(TargetHr, TargetMin, &TempParams.TargetMonth, &TempParams.TargetDay, &TempParams.TargetYear);
 			
-			snprintf(TimeFormat, sizeof TimeFormat, "%lu:%lu:%d %lu/%lu/%lu",
+			snprintf(TimeFormat, sizeof TimeFormat, "%u:%u:%d %u/%u/%u",
 					TargetHr, TargetMin, 0, TempParams.TargetMonth, TempParams.TargetDay, TempParams.TargetYear);
 					
 			++TimeIsSet;
@@ -350,7 +350,7 @@ rStatus EmulShutdown(long ArgumentCount, const char **ArgStream)
 			time(&TTime); /*Get this for the second.*/
 			localtime_r(&TTime, &TimeStruct);
 			
-			snprintf(TimeFormat, sizeof TimeFormat, "%lu:%lu:%d %lu/%lu/%lu",
+			snprintf(TimeFormat, sizeof TimeFormat, "%u:%u:%d %u/%u/%u",
 					TempParams.TargetHour, TempParams.TargetMin, TimeStruct.tm_sec, TempParams.TargetMonth,
 					TempParams.TargetDay, TempParams.TargetYear);
 					

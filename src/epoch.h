@@ -130,7 +130,7 @@
 #define MEMBUS_CODE_RXD "RXD"
 #define MEMBUS_CODE_RXD_OPTS "ORXD"
 
-#define MEMBUS_LSOBJS_VERSION "V3"
+#define MEMBUS_LSOBJS_VERSION "V4"
 /**Types, enums, structs and whatnot**/
 
 
@@ -165,12 +165,12 @@ struct _RLTree
 	
 typedef struct _EpochObjectTable
 {
-	unsigned long ObjectStartPriority;
-	unsigned long ObjectStopPriority;
-	unsigned long ObjectPID; /*The process ID, used for shutting down.*/
-	unsigned long UserID; /*The user ID we run this as. Zero, of course, is root and we need do nothing.*/
-	unsigned long GroupID; /*Same as above, but with groups.*/
-	unsigned long StartedSince; /*The time in UNIX seconds since it was started.*/
+	unsigned ObjectStartPriority;
+	unsigned ObjectStopPriority;
+	unsigned ObjectPID; /*The process ID, used for shutting down.*/
+	unsigned UserID; /*The user ID we run this as. Zero, of course, is root and we need do nothing.*/
+	unsigned GroupID; /*Same as above, but with groups.*/
+	unsigned StartedSince; /*The time in UNIX seconds since it was started.*/
 	char *ObjectID; /*The ASCII ID given to this item by whoever configured Epoch.*/
 	char *ObjectDescription; /*The description of the object.*/
 	char *ObjectStartCommand; /*The command to be executed.*/
@@ -200,26 +200,26 @@ typedef struct _EpochObjectTable
 	struct 
 	{
 		enum _StopMode StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
-		unsigned long StopTimeout; /*The number of seconds we wait for a task we're stopping's PID to become unavailable.*/
+		unsigned StopTimeout; /*The number of seconds we wait for a task we're stopping's PID to become unavailable.*/
 		
 		/*This saves a tiny bit of memory to use bitfields here.*/
-		unsigned int Persistent : 1; /*Allowed to stop this without starting a shutdown?*/
-		unsigned int HaltCmdOnly : 1; /*Run just the stop command when we halt, not the start command?*/
-		unsigned int IsService : 1; /*If true, we assume it's going to fork itself and one-up it's PID.*/
-		unsigned int RawDescription : 1; /*This inhibits insertion of "Starting", "Stopping", etc in front of descriptions.*/
-		unsigned int AutoRestart : 1; /*Autorestarts a service whenever it terminates.*/
-		unsigned int ForceShell : 1; /*Forces us to start /bin/sh to run an object, even if it looks like we don't need to.*/
-		unsigned int HasPIDFile : 1; /*If StopMode == STOP_PIDFILE, we also stop it just by sending a signal to the PID in the file.*/
-		unsigned int NoStopWait : 1; /*Used to tell us not to wait for an object to actually quit.*/
-		unsigned int PivotRoot : 1; /*Says that ObjectStartCommand is actually used to pivot_root. See actions.c.*/
-		unsigned int Exec : 1; /*Says that we are gerbils.*/
-		unsigned int RunOnce : 1; /*Tells us to disable ourselves upon completion whenever we are started.*/
-		unsigned int StartFailIsCritical : 1; /*Starting this object is so important we're going to drop you to a shell if it fails.*/
-		unsigned int StopFailIsCritical : 1; /*Same but for stopping.*/
-		unsigned int NoTrack : 1; /*Don't track the PID with AdvancedPIDFind().*/
+		unsigned Persistent : 1; /*Allowed to stop this without starting a shutdown?*/
+		unsigned HaltCmdOnly : 1; /*Run just the stop command when we halt, not the start command?*/
+		unsigned IsService : 1; /*If true, we assume it's going to fork itself and one-up it's PID.*/
+		unsigned RawDescription : 1; /*This inhibits insertion of "Starting", "Stopping", etc in front of descriptions.*/
+		unsigned AutoRestart : 1; /*Autorestarts a service whenever it terminates.*/
+		unsigned ForceShell : 1; /*Forces us to start /bin/sh to run an object, even if it looks like we don't need to.*/
+		unsigned HasPIDFile : 1; /*If StopMode == STOP_PIDFILE, we also stop it just by sending a signal to the PID in the file.*/
+		unsigned NoStopWait : 1; /*Used to tell us not to wait for an object to actually quit.*/
+		unsigned PivotRoot : 1; /*Says that ObjectStartCommand is actually used to pivot_root. See actions.c.*/
+		unsigned Exec : 1; /*Says that we are gerbils.*/
+		unsigned RunOnce : 1; /*Tells us to disable ourselves upon completion whenever we are started.*/
+		unsigned StartFailIsCritical : 1; /*Starting this object is so important we're going to drop you to a shell if it fails.*/
+		unsigned StopFailIsCritical : 1; /*Same but for stopping.*/
+		unsigned NoTrack : 1; /*Don't track the PID with AdvancedPIDFind().*/
 #ifndef NOMMU
-		unsigned int Fork : 1; /*Essentially do the same thing (with an Epoch twist) as Command& in sh.*/
-		unsigned int ForkScanOnce : 1; /*Same as Fork, but only scans through the PID once.*/
+		unsigned Fork : 1; /*Essentially do the same thing (with an Epoch twist) as Command& in sh.*/
+		unsigned ForkScanOnce : 1; /*Same as Fork, but only scans through the PID once.*/
 #endif
 	} Opts;
 	
@@ -239,22 +239,22 @@ struct _BootBanner
 
 struct _HaltParams
 {
-	signed long HaltMode;
-	unsigned long TargetHour;
-	unsigned long TargetMin;
-	unsigned long TargetSec;
-	unsigned long TargetMonth;
-	unsigned long TargetDay;
-	unsigned long TargetYear;
-	unsigned long JobID;
+	signed HaltMode;
+	unsigned TargetHour;
+	unsigned TargetMin;
+	unsigned TargetSec;
+	unsigned TargetMonth;
+	unsigned TargetDay;
+	unsigned TargetYear;
+	unsigned JobID;
 };
 
 struct _CTask
 {
 	const char *TaskName;
 	ObjTable *Node;
-	unsigned long PID;
-	unsigned int Set : 1;
+	unsigned PID;
+	unsigned Set : 1;
 };
 
 struct _MemBusInterface
@@ -296,7 +296,7 @@ extern Bool BlankLogOnBoot;
 extern char *MemLogBuffer;
 extern struct _CTask CurrentTask;
 extern BootMode CurrentBootMode;
-extern signed long MemBusKey;
+extern int MemBusKey;
 extern Bool BusRunning;
 extern char ConfigFile[MAX_LINE_SIZE];
 extern char *ConfigFileList[MAX_CONFIG_FILES];
@@ -312,8 +312,8 @@ extern void ShutdownConfig(void);
 extern rStatus ReloadConfig(void);
 extern ObjTable *LookupObjectInTable(const char *ObjectID);
 extern ObjTable *GetObjectByPriority(const char *ObjectRunlevel, ObjTable *LastNode,
-									Bool WantStartPriority, unsigned long ObjectPriority);
-extern unsigned long GetHighestPriority(Bool WantStartPriority);
+									Bool WantStartPriority, unsigned ObjectPriority);
+extern unsigned GetHighestPriority(Bool WantStartPriority);
 extern rStatus EditConfigValue(const char *File, const char *ObjectID, const char *Attribute, const char *Value);
 extern void ObjRL_AddRunlevel(const char *InRL, ObjTable *InObj);
 extern Bool ObjRL_CheckRunlevel(const char *InRL, const ObjTable *InObj, Bool CountInherited);
@@ -334,7 +334,7 @@ extern rStatus ProcessReloadCommand(ObjTable *CurObj, Bool PrintStatus);
 
 /*actions.c*/
 extern void LaunchBootup(void);
-extern void LaunchShutdown(signed long Signal);
+extern void LaunchShutdown(int Signal);
 extern void EmergencyShell(void);
 extern void ReexecuteEpoch(void);
 extern void RecoverFromReexec(Bool ViaMemBus);
@@ -344,9 +344,9 @@ extern void PerformPivotRoot(const char *NewRoot, const char *OldRootDir);
 
 /*modes.c*/
 extern rStatus SendPowerControl(const char *MembusCode);
-extern rStatus EmulKillall5(unsigned long InSignal);
+extern rStatus EmulKillall5(unsigned InSignal);
 extern void EmulWall(const char *InStream, Bool ShowUser);
-extern rStatus EmulShutdown(long ArgumentCount, const char **ArgStream);
+extern rStatus EmulShutdown(int ArgumentCount, const char **ArgStream);
 extern rStatus ObjControl(const char *ObjectID, const char *MemBusSignal);
 
 /*membus.c*/
@@ -357,8 +357,8 @@ extern void ParseMemBus(void);
 extern rStatus ShutdownMemBus(Bool ServerSide);
 extern Bool HandleMemBusPings(void);
 extern Bool CheckMemBusIntegrity(void);
-extern unsigned long MemBus_BinWrite(const void *InStream_, unsigned long DataSize, Bool ServerSide);
-extern unsigned long MemBus_BinRead(void *OutStream_, unsigned long MaxOutSize, Bool ServerSide);
+extern unsigned MemBus_BinWrite(const void *InStream_, unsigned DataSize, Bool ServerSide);
+extern unsigned MemBus_BinRead(void *OutStream_, unsigned MaxOutSize, Bool ServerSide);
 
 /*console.c*/
 extern void PrintBootBanner(void);
@@ -371,17 +371,17 @@ extern void SmallError(const char *INErr);
 
 /*utilfuncs.c*/
 extern void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutYear, char *OutMonth, char *OutDay);
-extern unsigned long DateDiff(unsigned long InHr, unsigned long InMin, unsigned long *OutMonth,
-						unsigned long *OutDay, unsigned long *OutYear);
-extern void MinsToDate(unsigned long MinInc, unsigned long *OutHr, unsigned long *OutMin,
-				unsigned long *OutMonth, unsigned long *OutDay, unsigned long *OutYear);
-extern short GetStateOfTime(unsigned long Hr, unsigned long Min, unsigned long Sec,
-				unsigned long Month, unsigned long Day, unsigned long Year);
+extern unsigned DateDiff(unsigned InHr, unsigned InMin, unsigned *OutMonth,
+						unsigned *OutDay, unsigned *OutYear);
+extern void MinsToDate(unsigned MinInc, unsigned *OutHr, unsigned *OutMin,
+				unsigned *OutMonth, unsigned *OutDay, unsigned *OutYear);
+extern short GetStateOfTime(unsigned Hr, unsigned Min, unsigned Sec,
+				unsigned Month, unsigned Day, unsigned Year);
 extern Bool AllNumeric(const char *InStream);
 extern Bool ObjectProcessRunning(const ObjTable *InObj);
-extern unsigned long ReadPIDFile(const ObjTable *InObj);
+extern unsigned ReadPIDFile(const ObjTable *InObj);
 extern rStatus WriteLogLine(const char *InStream, Bool AddDate);
-extern unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID);
+extern unsigned AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID);
 extern Bool ProcAvailable(void);
 
 #endif /* __EPOCH_H__ */

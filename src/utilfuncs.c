@@ -4,7 +4,7 @@
 * Please read the file UNLICENSE.TXT for more information.*/
 
 /**This file contains functions and utilities used across Epoch
- * for miscellanious purposes, that don't really belong in a category of their own.**/
+ * for miscellanious purposes, that don't really beint in a category of their own.**/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,7 +20,7 @@
 
 /**Constants**/
 Bool EnableLogging = true;
-Bool LogInMemory = true; /*This is necessary so long as we have a readonly filesystem.*/
+Bool LogInMemory = true; /*This is necessary so int as we have a readonly filesystem.*/
 Bool BlankLogOnBoot = true;
 char *MemLogBuffer;
 
@@ -131,10 +131,10 @@ Bool ObjectProcessRunning(const ObjTable *InObj)
 	}
 }
 
-void MinsToDate(unsigned long MinInc, unsigned long *OutHr, unsigned long *OutMin,
-				unsigned long *OutMonth, unsigned long *OutDay, unsigned long *OutYear)
+void MinsToDate(unsigned MinInc, unsigned *OutHr, unsigned *OutMin,
+				unsigned *OutMonth, unsigned *OutDay, unsigned *OutYear)
 {  /*Returns the projected date that it will be after MinInc minutes.
-	* Not really a good example of a function that belongs in console.c.*/
+	* Not really a good example of a function that beints in console.c.*/
 	time_t CurrentTime, LaterTime;
 	struct tm OutTime;
 	
@@ -151,13 +151,13 @@ void MinsToDate(unsigned long MinInc, unsigned long *OutHr, unsigned long *OutMi
 	*OutYear = OutTime.tm_year + 1900;
 }
 
-unsigned long DateDiff(unsigned long InHr, unsigned long InMin, unsigned long *OutMonth,
-						unsigned long *OutDay, unsigned long *OutYear)
+unsigned DateDiff(unsigned InHr, unsigned InMin, unsigned *OutMonth,
+						unsigned *OutDay, unsigned *OutYear)
 { /*Provides a true date as to when the next occurrence of this hour and minute will return via pointers, and
 	* also provides the number of minutes that will elapse during the time between. You can pass NULL for the pointers.*/
 	struct tm TimeStruct;
 	time_t CoreClock;
-	unsigned long Hr, Min, Month, Day, Year, IncMin = 0;
+	unsigned Hr, Min, Month, Day, Year, IncMin = 0;
 	
 	time(&CoreClock);
 	localtime_r(&CoreClock, &TimeStruct);
@@ -219,8 +219,8 @@ unsigned long DateDiff(unsigned long InHr, unsigned long InMin, unsigned long *O
 void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutYear, char *OutMonth, char *OutDay)
 { /*You can put NULL for items that you don't want the value of.*/
 	struct tm TimeStruct;
-	long HMS_I[3];
-	long MDY_I[3];
+	int HMS_I[3];
+	int MDY_I[3];
 	char *HMS[3];
 	char *MDY[3];
 	short Inc = 0;
@@ -254,19 +254,19 @@ void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutYear, char
 			continue;
 		}
 		
-		snprintf(HMS[Inc], 16, (HMS_I[Inc] >= 10 ? "%ld" : "0%ld"), HMS_I[Inc]);
+		snprintf(HMS[Inc], 16, (HMS_I[Inc] >= 10 ? "%u" : "0%u"), HMS_I[Inc]);
 	}
 	
 	for (Inc = 0; Inc < 3; ++Inc)
 	{
 		if (MDY[Inc] != NULL)
 		{
-			snprintf(MDY[Inc], 16, (MDY_I[Inc] >= 10 ? "%ld" : "0%ld"), MDY_I[Inc]);
+			snprintf(MDY[Inc], 16, (MDY_I[Inc] >= 10 ? "%u" : "0%u"), MDY_I[Inc]);
 		}
 	}
 }
 
-unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
+unsigned AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 { /*Advaaaanced! Ooh, shiney!
 	*Ok, seriously now, it finds PIDs by scanning /proc/somenumber/cmdline.*/
 	DIR *ProcDir = NULL;
@@ -274,7 +274,7 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 	char FileName[MAX_LINE_SIZE];
 	char FileBuf[MAX_LINE_SIZE];
 	char CmdLine[MAX_LINE_SIZE];
-	unsigned long Inc = 0, Streamsize = 0, Countdown = 0;
+	unsigned Inc = 0, Streamsize = 0, Countdown = 0;
 	FILE *Descriptor = NULL;
 	
 	/*No point if there's no /proc you know.*/
@@ -334,7 +334,7 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 			
 			if (!strncmp(FileBuf, CmdLine, strlen(CmdLine)))
 			{
-				unsigned long RealPID;
+				unsigned RealPID;
 				
 				RealPID = atol(DirPtr->d_name);
 				
@@ -354,11 +354,11 @@ unsigned long AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID)
 	return 0;
 }
 
-unsigned long ReadPIDFile(const ObjTable *InObj)
+unsigned ReadPIDFile(const ObjTable *InObj)
 {
 	FILE *PIDFileDescriptor = fopen(InObj->ObjectPIDFile, "r");
 	char PIDBuf[MAX_LINE_SIZE], *TW = NULL, *TW2 = NULL;
-	unsigned long InPID = 0, Inc = 0;
+	unsigned InPID = 0, Inc = 0;
 	int TChar;
 	
 	if (!PIDFileDescriptor)
@@ -396,8 +396,8 @@ unsigned long ReadPIDFile(const ObjTable *InObj)
 	return InPID;
 }
 
-short GetStateOfTime(unsigned long Hr, unsigned long Min, unsigned long Sec,
-				unsigned long Month, unsigned long Day, unsigned long Year)
+short GetStateOfTime(unsigned Hr, unsigned Min, unsigned Sec,
+				unsigned Month, unsigned Day, unsigned Year)
 {  /*This function is used to determine if the passed time is in the past,
 	* present, or future.*/
 	time_t CurrentTime, PassedTime;

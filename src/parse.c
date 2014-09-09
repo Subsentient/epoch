@@ -309,7 +309,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 #endif
 		{ /*don't worry about the heap stuff, exec() takes care of it you know.*/
 			char **ArgV = NULL;
-			unsigned long NumSpaces = 1, Inc = 0, cOffset = 0, Inc2 = 0;
+			unsigned NumSpaces = 1, Inc = 0, Inc2 = 0;
 			char NCmd[MAX_LINE_SIZE], *Worker = NCmd;
 			
 			strncpy(NCmd, CurCmd, strlen(CurCmd) + 1);
@@ -318,22 +318,26 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 			
 			ArgV = malloc(sizeof(char*) * NumSpaces + 1);
 			
-			for (Worker = NCmd, Inc = 0; Inc < NumSpaces; ++Inc)
+			for (Worker = NCmd, Inc = 0; Inc < NumSpaces && Worker != NULL; ++Inc)
 			{
 				/*Count how much space we need first.*/
-				for (Inc2 = 0; Worker[Inc2 + cOffset] != ' ' && Worker[Inc2 + cOffset] != '\t' && Worker[Inc2 + cOffset] != '\0'; ++Inc2);
+				for (Inc2 = 0; Worker[Inc2] != ' ' && Worker[Inc2] != '\t' && Worker[Inc2] != '\0'; ++Inc2);
 				
+				/*Then allocate it.*/
 				ArgV[Inc] = malloc(Inc2 + 1);
 				
-				for (Inc2 = 0; Worker[Inc2 + cOffset] != ' ' && Worker[Inc2 + cOffset] != '\t' && Worker[Inc2 + cOffset] != '\0'; ++Inc2)
-				{
-					ArgV[Inc][Inc2] = Worker[Inc2 + cOffset];
+				for (Inc2 = 0; Worker[Inc2] != ' ' && Worker[Inc2] != '\t' && Worker[Inc2] != '\0'; ++Inc2)
+				{ /*Then copy the chunk into its cell for execvp().*/
+					ArgV[Inc][Inc2] = Worker[Inc2];
 				}
 				ArgV[Inc][Inc2] = '\0';
 				
-				cOffset += Inc2 + 1;
+				/*Then jump to the next word.*/
+				Worker = WhitespaceArg(Worker);
+				
 			}
 			
+			/*Set last cell to null as is required by execvp().*/
 			ArgV[NumSpaces] = NULL;
 			
 			execvp(ArgV[0], ArgV);
@@ -480,7 +484,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 	if (IsStartingMode)
 	{		
 		rStatus PrestartExitStatus = SUCCESS;
-		unsigned long Counter = 0;
+		unsigned Counter = 0;
 		
 		if (PrintStatus)
 		{
@@ -492,7 +496,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		/*This means we are doing an equivalent pivot_root...*/
 		if (CurObj->Opts.PivotRoot)
 		{
-			unsigned long Inc = 0;
+			unsigned Inc = 0;
 			char NewRoot[MAX_LINE_SIZE], OldRootDir[MAX_LINE_SIZE], *Worker = CurObj->ObjectStartCommand;
 				
 			for (; *Worker != ' ' && *Worker != '\t' && *Worker != '\0' && Inc < MAX_LINE_SIZE - 1; ++Inc, ++Worker)
@@ -612,7 +616,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		{
 			case STOP_COMMAND:
 			{
-				unsigned long Inc = 0;
+				unsigned Inc = 0;
 				
 				if (PrintStatus)
 				{
@@ -703,7 +707,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				
 				if (!CurObj->Opts.NoStopWait)
 				{
-					unsigned long CurPID = 0;
+					unsigned CurPID = 0;
 					Bool Abort = false;
 					
 					CurrentTask.Node = (void*)&Abort;
@@ -784,7 +788,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				{ /*Just send SIGTERM.*/
 					if (!CurObj->Opts.NoStopWait)
 					{
-						unsigned long TInc = 0;
+						unsigned TInc = 0;
 						Bool Abort = false;
 						
 						CurrentTask.Node = (void*)&Abort;
@@ -845,7 +849,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 			}
 			case STOP_PIDFILE:
 			{
-				unsigned long TruePID = 0;
+				unsigned TruePID = 0;
 				
 				if (PrintStatus)
 				{
@@ -867,7 +871,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				{
 					if (!CurObj->Opts.NoStopWait)
 					{ /*If we're free to wait for a PID to stop, do so.*/
-						unsigned long TInc = 0;			
+						unsigned TInc = 0;			
 						Bool Abort = false;
 						
 						CurrentTask.Node = (void*)&Abort;
@@ -946,8 +950,8 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 /*This function does what it sounds like. It's not the entire boot sequence, we gotta display a message and stuff.*/
 rStatus RunAllObjects(Bool IsStartingMode)
 {
-	unsigned long MaxPriority = GetHighestPriority(IsStartingMode);
-	unsigned long Inc = 1; /*One to skip zero.*/
+	unsigned MaxPriority = GetHighestPriority(IsStartingMode);
+	unsigned Inc = 1; /*One to skip zero.*/
 	ObjTable *CurObj = NULL;
 	ObjTable *LastNode = NULL;
 	
@@ -1011,7 +1015,7 @@ rStatus ProcessReloadCommand(ObjTable *CurObj, Bool PrintStatus)
 	
 	if (CurObj->ReloadCommandSignal != 0)
 	{
-		const unsigned long PID = CurObj->Opts.HasPIDFile ? ReadPIDFile(CurObj) : CurObj->ObjectPID;
+		const unsigned PID = CurObj->Opts.HasPIDFile ? ReadPIDFile(CurObj) : CurObj->ObjectPID;
 
 		if (!PID) return FAILURE;
 		
@@ -1032,7 +1036,7 @@ rStatus ProcessReloadCommand(ObjTable *CurObj, Bool PrintStatus)
 
 rStatus SwitchRunlevels(const char *Runlevel)
 {
-	unsigned long NumInRunlevel = 0, CurPriority = 1, MaxPriority;
+	unsigned NumInRunlevel = 0, CurPriority = 1, MaxPriority;
 	ObjTable *TObj = ObjectTable;
 	ObjTable *LastNode = NULL;
 	/*Check the runlevel has objects first.*/

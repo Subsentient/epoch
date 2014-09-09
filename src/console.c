@@ -34,7 +34,7 @@ void PrintBootBanner(void)
 		char *Worker, *TW;
 		FILE *TempDescriptor;
 		int TChar;
-		unsigned long Inc = 0;
+		unsigned Inc = 0;
 		
 		BootBanner.BannerText[Inc] = '\0';	
 		

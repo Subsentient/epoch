@@ -75,7 +75,7 @@ static void SigHandler(int Signal)
 	{
 		case SIGINT:
 		{
-			static unsigned long LastKillAttempt = 0;
+			static unsigned LastKillAttempt = 0;
 			
 			if (AreInit)
 			{
@@ -395,7 +395,7 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 	{
 		char *GCode = NULL, *SuccessMsg = NULL, *FailMsg[2] = { NULL, NULL };
 		const char *CArg = NULL;
-		signed long OSCode = -1;
+		signed OSCode = -1;
 
 		if (CmdIs("poweroff"))
 		{
@@ -675,11 +675,11 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		while (strcmp(InBuf, MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_LSOBJS) != 0)
 		{
 			Bool FoundRL = false;
-			unsigned long PID = 0;
+			unsigned PID = 0;
 			Bool Started = false, Running = false, Enabled = false, PivotRoot = false, Persistent = false, Exec = false;
 			enum _StopMode StopMode;
 			unsigned char TermSignal = 0, ReloadCommandSignal = 0, *BinWorker = NULL;
-			unsigned long StartedSince, UserID, GroupID, Inc = 0, StopTimeout;
+			unsigned StartedSince, UserID, GroupID, Inc = 0, StopTimeout;
 			Bool HaltCmdOnly = false, IsService = false, AutoRestart = false, NoStopWait = false, NoTrack = false;
 			Bool ForceShell = false, RawDescription = false, Fork = false, RunOnce = false, ForkScanOnce = false;
 			Bool StartFailIsCritical = false, StopFailIsCritical = false, OptNewline = false;
@@ -714,14 +714,14 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			/*Remove this line when we make use of ReloadCommandSignal.*/
 			(void)ReloadCommandSignal;
 			
-			memcpy(&UserID, BinWorker, sizeof(long));
-			memcpy(&GroupID, (BinWorker += sizeof(long)), sizeof(long));
+			memcpy(&UserID, BinWorker, sizeof(int));
+			memcpy(&GroupID, (BinWorker += sizeof(int)), sizeof(int));
 			
-			memcpy(&StopMode, (BinWorker += sizeof(long)), sizeof(enum _StopMode));
-			memcpy(&PID, (BinWorker += sizeof(enum _StopMode)), sizeof(long));
+			memcpy(&StopMode, (BinWorker += sizeof(int)), sizeof(enum _StopMode));
+			memcpy(&PID, (BinWorker += sizeof(enum _StopMode)), sizeof(int));
 			
-			memcpy(&StartedSince, (BinWorker += sizeof(long)), sizeof(long));
-			memcpy(&StopTimeout, BinWorker + sizeof(long), sizeof(long));
+			memcpy(&StartedSince, (BinWorker += sizeof(int)), sizeof(int));
+			memcpy(&StopTimeout, BinWorker + sizeof(int), sizeof(int));
 
 			while (!MemBus_BinRead(InBuf, MEMBUS_MSGSIZE, false)) usleep(100);
 			
@@ -808,7 +808,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			if (Running)
 			{
-				printf(" | PID: %lu\n", PID);
+				printf(" | PID: %u\n", PID);
 			}
 			else
 			{
@@ -820,13 +820,13 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 				time_t SS = (time_t)StartedSince, CTime = time(NULL);
 				struct tm TStruct;
 				char TimeBuf[64] = { '\0' };
-				unsigned long Offset = (CTime - StartedSince) / 60;
+				unsigned Offset = (CTime - StartedSince) / 60;
 				localtime_r(&SS, &TStruct);
 				
 				asctime_r(&TStruct, TimeBuf);
 				
 				TimeBuf[strlen(TimeBuf) - 1] = '\0'; /*Nuke newline.*/
-				printf("Started since %s, for total of %lu mins.\n", TimeBuf, Offset);
+				printf("Started since %s, for total of %u mins.\n", TimeBuf, Offset);
 			}
 			
 			if (IsService || AutoRestart || HaltCmdOnly || Persistent || Fork || StopTimeout != 10 || NoTrack ||
@@ -854,7 +854,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 				if (NoTrack) printf(" NOTRACK");
 				if (StartFailIsCritical) printf( "STARTFAILCRITICAL");
 				if (StopFailIsCritical) printf( "STOPFAILCRITICAL");
-				if (StopTimeout != 10) printf(" STOPTIMEOUT=%lu", StopTimeout);
+				if (StopTimeout != 10) printf(" STOPTIMEOUT=%u", StopTimeout);
 				
 				OptNewline = true;
 			}
@@ -1509,7 +1509,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			else if (!strcmp(PossibleResponses[1], IBuf))
 			{
 				fprintf(stderr, CONSOLE_COLOR_RED "* " CONSOLE_ENDCOLOR 
-						"Unable to determine if object %s belongs to runlevel %s. Does it exist?\n", ObjectID, RL);
+						"Unable to determine if object %s beints to runlevel %s. Does it exist?\n", ObjectID, RL);
 				ShutdownMemBus(false);
 				return FAILURE;
 			}
@@ -1541,7 +1541,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 
 static void SetDefaultProcessTitle(int argc, char **argv)
 {
-	unsigned long Inc = 1;
+	unsigned Inc = 1;
 	
 	for (; Inc < argc; ++Inc)
 	{
@@ -1653,7 +1653,7 @@ int main(int argc, char **argv)
 		return !HandleEpochCommand(argc, argv);
 	}
 	else if (CmdIs("init"))
-	{ /*This is a bit long winded here, however, it's better than devoting a function for it.*/
+	{ /*This is a bit int winded here, however, it's better than devoting a function for it.*/
 		if (argc == 2)
 		{
 			char TmpBuf[MEMBUS_MSGSIZE];
@@ -1662,7 +1662,7 @@ int main(int argc, char **argv)
 			
 			if (strlen(argv[1]) >= MEMBUS_MSGSIZE)
 			{
-				SpitError("Runlevel name too long. Please specify a runlevel with a sane name.");
+				SpitError("Runlevel name too int. Please specify a runlevel with a sane name.");
 				return 1;
 			}
 			
@@ -1740,9 +1740,8 @@ int main(int argc, char **argv)
 			}
 			else
 			{
-				SmallError(
-						"Bad signal number. Please specify an integer signal number.\n"
-						"Pass no arguments to assume signal 15.");
+				SmallError("Bad signal number. Please specify an integer signal number.\n"
+							"Pass no arguments to assume signal 15.");
 				
 				return 1;
 			}

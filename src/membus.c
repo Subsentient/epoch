@@ -26,13 +26,13 @@
 struct _MemBusInterface MemBus;
 
 Bool BusRunning;
-signed long MemBusKey = MEMKEY;
+int MemBusKey = MEMKEY;
 int MemDescriptor;
 
 rStatus InitMemBus(Bool ServerSide)
 { /*Fire up the memory bus.*/
 	char CheckCode = 0;
-	unsigned long Inc = 0;
+	unsigned Inc = 0;
 
 	if (BusRunning) return SUCCESS;
 	
@@ -127,11 +127,11 @@ rStatus InitMemBus(Bool ServerSide)
 	return SUCCESS;
 }
 
-unsigned long MemBus_BinWrite(const void *InStream_, unsigned long DataSize, Bool ServerSide)
+unsigned MemBus_BinWrite(const void *InStream_, unsigned DataSize, Bool ServerSide)
 { /*Copies binary data of length DataSize to the membus.*/
 	const char *InStream = InStream_;
 	unsigned char *BusData = NULL, *BusStatus = NULL;
-	unsigned long Inc = 0;
+	unsigned Inc = 0;
 	unsigned short WaitCount = 0;
 	
 	if (ServerSide)
@@ -166,11 +166,11 @@ unsigned long MemBus_BinWrite(const void *InStream_, unsigned long DataSize, Boo
 	return Inc; /*Return number of bytes written.*/
 }
 
-unsigned long MemBus_BinRead(void *OutStream_, unsigned long MaxOutSize, Bool ServerSide)
+unsigned MemBus_BinRead(void *OutStream_, unsigned MaxOutSize, Bool ServerSide)
 {
 	unsigned char *BusStatus = NULL, *BusData = NULL;
 	unsigned char *OutStream = OutStream_;
-	unsigned long Inc = 0;
+	unsigned Inc = 0;
 	
 	if (ServerSide)
 	{
@@ -221,7 +221,7 @@ rStatus MemBus_Write(const char *InStream, Bool ServerSide)
 		++WaitCount;
 		
 		if (WaitCount == 10000)
-		{ /*Been 10 seconds! Does it take that long to copy a string?*/
+		{ /*Been 10 seconds! Does it take that int to copy a string?*/
 			return FAILURE;
 		}
 	}
@@ -328,7 +328,7 @@ void ParseMemBus(void)
 	}
 	else if (BusDataIs(MEMBUS_CODE_OBJSTART) || BusDataIs(MEMBUS_CODE_OBJSTOP))
 	{
-		unsigned long LOffset = strlen((BusDataIs(MEMBUS_CODE_OBJSTART) ? MEMBUS_CODE_OBJSTART " " : MEMBUS_CODE_OBJSTOP " "));
+		unsigned LOffset = strlen((BusDataIs(MEMBUS_CODE_OBJSTART) ? MEMBUS_CODE_OBJSTART " " : MEMBUS_CODE_OBJSTOP " "));
 		char *TWorker = BusData + LOffset;
 		ObjTable *CurObj = LookupObjectInTable(TWorker);
 		char TmpBuf[MEMBUS_MSGSIZE], *MCode = MEMBUS_CODE_FAILURE;
@@ -380,8 +380,8 @@ void ParseMemBus(void)
 		char OutBuf[MEMBUS_MSGSIZE];
 		unsigned char *BinWorker = (void*)OutBuf;
 		ObjTable *Worker = ObjectTable;
-		unsigned long TPID = 0;
-		const unsigned long Length = strlen(MEMBUS_CODE_LSOBJS " " MEMBUS_LSOBJS_VERSION) + 1;
+		unsigned TPID = 0;
+		const unsigned Length = strlen(MEMBUS_CODE_LSOBJS " " MEMBUS_LSOBJS_VERSION) + 1;
 		
 		for (; Worker->Next; Worker = Worker->Next)
 		{
@@ -412,14 +412,14 @@ void ParseMemBus(void)
 			*BinWorker++ = Worker->TermSignal;
 			*BinWorker++ = Worker->ReloadCommandSignal;
 			
-			memcpy(BinWorker, &Worker->UserID, sizeof(long));
-			memcpy((BinWorker += sizeof(long)), &Worker->GroupID, sizeof(long));
+			memcpy(BinWorker, &Worker->UserID, sizeof(int));
+			memcpy((BinWorker += sizeof(int)), &Worker->GroupID, sizeof(int));
 			
-			memcpy((BinWorker += sizeof(long)), &Worker->Opts.StopMode, sizeof(enum _StopMode));
-			memcpy((BinWorker += sizeof(enum _StopMode)), &TPID, sizeof(long));
+			memcpy((BinWorker += sizeof(int)), &Worker->Opts.StopMode, sizeof(enum _StopMode));
+			memcpy((BinWorker += sizeof(enum _StopMode)), &TPID, sizeof(int));
 			
-			memcpy((BinWorker += sizeof(long)), &Worker->StartedSince, sizeof(long));
-			memcpy(BinWorker + sizeof(long), &Worker->Opts.StopTimeout, sizeof(long));
+			memcpy((BinWorker += sizeof(int)), &Worker->StartedSince, sizeof(int));
+			memcpy(BinWorker + sizeof(int), &Worker->Opts.StopTimeout, sizeof(int));
 			
 			
 			MemBus_BinWrite(OutBuf, MEMBUS_MSGSIZE, true);
@@ -498,7 +498,7 @@ void ParseMemBus(void)
 	else if (BusDataIs(MEMBUS_CODE_OBJENABLE) || BusDataIs(MEMBUS_CODE_OBJDISABLE))
 	{
 		Bool EnablingThis = (BusDataIs(MEMBUS_CODE_OBJENABLE) ? true : false);
-		unsigned long LOffset = strlen(EnablingThis ? MEMBUS_CODE_OBJENABLE " " : MEMBUS_CODE_OBJDISABLE " ");
+		unsigned LOffset = strlen(EnablingThis ? MEMBUS_CODE_OBJENABLE " " : MEMBUS_CODE_OBJDISABLE " ");
 		char *OurSignal = EnablingThis ? MEMBUS_CODE_OBJENABLE : MEMBUS_CODE_OBJDISABLE;
 		char *TWorker = BusData + LOffset;
 		ObjTable *CurObj = LookupObjectInTable(TWorker);
@@ -545,7 +545,7 @@ void ParseMemBus(void)
 	}
 	else if (BusDataIs(MEMBUS_CODE_RUNLEVEL))
 	{
-		unsigned long LOffset = strlen(MEMBUS_CODE_RUNLEVEL " ");
+		unsigned LOffset = strlen(MEMBUS_CODE_RUNLEVEL " ");
 		char *TWorker = BusData + LOffset;
 		char TmpBuf[MEMBUS_MSGSIZE];
 		
@@ -600,12 +600,13 @@ void ParseMemBus(void)
 		char OutBuf[MEMBUS_MSGSIZE] = { '\0' };
 		ObjTable *CurObj = NULL;
 		char *RunlevelText = NULL;
-		unsigned long RequiredRLTLength = 0;
+		unsigned RequiredRLTLength = 0;
 		struct _RLTree *RLWorker = NULL;
 		
 		if (BusDataIs(MEMBUS_CODE_OBJRLS_CHECK)) LOffset = sizeof MEMBUS_CODE_OBJRLS_CHECK " " - 1, Mode = OBJRLS_CHECK;
 		else if (BusDataIs(MEMBUS_CODE_OBJRLS_ADD)) LOffset = sizeof MEMBUS_CODE_OBJRLS_ADD " " - 1, Mode = OBJRLS_ADD;
 		else if (BusDataIs(MEMBUS_CODE_OBJRLS_DEL)) LOffset = sizeof MEMBUS_CODE_OBJRLS_DEL " " - 1, Mode = OBJRLS_DEL;
+		else return;
 		
 		Worker = BusData + LOffset;
 		
@@ -737,7 +738,7 @@ void ParseMemBus(void)
 	/*Power functions that close everything first.*/
 	else if (BusDataIs(MEMBUS_CODE_HALT) || BusDataIs(MEMBUS_CODE_POWEROFF) || BusDataIs(MEMBUS_CODE_REBOOT))
 	{
-	unsigned long LOffset = 0, Signal = OSCTL_REBOOT;
+	unsigned LOffset = 0, Signal = OSCTL_REBOOT;
 		char *TWorker = NULL, *MSig = NULL;
 		char TmpBuf[MEMBUS_MSGSIZE];
 		
@@ -791,7 +792,7 @@ void ParseMemBus(void)
 				return;
 			}
 				
-			if (sscanf(TWorker, "%lu:%lu:%lu %lu/%lu/%lu", &HaltParams.TargetHour, &HaltParams.TargetMin,
+			if (sscanf(TWorker, "%u:%u:%u %u/%u/%u", &HaltParams.TargetHour, &HaltParams.TargetMin,
 				&HaltParams.TargetSec, &HaltParams.TargetMonth, &HaltParams.TargetDay, &HaltParams.TargetYear) != 6)
 			{
 				SpitError("Invalid time signature for HALT/REBOOT/POWEROFF over membus.\n"
@@ -813,10 +814,10 @@ void ParseMemBus(void)
 			else if (Signal == OSCTL_POWEROFF) HType = "poweroff";
 			else if (Signal == OSCTL_REBOOT) HType = "reboot";
 
-			snprintf(Hr, 16, (HaltParams.TargetHour >= 10) ? "%ld" : "0%ld", HaltParams.TargetHour);
-			snprintf(Min, 16, (HaltParams.TargetMin >= 10) ? "%ld" : "0%ld", HaltParams.TargetMin);
+			snprintf(Hr, 16, (HaltParams.TargetHour >= 10) ? "%u" : "0%u", HaltParams.TargetHour);
+			snprintf(Min, 16, (HaltParams.TargetMin >= 10) ? "%u" : "0%u", HaltParams.TargetMin);
 			
-			snprintf(MsgBuf, sizeof MsgBuf, "System is going down for %s at %s:%s %ld/%ld/%ld!",
+			snprintf(MsgBuf, sizeof MsgBuf, "System is going down for %s at %s:%s %u/%u/%u!",
 				HType, Hr, Min, HaltParams.TargetMonth, HaltParams.TargetDay, HaltParams.TargetYear);
 					
 			EmulWall(MsgBuf, false);
@@ -837,8 +838,8 @@ void ParseMemBus(void)
 		char MsgBuf[MAX_LINE_SIZE];
 		char Hr[16], Min[16];
 			
-		snprintf(Hr, 16, (HaltParams.TargetHour >= 10) ? "%ld" : "0%ld", HaltParams.TargetHour);
-		snprintf(Min, 16, (HaltParams.TargetMin >= 10) ? "%ld" : "0%ld", HaltParams.TargetMin);
+		snprintf(Hr, 16, (HaltParams.TargetHour >= 10) ? "%u" : "0%u", HaltParams.TargetHour);
+		snprintf(Min, 16, (HaltParams.TargetMin >= 10) ? "%u" : "0%u", HaltParams.TargetMin);
 		
 		if (HaltParams.HaltMode != -1)
 		{
@@ -850,7 +851,7 @@ void ParseMemBus(void)
 			return;
 		}
 		
-		snprintf(MsgBuf, sizeof MsgBuf, "%s %s:%s %ld/%ld/%ld %s", "The shutdown scheduled for",
+		snprintf(MsgBuf, sizeof MsgBuf, "%s %s:%s %u/%u/%u %s", "The shutdown scheduled for",
 				Hr, Min, HaltParams.TargetMonth, HaltParams.TargetDay, HaltParams.TargetYear,
 				"has been aborted.");
 
@@ -885,7 +886,7 @@ void ParseMemBus(void)
 	else if (BusDataIs(MEMBUS_CODE_SENDPID))
 	{
 		char TmpBuf[MEMBUS_MSGSIZE];
-		unsigned long LOffset = strlen(MEMBUS_CODE_SENDPID " ");
+		unsigned LOffset = strlen(MEMBUS_CODE_SENDPID " ");
 		const char *TWorker = BusData + LOffset;
 		const ObjTable *TmpObj = NULL;
 		
@@ -905,14 +906,14 @@ void ParseMemBus(void)
 			return;
 		}
 		
-		snprintf(TmpBuf, sizeof TmpBuf, "%s %s %lu", MEMBUS_CODE_SENDPID, TWorker,
+		snprintf(TmpBuf, sizeof TmpBuf, "%s %s %u", MEMBUS_CODE_SENDPID, TWorker,
 				(TmpObj->Opts.HasPIDFile ? ReadPIDFile(TmpObj) : TmpObj->ObjectPID));
 		MemBus_Write(TmpBuf, true);
 	}
 	else if (BusDataIs(MEMBUS_CODE_KILLOBJ) || BusDataIs(MEMBUS_CODE_OBJRELOAD))
 	{
 		char TmpBuf[MEMBUS_MSGSIZE];
-		unsigned long LOffset = (BusDataIs(MEMBUS_CODE_KILLOBJ) ? strlen(MEMBUS_CODE_KILLOBJ " ")
+		unsigned LOffset = (BusDataIs(MEMBUS_CODE_KILLOBJ) ? strlen(MEMBUS_CODE_KILLOBJ " ")
 								: strlen(MEMBUS_CODE_OBJRELOAD " "));
 		const char *TWorker = BusData + LOffset;
 		ObjTable *TmpObj = NULL;
