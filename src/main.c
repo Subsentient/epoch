@@ -27,10 +27,10 @@
 #define CmdIs(z) __CmdIs(argv[0], z)
 
 /*Forward declarations for static functions.*/
-static rStatus ProcessGenericHalt(int argc, char **argv);
+static ReturnCode ProcessGenericHalt(int argc, char **argv);
 static Bool __CmdIs(const char *CArg, const char *InCmd);
 static void PrintEpochHelp(const char *RootCommand, const char *InCmd);
-static rStatus HandleEpochCommand(int argc, char **argv);
+static ReturnCode HandleEpochCommand(int argc, char **argv);
 static void SigHandler(int Signal);
 static void SetDefaultProcessTitle(int argc, char **argv);
 
@@ -83,7 +83,7 @@ static void SigHandler(int Signal)
 					&& (LastKillAttempt == 0 || CurrentBootMode == BOOT_SHUTDOWN || time(NULL) > (LastKillAttempt + 5)))
 				{
 					char MsgBuf[MAX_LINE_SIZE];
-					rStatus KilledOK = SUCCESS;
+					ReturnCode KilledOK = SUCCESS;
 					
 					snprintf(MsgBuf, sizeof MsgBuf, 
 							"\n%sKilling task %s. %s",
@@ -388,7 +388,7 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 	}
 }
 
-static rStatus ProcessGenericHalt(int argc, char **argv)
+static ReturnCode ProcessGenericHalt(int argc, char **argv)
 {
 	/*Figure out what we are.*/
 	if (CmdIs("poweroff") || CmdIs("halt") || CmdIs("reboot"))
@@ -465,7 +465,7 @@ static rStatus ProcessGenericHalt(int argc, char **argv)
 	return SUCCESS;
 }
 
-static rStatus HandleEpochCommand(int argc, char **argv)
+static ReturnCode HandleEpochCommand(int argc, char **argv)
 {
 	const char *CArg = argv[1];
 	
@@ -928,7 +928,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 	else if (ArgIs("runlevel"))
 	{
 		char InBuf[MEMBUS_MSGSIZE];
-		rStatus RV = SUCCESS;
+		ReturnCode RV = SUCCESS;
 		
 		if (argc > 3)
 		{
@@ -1005,7 +1005,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 	else if (ArgIs("setcad"))
 	{
 		const char *MCode = NULL, *ReportLump = NULL;
-		rStatus RetVal = SUCCESS;
+		ReturnCode RetVal = SUCCESS;
 		
 		if (argc != 3)
 		{
@@ -1061,7 +1061,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 	}
 	else if (ArgIs("enable") || ArgIs("disable"))
 	{
-		rStatus RV = SUCCESS;
+		ReturnCode RV = SUCCESS;
 		Bool Enabling = ArgIs("enable");
 		char TOut[MAX_LINE_SIZE];
 		
@@ -1088,7 +1088,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		
 		CArg = argv[2];
 		snprintf(TOut, sizeof TOut, (Enabling ? "Enabling %s" : "Disabling %s"), CArg);
-		RenderStatusReport(TOut);
+		RendeReturnCodeReport(TOut);
 		
 		RV = ObjControl(CArg, (Enabling ? MEMBUS_CODE_OBJENABLE : MEMBUS_CODE_OBJDISABLE));
 		CompleteStatusReport(TOut, RV, false);
@@ -1098,7 +1098,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 	}
 	else if (ArgIs("start") || ArgIs("stop") || ArgIs("restart"))
 	{
-		rStatus RV = SUCCESS;
+		ReturnCode RV = SUCCESS;
 		short StartMode = 0;
 		enum { START = 1, STOP, RESTART };
 		char TOut[MAX_LINE_SIZE];
@@ -1144,7 +1144,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			const char *ActionString = StartMode == START ? "Starting" : "Stopping";
 			
 			snprintf(TOut, sizeof TOut, "%s %s", ActionString, argv[2]);
-			RenderStatusReport(TOut);
+			RendeReturnCodeReport(TOut);
 			
 			RV = ObjControl(argv[2], (StartMode == START ? MEMBUS_CODE_OBJSTART : MEMBUS_CODE_OBJSTOP));
 			
@@ -1154,7 +1154,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		{
 			snprintf(TOut, sizeof TOut, "Stopping %s", argv[2]);
 			
-			RenderStatusReport(TOut);
+			RendeReturnCodeReport(TOut);
 			RV = ObjControl(argv[2], MEMBUS_CODE_OBJSTOP);
 			CompleteStatusReport(TOut, RV, false);
 			
@@ -1166,7 +1166,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 			
 			snprintf(TOut, sizeof TOut, "Starting %s", argv[2]);
 			
-			RenderStatusReport(TOut);
+			RendeReturnCodeReport(TOut);
 			RV = ObjControl(argv[2], MEMBUS_CODE_OBJSTART);
 			CompleteStatusReport(TOut, RV, false);
 		}
@@ -1178,7 +1178,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 	}
 	else if (ArgIs("reload"))
 	{
-		rStatus RV = SUCCESS;
+		ReturnCode RV = SUCCESS;
 		char InBuf[MEMBUS_MSGSIZE], OutBuf[MEMBUS_MSGSIZE];
 		char PossibleResponses[4][MEMBUS_MSGSIZE];
 		char StatusBuf[MAX_LINE_SIZE];
@@ -1212,7 +1212,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		snprintf(PossibleResponses[3], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_BADPARAM, OutBuf);
 		
 		snprintf(StatusBuf, MAX_LINE_SIZE, "Reloading %s", argv[2]);
-		RenderStatusReport(StatusBuf);
+		RendeReturnCodeReport(StatusBuf);
 		
 		MemBus_Write(OutBuf, false);
 		
@@ -1256,7 +1256,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 	}
 	else if (ArgIs("getpid"))
 	{
-		rStatus RV = SUCCESS;
+		ReturnCode RV = SUCCESS;
 		char InBuf[MEMBUS_MSGSIZE];
 		char OutBuf[MEMBUS_MSGSIZE];
 		char PossibleResponses[3][MEMBUS_MSGSIZE];
@@ -1317,7 +1317,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 	{
 		char InBuf[MEMBUS_MSGSIZE], OutBuf[MEMBUS_MSGSIZE];
 		char PossibleResponses[3][MEMBUS_MSGSIZE];
-		rStatus RV = SUCCESS;
+		ReturnCode RV = SUCCESS;
 		
 		if (argc != 3)
 		{
@@ -1376,7 +1376,7 @@ static rStatus HandleEpochCommand(int argc, char **argv)
 		const char *ObjectID = argv[2], *RL = argv[4];
 		char OBuf[MEMBUS_MSGSIZE];
 		char IBuf[MEMBUS_MSGSIZE];
-		rStatus ExitStatus = SUCCESS;
+		ReturnCode ExitStatus = SUCCESS;
 		
 		if (argc != 5)
 		{

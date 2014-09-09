@@ -25,7 +25,7 @@ BootMode CurrentBootMode;
 
 /**Function forward declarations.**/
 
-static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd);
+static ReturnCode ExecuteConfigObject(ObjTable *InObj, const char *CurCmd);
 
 /**Actual functions.**/
 
@@ -44,7 +44,7 @@ static Bool FileUsable(const char *FileName)
 	}
 }	
 
-static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
+static ReturnCode ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 { /*Not making static because this is probably going to be useful for other stuff.*/
 #ifdef NOMMU
 #define ForkFunc() vfork()
@@ -53,7 +53,7 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 #endif
 
 	pid_t LaunchPID;
-	rStatus ExitStatus = FAILURE; /*We failed unless we succeeded.*/
+	ReturnCode ExitStatus = FAILURE; /*We failed unless we succeeded.*/
 	int RawExitStatus, Inc = 0;
 	sigset_t SigMaker[2];	
 #ifndef NOSHELL
@@ -440,10 +440,10 @@ static rStatus ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 	return ExitStatus;
 }
 
-rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintStatus)
+ReturnCode ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintStatus)
 {
 	char PrintOutStream[1024];
-	rStatus ExitStatus = FAILURE;
+	ReturnCode ExitStatus = FAILURE;
 	
 	if (IsStartingMode && CurObj->ObjectStartCommand == NULL)
 	{ /*Don't bother with it, if it has no command.
@@ -474,7 +474,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 		
 		if (IsStartingMode && CurObj->Opts.HaltCmdOnly)
 		{
-			RenderStatusReport(PrintOutStream);
+			RendeReturnCodeReport(PrintOutStream);
 			CompleteStatusReport(PrintOutStream, FAILURE, true);
 		}
 	}
@@ -483,12 +483,12 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 	
 	if (IsStartingMode)
 	{		
-		rStatus PrestartExitStatus = SUCCESS;
+		ReturnCode PrestartExitStatus = SUCCESS;
 		unsigned Counter = 0;
 		
 		if (PrintStatus)
 		{
-			RenderStatusReport(PrintOutStream);
+			RendeReturnCodeReport(PrintOutStream);
 		}
 		
 		/*fflush(NULL); *//*Things tend to get clogged up when we don't flush.*/
@@ -620,7 +620,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				
 				if (PrintStatus)
 				{
-					RenderStatusReport(PrintOutStream);
+					RendeReturnCodeReport(PrintOutStream);
 				}
 				
 				if (!strncmp(CurObj->ObjectStopCommand, "KILLALL5", sizeof "KILLALL5" - 1))
@@ -771,7 +771,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 			{
 				if (PrintStatus)
 				{
-					RenderStatusReport(PrintOutStream);
+					RendeReturnCodeReport(PrintOutStream);
 				}
 				
 				if (!CurObj->ObjectPID)
@@ -853,7 +853,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 				
 				if (PrintStatus)
 				{
-					RenderStatusReport(PrintOutStream);
+					RendeReturnCodeReport(PrintOutStream);
 				}
 				
 				if (!(TruePID = ReadPIDFile(CurObj)))
@@ -948,7 +948,7 @@ rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintSta
 }
 
 /*This function does what it sounds like. It's not the entire boot sequence, we gotta display a message and stuff.*/
-rStatus RunAllObjects(Bool IsStartingMode)
+ReturnCode RunAllObjects(Bool IsStartingMode)
 {
 	unsigned MaxPriority = GetHighestPriority(IsStartingMode);
 	unsigned Inc = 1; /*One to skip zero.*/
@@ -997,9 +997,9 @@ rStatus RunAllObjects(Bool IsStartingMode)
 	return SUCCESS;
 }
 
-rStatus ProcessReloadCommand(ObjTable *CurObj, Bool PrintStatus)
+ReturnCode ProcessReloadCommand(ObjTable *CurObj, Bool PrintStatus)
 {
-	rStatus RetVal = FAILURE;
+	ReturnCode RetVal = FAILURE;
 	char StatusReportBuf[MAX_DESCRIPT_SIZE];
 	
 	if (!CurObj->ObjectReloadCommand && !CurObj->ReloadCommandSignal)
@@ -1010,7 +1010,7 @@ rStatus ProcessReloadCommand(ObjTable *CurObj, Bool PrintStatus)
 	if (PrintStatus)
 	{
 		snprintf(StatusReportBuf, MAX_DESCRIPT_SIZE, "Reloading %s", CurObj->ObjectID);
-		RenderStatusReport(StatusReportBuf);
+		RendeReturnCodeReport(StatusReportBuf);
 	}
 	
 	if (CurObj->ReloadCommandSignal != 0)
@@ -1034,7 +1034,7 @@ rStatus ProcessReloadCommand(ObjTable *CurObj, Bool PrintStatus)
 	return RetVal;
 }
 
-rStatus SwitchRunlevels(const char *Runlevel)
+ReturnCode SwitchRunlevels(const char *Runlevel)
 {
 	unsigned NumInRunlevel = 0, CurPriority = 1, MaxPriority;
 	ObjTable *TObj = ObjectTable;

@@ -20,7 +20,7 @@
 /*To shut up some weird compilers. I don't know what this thing wants from me.*/
 pid_t getsid(pid_t);
 
-rStatus SendPowerControl(const char *MembusCode)
+ReturnCode SendPowerControl(const char *MembusCode)
 { /*Client side to send a request to halt/reboot/power off/disable or enable CAD/etc.*/
 	char InitsResponse[MEMBUS_MSGSIZE], *PCode[2], *PErrMsg;
 	
@@ -86,7 +86,7 @@ rStatus SendPowerControl(const char *MembusCode)
 	return SUCCESS;
 }
 
-rStatus ObjControl(const char *ObjectID, const char *MemBusSignal)
+ReturnCode ObjControl(const char *ObjectID, const char *MemBusSignal)
 { /*Start and stop or disable services.*/
 	char RemoteResponse[MEMBUS_MSGSIZE];
 	char OutMsg[MEMBUS_MSGSIZE];
@@ -137,7 +137,7 @@ rStatus ObjControl(const char *ObjectID, const char *MemBusSignal)
 	}
 }
 
-rStatus EmulKillall5(unsigned InSignal)
+ReturnCode EmulKillall5(unsigned InSignal)
 { /*Used as the killall5 utility.*/
 	DIR *ProcDir;
 	struct dirent *CurDir;
@@ -283,7 +283,7 @@ void EmulWall(const char *InStream, Bool ShowUser)
 	}
 }
 
-rStatus EmulShutdown(int ArgumentCount, const char **ArgStream)
+ReturnCode EmulShutdown(int ArgumentCount, const char **ArgStream)
 { /*Eyesore, but it works.*/
 	const char **TPtr = ArgStream + 1; /*Skip past the equivalent of argv[0].*/
 	unsigned TargetHr = 0, TargetMin = 0;

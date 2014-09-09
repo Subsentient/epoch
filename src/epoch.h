@@ -149,7 +149,7 @@ enum { COPT_HALTONLY = 1, COPT_PERSISTENT, COPT_FORK, COPT_SERVICE, COPT_AUTORES
 		COPT_NOTRACK, COPT_STARTFAILCRITICAL, COPT_STOPFAILCRITICAL, COPT_MAX };
 		
 /*Trinary return values for functions.*/
-typedef enum { FAILURE, SUCCESS, WARNING } rStatus;
+typedef enum { FAILURE, SUCCESS, WARNING } ReturnCode;
 
 /*Trinary boot/shutdown/nothing modes.*/
 typedef enum { BOOT_NEUTRAL, BOOT_BOOTUP, BOOT_SHUTDOWN } BootMode;
@@ -192,9 +192,9 @@ typedef struct _EpochObjectTable
 	Bool Started;
 	
 	struct
-	{ /*Maps an object's exit statuses to a special case of an rStatus value.*/
+	{ /*Maps an object's exit statuses to a special case of an ReturnCode value.*/
 		unsigned char ExitStatus; /*The exit status of the program.*/
-		unsigned char Value; /*An rStatus trinary value, or 4 for unused.*/
+		unsigned char Value; /*An ReturnCode trinary value, or 4 for unused.*/
 	} ExitStatuses[8];
 	
 	struct 
@@ -307,14 +307,14 @@ extern Bool AreInit;
 /**Function forward declarations.*/
 
 /*config.c*/
-extern rStatus InitConfig(const char *CurConfigFile);
+extern ReturnCode InitConfig(const char *CurConfigFile);
 extern void ShutdownConfig(void);
-extern rStatus ReloadConfig(void);
+extern ReturnCode ReloadConfig(void);
 extern ObjTable *LookupObjectInTable(const char *ObjectID);
 extern ObjTable *GetObjectByPriority(const char *ObjectRunlevel, ObjTable *LastNode,
 									Bool WantStartPriority, unsigned ObjectPriority);
 extern unsigned GetHighestPriority(Bool WantStartPriority);
-extern rStatus EditConfigValue(const char *File, const char *ObjectID, const char *Attribute, const char *Value);
+extern ReturnCode EditConfigValue(const char *File, const char *ObjectID, const char *Attribute, const char *Value);
 extern void ObjRL_AddRunlevel(const char *InRL, ObjTable *InObj);
 extern Bool ObjRL_CheckRunlevel(const char *InRL, const ObjTable *InObj, Bool CountInherited);
 extern Bool ObjRL_DelRunlevel(const char *InRL, ObjTable *InObj);
@@ -327,10 +327,10 @@ extern Bool EnvVarList_Del(const char *const Check, struct _EnvVarList **const L
 extern void EnvVarList_Shutdown(struct _EnvVarList **const List);
 
 /*parse.c*/
-extern rStatus ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintStatus);
-extern rStatus RunAllObjects(Bool IsStartingMode);
-extern rStatus SwitchRunlevels(const char *Runlevel);
-extern rStatus ProcessReloadCommand(ObjTable *CurObj, Bool PrintStatus);
+extern ReturnCode ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintStatus);
+extern ReturnCode RunAllObjects(Bool IsStartingMode);
+extern ReturnCode SwitchRunlevels(const char *Runlevel);
+extern ReturnCode ProcessReloadCommand(ObjTable *CurObj, Bool PrintStatus);
 
 /*actions.c*/
 extern void LaunchBootup(void);
@@ -343,18 +343,18 @@ extern void PerformExec(const char *Cmd_);
 extern void PerformPivotRoot(const char *NewRoot, const char *OldRootDir);
 
 /*modes.c*/
-extern rStatus SendPowerControl(const char *MembusCode);
-extern rStatus EmulKillall5(unsigned InSignal);
+extern ReturnCode SendPowerControl(const char *MembusCode);
+extern ReturnCode EmulKillall5(unsigned InSignal);
 extern void EmulWall(const char *InStream, Bool ShowUser);
-extern rStatus EmulShutdown(int ArgumentCount, const char **ArgStream);
-extern rStatus ObjControl(const char *ObjectID, const char *MemBusSignal);
+extern ReturnCode EmulShutdown(int ArgumentCount, const char **ArgStream);
+extern ReturnCode ObjControl(const char *ObjectID, const char *MemBusSignal);
 
 /*membus.c*/
-extern rStatus InitMemBus(Bool ServerSide);
-extern rStatus MemBus_Write(const char *InStream, Bool ServerSide);
+extern ReturnCode InitMemBus(Bool ServerSide);
+extern ReturnCode MemBus_Write(const char *InStream, Bool ServerSide);
 extern Bool MemBus_Read(char *OutStream, Bool ServerSide);
 extern void ParseMemBus(void);
-extern rStatus ShutdownMemBus(Bool ServerSide);
+extern ReturnCode ShutdownMemBus(Bool ServerSide);
 extern Bool HandleMemBusPings(void);
 extern Bool CheckMemBusIntegrity(void);
 extern unsigned MemBus_BinWrite(const void *InStream_, unsigned DataSize, Bool ServerSide);
@@ -363,8 +363,8 @@ extern unsigned MemBus_BinRead(void *OutStream_, unsigned MaxOutSize, Bool Serve
 /*console.c*/
 extern void PrintBootBanner(void);
 extern void SetBannerColor(const char *InChoice);
-extern void RenderStatusReport(const char *InReport);
-extern void CompleteStatusReport(const char *InReport, rStatus ExitStatus, Bool LogReport);
+extern void RendeReturnCodeReport(const char *InReport);
+extern void CompleteStatusReport(const char *InReport, ReturnCode ExitStatus, Bool LogReport);
 extern void SpitWarning(const char *INWarning);
 extern void SpitError(const char *INErr);
 extern void SmallError(const char *INErr);
@@ -380,7 +380,7 @@ extern short GetStateOfTime(unsigned Hr, unsigned Min, unsigned Sec,
 extern Bool AllNumeric(const char *InStream);
 extern Bool ObjectProcessRunning(const ObjTable *InObj);
 extern unsigned ReadPIDFile(const ObjTable *InObj);
-extern rStatus WriteLogLine(const char *InStream, Bool AddDate);
+extern ReturnCode WriteLogLine(const char *InStream, Bool AddDate);
 extern unsigned AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID);
 extern Bool ProcAvailable(void);
 

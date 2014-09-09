@@ -54,8 +54,8 @@ char Domainname[256];
 /*Function forward declarations for all the statics.*/
 static ObjTable *AddObjectToTable(const char *ObjectID, const char *File);
 static char *NextLine(const char *InStream);
-static rStatus GetLineDelim(const char *InStream, char *OutStream);
-static rStatus ScanConfigIntegrity(void);
+static ReturnCode GetLineDelim(const char *InStream, char *OutStream);
+static ReturnCode ScanConfigIntegrity(void);
 static void ConfigProblem(const char *File, short Type, const char *Attribute, const char *AttribVal, unsigned LineNum);
 static unsigned PriorityAlias_Lookup(const char *Alias);
 static void PriorityAlias_Add(const char *Alias, unsigned Target);
@@ -148,7 +148,7 @@ static void ConfigProblem(const char *File, short Type, const char *Attribute, c
 	WriteLogLine(LogBuffer, true);
 }
 
-rStatus InitConfig(const char *CurConfigFile)
+ReturnCode InitConfig(const char *CurConfigFile)
 { /*Set aside storage for the table.*/
 	FILE *Descriptor = NULL;
 	struct stat FileStat;
@@ -1060,7 +1060,7 @@ rStatus InitConfig(const char *CurConfigFile)
 					++TWorker;
 					
 					for (TInc = 0; TWorker[TInc] != '\0' && TInc < sizeof ValueT - 1; ++TInc)
-					{ /*Get the rStatus value.*/
+					{ /*Get the ReturnCode value.*/
 						ValueT[TInc] = TWorker[TInc];
 					}
 					ValueT[TInc] = '\0';
@@ -1782,7 +1782,7 @@ rStatus InitConfig(const char *CurConfigFile)
 	return SUCCESS;
 }
 
-static rStatus GetLineDelim(const char *InStream, char *OutStream)
+static ReturnCode GetLineDelim(const char *InStream, char *OutStream)
 {
 	const char *Worker = InStream;
 	char *W2 = OutStream;
@@ -1839,7 +1839,7 @@ static rStatus GetLineDelim(const char *InStream, char *OutStream)
 	return SUCCESS;
 }
 
-rStatus EditConfigValue(const char *File, const char *ObjectID, const char *Attribute, const char *Value)
+ReturnCode EditConfigValue(const char *File, const char *ObjectID, const char *Attribute, const char *Value)
 { /*Looks up the attribute for the passed ID and replaces the value for that attribute.*/
 	char *MasterStream = NULL, *HalfTwo = NULL;
 	char *NewValue = NULL, *Worker = NULL, *Stopper = NULL, *LineArm = NULL;
@@ -2121,12 +2121,12 @@ static ObjTable *AddObjectToTable(const char *ObjectID, const char *File)
 	return Worker;
 }
 
-static rStatus ScanConfigIntegrity(void)
+static ReturnCode ScanConfigIntegrity(void)
 { /*Here we check common mistakes and problems.*/
 #define IntegrityWarn(msg) WriteLogLine(msg, true), SpitWarning(msg)
 	ObjTable *Worker = ObjectTable, *TOffender;
 	char TmpBuf[1024];
-	rStatus RetState = SUCCESS;
+	ReturnCode RetState = SUCCESS;
 	static Bool WasRunBefore = false;
 	
 	if (ObjectTable == NULL)
@@ -2788,7 +2788,7 @@ void ShutdownConfig(void)
 	}
 }
 
-rStatus ReloadConfig(void)
+ReturnCode ReloadConfig(void)
 { /*This function is somewhat hard to read, but it does the job well.*/
 	ObjTable *Worker = ObjectTable;
 	ObjTable *TRoot = malloc(sizeof(ObjTable)), *SWorker = TRoot, *Temp = NULL;

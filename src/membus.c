@@ -29,7 +29,7 @@ Bool BusRunning;
 int MemBusKey = MEMKEY;
 int MemDescriptor;
 
-rStatus InitMemBus(Bool ServerSide)
+ReturnCode InitMemBus(Bool ServerSide)
 { /*Fire up the memory bus.*/
 	char CheckCode = 0;
 	unsigned Inc = 0;
@@ -198,7 +198,7 @@ unsigned MemBus_BinRead(void *OutStream_, unsigned MaxOutSize, Bool ServerSide)
 	return Inc;
 }
 	
-rStatus MemBus_Write(const char *InStream, Bool ServerSide)
+ReturnCode MemBus_Write(const char *InStream, Bool ServerSide)
 {
 	unsigned char *BusStatus = NULL;
 	char *BusData = NULL;
@@ -332,7 +332,7 @@ void ParseMemBus(void)
 		char *TWorker = BusData + LOffset;
 		ObjTable *CurObj = LookupObjectInTable(TWorker);
 		char TmpBuf[MEMBUS_MSGSIZE], *MCode = MEMBUS_CODE_FAILURE;
-		rStatus DidWork;
+		ReturnCode DidWork;
 		
 		if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
 		{ /*No argument?*/
@@ -503,7 +503,7 @@ void ParseMemBus(void)
 		char *TWorker = BusData + LOffset;
 		ObjTable *CurObj = LookupObjectInTable(TWorker);
 		char TmpBuf[MEMBUS_MSGSIZE];
-		rStatus DidWork = FAILURE;
+		ReturnCode DidWork = FAILURE;
 		
 		if (LOffset >= strlen(BusData) || BusData[LOffset] == ' ')
 		{ /*No argument?*/
@@ -953,7 +953,7 @@ void ParseMemBus(void)
 		}
 		else
 		{
-			rStatus RV = SUCCESS;
+			ReturnCode RV = SUCCESS;
 			const char *MCode = MEMBUS_CODE_ACKNOWLEDGED, *RMsg = NULL;
 			char LogOut[MAX_LINE_SIZE];
 			
@@ -1012,7 +1012,7 @@ void ParseMemBus(void)
 	}
 }
 
-rStatus ShutdownMemBus(Bool ServerSide)
+ReturnCode ShutdownMemBus(Bool ServerSide)
 {	
 	if (!BusRunning || !MemBus.Root)
 	{

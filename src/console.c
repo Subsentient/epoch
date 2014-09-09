@@ -120,13 +120,13 @@ void SetBannerColor(const char *InChoice)
 }
 
 /*Creates the status report.*/
-void RenderStatusReport(const char *InReport)
+void RendeReturnCodeReport(const char *InReport)
 {							
 	printf(CONSOLE_CTL_SAVESTATE "( " CONSOLE_COLOR_CYAN "...." CONSOLE_ENDCOLOR " ) %s", InReport);
 	fflush(stdout);
 }
 	
-void CompleteStatusReport(const char *InReport, rStatus ExitStatus, Bool LogReport)
+void CompleteStatusReport(const char *InReport, ReturnCode ExitStatus, Bool LogReport)
 {
 	char OBuf[MAX_LINE_SIZE];
 	

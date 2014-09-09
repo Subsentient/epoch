@@ -45,7 +45,7 @@ Bool AllNumeric(const char *InStream)
 	return true;
 }
 
-rStatus WriteLogLine(const char *InStream, Bool AddDate)
+ReturnCode WriteLogLine(const char *InStream, Bool AddDate)
 { /*This is pretty much the entire logging system.*/
 	FILE *Descriptor = NULL;
 	char Hr[16], Min[16], Sec[16], Month[16], Day[16], Year[16], OBuf[MAX_LINE_SIZE + 64] = { '\0' };
