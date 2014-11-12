@@ -155,9 +155,9 @@ unsigned DateDiff(unsigned InHr, unsigned InMin, unsigned *OutMonth,
 						unsigned *OutDay, unsigned *OutYear)
 { /*Provides a true date as to when the next occurrence of this hour and minute will return via pointers, and
 	* also provides the number of minutes that will elapse during the time between. You can pass NULL for the pointers.*/
-	struct tm TimeStruct;
-	time_t CoreClock;
-	unsigned Hr, Min, Month, Day, Year, IncMin = 0;
+	struct tm TimeStruct, TS2;
+	time_t CoreClock = 0, Clock2 = 0;
+	unsigned Hr, Min, Month, Day, Year;
 	
 	time(&CoreClock);
 	localtime_r(&CoreClock, &TimeStruct);
@@ -168,52 +168,48 @@ unsigned DateDiff(unsigned InHr, unsigned InMin, unsigned *OutMonth,
 	Day = TimeStruct.tm_mday;
 	Year = TimeStruct.tm_year + 1900;
 	
-	for (; Hr != InHr || Min != InMin; ++IncMin)
-	{
-		if (Min == 60)
+	if (InHr < Hr || (InHr == Hr && InMin < Min))
+	{ /*If that time has already happened, we know that this will occur in the next day.*/
+		if (Day + 1 > MDays[Month - 1])
 		{
-			Min = 0;
+			Day = 1;
 			
-			if (Hr + 1 == 24)
+			if (Month + 1 > 12)
 			{
-				Hr = 0;
-				
-				if (Day == MDays[Month - 1])
-				{
-					Day = 1;
-					
-					if (Month == 12)
-					{
-						Month = 1;
-						
-						++Year;
-					}
-					else
-					{
-						++Month;
-					}
-				}
-				else
-				{
-					++Day;
-				}
+				Month = 1;
+				++Year;
 			}
 			else
 			{
-				++Hr;
+				++Month;
 			}
 		}
 		else
 		{
-			++Min;
+			++Day;
 		}
+		
 	}
 	
-	if (OutMonth) *OutMonth = Month;
+	/*Provide the main return values.*/
 	if (OutDay) *OutDay = Day;
+	if (OutMonth) *OutMonth = Month;
 	if (OutYear) *OutYear = Year;
 	
-	return IncMin;
+	/*Return the time difference in minutes.*/
+	TS2.tm_hour = InHr;
+	TS2.tm_min = InMin;
+	TS2.tm_mon = Month - 1;
+	TS2.tm_mday = Day;
+	TS2.tm_year = Year - 1900;
+	
+	
+	/*Convert TS2 into a time_t*/
+	Clock2 = mktime(&TS2);
+	
+	/*Return the difference in minutes.*/
+	return (Clock2 - CoreClock) / 60;
+	
 }
 
 void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutYear, char *OutMonth, char *OutDay)
