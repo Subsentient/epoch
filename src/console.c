@@ -130,7 +130,10 @@ void CompleteStatusReport(const char *InReport, ReturnCode ExitStatus, Bool LogR
 {
 	char OBuf[MAX_LINE_SIZE];
 	
+	snprintf(OBuf, sizeof OBuf, " %s %s", InReport, ExitStrings[ExitStatus]);
+	
 	printf(CONSOLE_CTL_RESTORESTATE "%s\n", ExitStrings[ExitStatus]);
+	
 	fflush(stdout);
 	
 	if (LogReport && InReport != NULL && EnableLogging)
