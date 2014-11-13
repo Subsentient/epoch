@@ -363,7 +363,7 @@ extern unsigned MemBus_BinRead(void *OutStream_, unsigned MaxOutSize, Bool Serve
 /*console.c*/
 extern void PrintBootBanner(void);
 extern void SetBannerColor(const char *InChoice);
-extern void RendeReturnCodeReport(const char *InReport);
+extern void RenderReturnCodeReport(const char *InReport);
 extern void CompleteStatusReport(const char *InReport, ReturnCode ExitStatus, Bool LogReport);
 extern void SpitWarning(const char *INWarning);
 extern void SpitError(const char *INErr);

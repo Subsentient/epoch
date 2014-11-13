@@ -19,7 +19,7 @@ struct _BootBanner BootBanner;
 Bool DisableCAD = true;
 
 static const char *const ExitStrings[] = { CONSOLE_COLOR_RED "FAIL" CONSOLE_ENDCOLOR,
-							CONSOLE_COLOR_GREEN "Done" CONSOLE_ENDCOLOR, 
+							CONSOLE_COLOR_GREEN "DONE" CONSOLE_ENDCOLOR, 
 							CONSOLE_COLOR_YELLOW "WARN" CONSOLE_ENDCOLOR };
 							
 void PrintBootBanner(void)
@@ -120,9 +120,9 @@ void SetBannerColor(const char *InChoice)
 }
 
 /*Creates the status report.*/
-void RendeReturnCodeReport(const char *InReport)
+void RenderReturnCodeReport(const char *InReport)
 {							
-	printf(CONSOLE_CTL_SAVESTATE "( " CONSOLE_COLOR_CYAN "...." CONSOLE_ENDCOLOR " ) %s", InReport);
+	printf("%s " CONSOLE_CTL_SAVESTATE CONSOLE_COLOR_CYAN "...." CONSOLE_ENDCOLOR, InReport);
 	fflush(stdout);
 }
 	
@@ -130,9 +130,7 @@ void CompleteStatusReport(const char *InReport, ReturnCode ExitStatus, Bool LogR
 {
 	char OBuf[MAX_LINE_SIZE];
 	
-	snprintf(OBuf, MAX_LINE_SIZE, "( %s ) %s", ExitStrings[ExitStatus], InReport);
-	
-	printf(CONSOLE_CTL_RESTORESTATE "%s\n", OBuf);
+	printf(CONSOLE_CTL_RESTORESTATE "%s\n", ExitStrings[ExitStatus]);
 	fflush(stdout);
 	
 	if (LogReport && InReport != NULL && EnableLogging)

@@ -474,7 +474,7 @@ ReturnCode ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool Print
 		
 		if (IsStartingMode && CurObj->Opts.HaltCmdOnly)
 		{
-			RendeReturnCodeReport(PrintOutStream);
+			RenderReturnCodeReport(PrintOutStream);
 			CompleteStatusReport(PrintOutStream, FAILURE, true);
 		}
 	}
@@ -488,7 +488,7 @@ ReturnCode ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool Print
 		
 		if (PrintStatus)
 		{
-			RendeReturnCodeReport(PrintOutStream);
+			RenderReturnCodeReport(PrintOutStream);
 		}
 		
 		/*fflush(NULL); *//*Things tend to get clogged up when we don't flush.*/
@@ -620,7 +620,7 @@ ReturnCode ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool Print
 				
 				if (PrintStatus)
 				{
-					RendeReturnCodeReport(PrintOutStream);
+					RenderReturnCodeReport(PrintOutStream);
 				}
 				
 				if (!strncmp(CurObj->ObjectStopCommand, "KILLALL5", sizeof "KILLALL5" - 1))
@@ -771,7 +771,7 @@ ReturnCode ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool Print
 			{
 				if (PrintStatus)
 				{
-					RendeReturnCodeReport(PrintOutStream);
+					RenderReturnCodeReport(PrintOutStream);
 				}
 				
 				if (!CurObj->ObjectPID)
@@ -853,7 +853,7 @@ ReturnCode ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool Print
 				
 				if (PrintStatus)
 				{
-					RendeReturnCodeReport(PrintOutStream);
+					RenderReturnCodeReport(PrintOutStream);
 				}
 				
 				if (!(TruePID = ReadPIDFile(CurObj)))
@@ -1010,7 +1010,7 @@ ReturnCode ProcessReloadCommand(ObjTable *CurObj, Bool PrintStatus)
 	if (PrintStatus)
 	{
 		snprintf(StatusReportBuf, MAX_DESCRIPT_SIZE, "Reloading %s", CurObj->ObjectID);
-		RendeReturnCodeReport(StatusReportBuf);
+		RenderReturnCodeReport(StatusReportBuf);
 	}
 	
 	if (CurObj->ReloadCommandSignal != 0)
