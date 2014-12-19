@@ -371,7 +371,7 @@ extern void SmallError(const char *INErr);
 
 /*utilfuncs.c*/
 extern void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutYear, char *OutMonth, char *OutDay);
-extern unsigned DateDiff(unsigned InHr, unsigned InMin, unsigned *OutMonth,
+extern unsigned *DateDiff(unsigned InHr, unsigned InMin, unsigned *OutMonth,
 						unsigned *OutDay, unsigned *OutYear);
 extern void MinsToDate(unsigned MinInc, unsigned *OutHr, unsigned *OutMin,
 				unsigned *OutMonth, unsigned *OutDay, unsigned *OutYear);

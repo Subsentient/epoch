@@ -351,7 +351,7 @@ ReturnCode EmulShutdown(int ArgumentCount, const char **ArgStream)
 			localtime_r(&TTime, &TimeStruct);
 			
 			snprintf(TimeFormat, sizeof TimeFormat, "%u:%u:%d %u/%u/%u",
-					TempParams.TargetHour, TempParams.TargetMin, TimeStruct.tm_sec, TempParams.TargetMonth,
+					TempParams.TargetHour, TempParams.TargetMin, (int)TimeStruct.tm_sec, TempParams.TargetMonth,
 					TempParams.TargetDay, TempParams.TargetYear);
 					
 			++TimeIsSet;

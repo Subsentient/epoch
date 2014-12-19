@@ -151,13 +151,14 @@ void MinsToDate(unsigned MinInc, unsigned *OutHr, unsigned *OutMin,
 	*OutYear = OutTime.tm_year + 1900;
 }
 
-unsigned DateDiff(unsigned InHr, unsigned InMin, unsigned *OutMonth,
+unsigned *DateDiff(unsigned InHr, unsigned InMin, unsigned *OutMonth,
 						unsigned *OutDay, unsigned *OutYear)
 { /*Provides a true date as to when the next occurrence of this hour and minute will return via pointers, and
 	* also provides the number of minutes that will elapse during the time between. You can pass NULL for the pointers.*/
 	struct tm TimeStruct, TS2;
 	time_t CoreClock = 0, Clock2 = 0;
 	unsigned Hr, Min, Month, Day, Year;
+	static unsigned RetVal[2];
 	
 	time(&CoreClock);
 	localtime_r(&CoreClock, &TimeStruct);
@@ -207,9 +208,11 @@ unsigned DateDiff(unsigned InHr, unsigned InMin, unsigned *OutMonth,
 	/*Convert TS2 into a time_t*/
 	Clock2 = mktime(&TS2);
 	
-	/*Return the difference in minutes.*/
-	return (Clock2 - CoreClock) / 60;
+	RetVal[0] = (Clock2 - CoreClock) / 60; /*Minutes.*/
+	RetVal[1] = (Clock2 - CoreClock) % 60; /*and seconds.*/
 	
+	/*Return the difference in minutes.*/
+	return RetVal;
 }
 
 void GetCurrentTime(char *OutHr, char *OutMin, char *OutSec, char *OutYear, char *OutMonth, char *OutDay)

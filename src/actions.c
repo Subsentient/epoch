@@ -123,7 +123,7 @@ static void PrimaryLoop(void)
 					LaunchShutdown(HaltParams.HaltMode);
 				}
 				else if (CurSec >= HaltParams.TargetSec && CurMin != HaltParams.TargetMin &&
-					DateDiff(HaltParams.TargetHour, HaltParams.TargetMin, NULL, NULL, NULL) <= 20 )
+					*DateDiff(HaltParams.TargetHour, HaltParams.TargetMin, NULL, NULL, NULL) <= 20 )
 				{ /*If 20 minutes or less until shutdown, warn us every minute.*/
 					char TBuf[MAX_LINE_SIZE];
 					const char *HaltMode = NULL;
@@ -132,6 +132,8 @@ static void PrimaryLoop(void)
 	
 					if (LastJobID != HaltParams.JobID || CurMin != LastMin)
 					{ /*Don't repeat ourselves 80 times while the second rolls over.*/
+						const unsigned *const TimeReport = DateDiff(HaltParams.TargetHour, HaltParams.TargetMin, NULL, NULL, NULL);
+						
 						if (HaltParams.HaltMode == OSCTL_HALT)
 						{
 							HaltMode = "halt";
@@ -146,8 +148,8 @@ static void PrimaryLoop(void)
 							HaltMode = "reboot";
 						}
 						
-						snprintf(TBuf, sizeof TBuf, "System is going down for %s in %u minutes!",
-								HaltMode, DateDiff(HaltParams.TargetHour, HaltParams.TargetMin, NULL, NULL, NULL));
+						snprintf(TBuf, sizeof TBuf, "System is going down for %s in %u minutes %u seconds!",
+								HaltMode, TimeReport[0], TimeReport[1]);
 						EmulWall(TBuf, false);
 						
 						LastJobID = HaltParams.JobID;
