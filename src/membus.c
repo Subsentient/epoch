@@ -782,7 +782,9 @@ void ParseMemBus(void)
 		{
 			char MsgBuf[MAX_LINE_SIZE];
 			const char *HType = NULL;
-			char Hr[16], Min[16];
+			const Bool H = HaltParams.TargetHour >= 10;
+			const Bool M = HaltParams.TargetMin >= 10;
+			const Bool S = HaltParams.TargetSec >= 10;
 			
 			if (HaltParams.HaltMode != -1)
 			{/*Don't let us schedule two shutdowns.*/
@@ -813,12 +815,10 @@ void ParseMemBus(void)
 			if (Signal == OSCTL_HALT) HType = "halt";
 			else if (Signal == OSCTL_POWEROFF) HType = "poweroff";
 			else if (Signal == OSCTL_REBOOT) HType = "reboot";
-
-			snprintf(Hr, 16, (HaltParams.TargetHour >= 10) ? "%u" : "0%u", HaltParams.TargetHour);
-			snprintf(Min, 16, (HaltParams.TargetMin >= 10) ? "%u" : "0%u", HaltParams.TargetMin);
 			
-			snprintf(MsgBuf, sizeof MsgBuf, "System is going down for %s at %s:%s %u/%u/%u!",
-				HType, Hr, Min, HaltParams.TargetMonth, HaltParams.TargetDay, HaltParams.TargetYear);
+			snprintf(MsgBuf, sizeof MsgBuf, "System is going down for %s at %s%u:%s%u:%s%u %u/%u/%u!",
+				HType, H?"":"0", HaltParams.TargetHour, M?"":"0", HaltParams.TargetMin, S?"":"0",
+				HaltParams.TargetSec, HaltParams.TargetMonth, HaltParams.TargetDay, HaltParams.TargetYear);
 					
 			EmulWall(MsgBuf, false);
 			return;
@@ -836,10 +836,9 @@ void ParseMemBus(void)
 	else if (BusDataIs(MEMBUS_CODE_ABORTHALT))
 	{
 		char MsgBuf[MAX_LINE_SIZE];
-		char Hr[16], Min[16];
-			
-		snprintf(Hr, 16, (HaltParams.TargetHour >= 10) ? "%u" : "0%u", HaltParams.TargetHour);
-		snprintf(Min, 16, (HaltParams.TargetMin >= 10) ? "%u" : "0%u", HaltParams.TargetMin);
+		const Bool H = HaltParams.TargetHour >= 10;
+		const Bool M = HaltParams.TargetMin >= 10;
+		const Bool S = HaltParams.TargetSec >= 10;
 		
 		if (HaltParams.HaltMode != -1)
 		{
@@ -851,8 +850,9 @@ void ParseMemBus(void)
 			return;
 		}
 		
-		snprintf(MsgBuf, sizeof MsgBuf, "%s %s:%s %u/%u/%u %s", "The shutdown scheduled for",
-				Hr, Min, HaltParams.TargetMonth, HaltParams.TargetDay, HaltParams.TargetYear,
+		snprintf(MsgBuf, sizeof MsgBuf, "%s %s%u:%s%u:%s%u %u/%u/%u %s", "The shutdown scheduled for",
+				H?"":"0", HaltParams.TargetHour, M?"":"0", HaltParams.TargetMin, S?"":"0", HaltParams.TargetSec,
+				HaltParams.TargetMonth, HaltParams.TargetDay, HaltParams.TargetYear,
 				"has been aborted.");
 
 		EmulWall(MsgBuf, false);
