@@ -236,22 +236,18 @@ void EmergencyShell(void)
 	fprintf(stderr, CONSOLE_COLOR_MAGENTA "\nPreparing to start emergency shell." CONSOLE_ENDCOLOR "\n---\n");
 	
 	fprintf(stderr, "\nSyncing disks...\n");
-	fflush(NULL);
 	sync(); /*First things first, sync disks.*/
 	
 	fprintf(stderr, "Shutting down Epoch...\n");
-	fflush(NULL);
 	ShutdownConfig(); /*Release all memory.*/
 	ShutdownMemBus(true); /*Stop the membus.*/
 	
 	fprintf(stderr, "Launching the shell...\n");
-	fflush(NULL);
 	
 	execlp("sh", "sh", NULL); /*Nuke our process image and replace with a shell. No point forking.*/
 	
 	/*We're supposed to be gone! Something went wrong!*/
 	SpitError("Failed to start emergency shell! Sleeping forever.");
-	fflush(NULL);
 	
 	while (1) sleep(1); /*Hang forever to prevent a kernel panic.*/
 }

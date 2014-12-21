@@ -141,7 +141,7 @@ void BeginStatusReport(const char *InReport)
 	
 	if (TitleEnd) strcpy(Halves[1], TitleEnd);
 	
-	printf("%s%s%s", Halves[0], InReport, Halves[1]); fflush(stdout);
+	printf("%s%s%s", Halves[0], InReport, Halves[1]);
 	
 }
 
@@ -160,9 +160,7 @@ void CompleteStatusReport(const char *InReport, ReturnCode ExitStatus, Bool LogR
 	if (StatusEnd) strcpy(Halves[1], StatusEnd);
 	
 	
-	printf("%s%s%s", Halves[0], StatusReportFormat.StatusFormats[ExitStatus], Halves[1]); fflush(stdout);
-	
-	fflush(stdout);
+	printf("%s%s%s", Halves[0], StatusReportFormat.StatusFormats[ExitStatus], Halves[1]);
 
 	/*Write status result to the logs.*/
 	snprintf(OBuf, sizeof OBuf, "%s (%s)", InReport, StatusReportFormat.StatusFormats[ExitStatus]);

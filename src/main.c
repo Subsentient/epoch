@@ -95,7 +95,6 @@ static void SigHandler(int Signal)
 					}
 					
 					puts(MsgBuf);
-					fflush(NULL);
 					
 					WriteLogLine(MsgBuf, true);
 					
@@ -123,7 +122,6 @@ static void SigHandler(int Signal)
 								CurrentTask.TaskName, CONSOLE_ENDCOLOR);
 					}
 					puts(MsgBuf);
-					fflush(stdout);
 					
 					WriteLogLine(MsgBuf, true);
 					
@@ -452,7 +450,6 @@ static ReturnCode ProcessGenericHalt(int argc, char **argv)
 			else
 			{
 				printf("\n%s\n", SuccessMsg);
-				fflush(NULL);
 			}
 			
 		}
@@ -550,7 +547,7 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 		
 		MemBus_Write(MEMBUS_CODE_RXD, false);
 		
-		puts("Re-executing Epoch."); fflush(NULL);
+		puts("Re-executing Epoch.");
 		
 		ShutdownMemBus(false);
 		while (shmget(MEMKEY, MEMBUS_SIZE, 0660) != -1) usleep(100); /*Wait for it to quit...*/
@@ -1555,8 +1552,10 @@ static void SetDefaultProcessTitle(int argc, char **argv)
 #ifndef NOMAINFUNC
 int main(int argc, char **argv)
 { /*Lotsa sloppy CLI processing here.*/
-	/*Figure out what we are.*/
-
+	/**Turn off buffering for stdout and stderr.**/
+	setvbuf(stdout, NULL, _IONBF, 0);
+	setvbuf(stderr, NULL, _IONBF, 0);
+	
 	/*Set up signal handling.*/
 	signal(SIGSEGV, SigHandler);
 	signal(SIGILL, SigHandler);

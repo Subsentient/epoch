@@ -574,7 +574,6 @@ void ParseMemBus(void)
 		WriteLogLine(TmpBuf, true);
 		
 		printf("%s", TmpBuf);
-		fflush(stdout);
 		
 		if (!SwitchRunlevels(TWorker)) /*Switch to it.*/
 		{
