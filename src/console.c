@@ -87,35 +87,35 @@ void SetBannerColor(const char *InChoice)
 {
 	if (!strcmp(InChoice, "BLACK"))
 	{
-		snprintf(BootBanner.BannerColor, 64, "%s", CONSOLE_COLOR_BLACK);
+		snprintf(BootBanner.BannerColor, sizeof BootBanner.BannerColor, "%s", CONSOLE_COLOR_BLACK);
 	}
 	else if (!strcmp(InChoice, "BLUE"))
 	{
-		snprintf(BootBanner.BannerColor, 64, "%s", CONSOLE_COLOR_BLUE);
+		snprintf(BootBanner.BannerColor, sizeof BootBanner.BannerColor, "%s", CONSOLE_COLOR_BLUE);
 	}
 	else if (!strcmp(InChoice, "RED"))
 	{
-		snprintf(BootBanner.BannerColor, 64, "%s", CONSOLE_COLOR_RED);
+		snprintf(BootBanner.BannerColor, sizeof BootBanner.BannerColor, "%s", CONSOLE_COLOR_RED);
 	}
 	else if (!strcmp(InChoice, "GREEN"))
 	{
-		snprintf(BootBanner.BannerColor, 64, "%s", CONSOLE_COLOR_GREEN);
+		snprintf(BootBanner.BannerColor, sizeof BootBanner.BannerColor, "%s", CONSOLE_COLOR_GREEN);
 	}
 	else if (!strcmp(InChoice, "YELLOW"))
 	{
-		snprintf(BootBanner.BannerColor, 64, "%s", CONSOLE_COLOR_YELLOW);
+		snprintf(BootBanner.BannerColor, sizeof BootBanner.BannerColor, "%s", CONSOLE_COLOR_YELLOW);
 	}
 	else if (!strcmp(InChoice, "MAGENTA"))
 	{
-		snprintf(BootBanner.BannerColor, 64, "%s", CONSOLE_COLOR_MAGENTA);
+		snprintf(BootBanner.BannerColor, sizeof BootBanner.BannerColor, "%s", CONSOLE_COLOR_MAGENTA);
 	}
 	else if (!strcmp(InChoice, "CYAN"))
 	{
-		snprintf(BootBanner.BannerColor, 64, "%s", CONSOLE_COLOR_CYAN);
+		snprintf(BootBanner.BannerColor, sizeof BootBanner.BannerColor, "%s", CONSOLE_COLOR_CYAN);
 	}
 	else if (!strcmp(InChoice, "WHITE"))
 	{
-		snprintf(BootBanner.BannerColor, 64, "%s", CONSOLE_COLOR_WHITE);
+		snprintf(BootBanner.BannerColor, sizeof BootBanner.BannerColor, "%s", CONSOLE_COLOR_WHITE);
 	}
 	else
 	{ /*Bad value? Warn and then set no color.*/

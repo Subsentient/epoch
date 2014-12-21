@@ -148,7 +148,7 @@ static ReturnCode ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 		{ /*Only happens if we are using a known shell, even if it's not ours.*/
 			char ErrBuf[MAX_LINE_SIZE];
 			
-			snprintf(ErrBuf, MAX_LINE_SIZE, "\"" ENVVAR_SHELL "\" cannot be read. Using \"%s\" instead.", ShellPath);
+			snprintf(ErrBuf, sizeof ErrBuf, "\"" ENVVAR_SHELL "\" cannot be read. Using \"%s\" instead.", ShellPath);
 			
 			/*Just write to log, because this happens.*/
 			WriteLogLine(ErrBuf, true);
