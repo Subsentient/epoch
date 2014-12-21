@@ -71,7 +71,7 @@ enum { CONFIG_EMISSINGVAL = 1, CONFIG_EBADVAL, CONFIG_ETRUNCATED, CONFIG_EAFTER,
 /*Actual functions.*/
 static char *NextLine(const char *InStream)
 {
-	if (!(InStream = strstr(InStream, "\n")))
+	if (!(InStream = strchr(InStream, '\n')))
 	{
 		return NULL;
 	}
@@ -456,7 +456,7 @@ ReturnCode InitConfig(const char *CurConfigFile)
 			
 			TWorker = WhitespaceArg(TWorker);
 			
-			if (strstr(TWorker, " ") || strstr(TWorker, "\t"))
+			if (strchr(TWorker, ' ') || strchr(TWorker, '\t'))
 			{
 				ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 				continue;

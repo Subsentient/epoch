@@ -50,7 +50,7 @@ void PrintBootBanner(void)
 		
 		for (; *Worker == ' ' || *Worker == '\t'; ++Worker);
 
-		if ((TW = strstr(Worker, "\n")))
+		if ((TW = strchr(Worker, '\n')))
 		{
 			*TW = '\0';
 		}

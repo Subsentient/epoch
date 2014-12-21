@@ -777,7 +777,7 @@ void ParseMemBus(void)
 			return;
 		}
 		
-		if (strstr(TWorker, ":") && strstr(TWorker, "/"))
+		if (strchr(TWorker, ':') && strchr(TWorker, '/'))
 		{
 			char MsgBuf[MAX_LINE_SIZE];
 			const char *HType = NULL;

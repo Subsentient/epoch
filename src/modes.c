@@ -320,7 +320,7 @@ ReturnCode EmulShutdown(int ArgumentCount, const char **ArgStream)
 			snprintf(TmpBuf, sizeof TmpBuf, "%s", MEMBUS_CODE_ABORTHALT);
 			break;
 		}
-		else if (strstr(*TPtr, ":") && **TPtr != '-')
+		else if (strchr(*TPtr, ':') && **TPtr != '-')
 		{
 			struct _HaltParams TempParams;
 			
