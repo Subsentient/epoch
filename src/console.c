@@ -85,46 +85,52 @@ void PrintBootBanner(void)
 
 void SetBannerColor(const char *InChoice)
 {
+	const char *Color = NULL;
+	
 	if (!strcmp(InChoice, "BLACK"))
 	{
-		snprintf(BootBanner.BannerColor, sizeof BootBanner.BannerColor, "%s", CONSOLE_COLOR_BLACK);
+		Color = CONSOLE_COLOR_BLACK;
 	}
 	else if (!strcmp(InChoice, "BLUE"))
 	{
-		snprintf(BootBanner.BannerColor, sizeof BootBanner.BannerColor, "%s", CONSOLE_COLOR_BLUE);
+		Color = CONSOLE_COLOR_BLUE;
 	}
 	else if (!strcmp(InChoice, "RED"))
 	{
-		snprintf(BootBanner.BannerColor, sizeof BootBanner.BannerColor, "%s", CONSOLE_COLOR_RED);
+		Color = CONSOLE_COLOR_RED;
 	}
 	else if (!strcmp(InChoice, "GREEN"))
 	{
-		snprintf(BootBanner.BannerColor, sizeof BootBanner.BannerColor, "%s", CONSOLE_COLOR_GREEN);
+		Color = CONSOLE_COLOR_GREEN;
 	}
 	else if (!strcmp(InChoice, "YELLOW"))
 	{
-		snprintf(BootBanner.BannerColor, sizeof BootBanner.BannerColor, "%s", CONSOLE_COLOR_YELLOW);
+		Color = CONSOLE_COLOR_YELLOW;
 	}
 	else if (!strcmp(InChoice, "MAGENTA"))
 	{
-		snprintf(BootBanner.BannerColor, sizeof BootBanner.BannerColor, "%s", CONSOLE_COLOR_MAGENTA);
+		Color = CONSOLE_COLOR_MAGENTA;
 	}
 	else if (!strcmp(InChoice, "CYAN"))
 	{
-		snprintf(BootBanner.BannerColor, sizeof BootBanner.BannerColor, "%s", CONSOLE_COLOR_CYAN);
+		Color = CONSOLE_COLOR_CYAN;
 	}
 	else if (!strcmp(InChoice, "WHITE"))
 	{
-		snprintf(BootBanner.BannerColor, sizeof BootBanner.BannerColor, "%s", CONSOLE_COLOR_WHITE);
+		Color = CONSOLE_COLOR_WHITE;
 	}
 	else
 	{ /*Bad value? Warn and then set no color.*/
 		char TmpBuf[1024];
 		
 		BootBanner.BannerColor[0] = '\0';
-		snprintf(TmpBuf, 1024, "Bad color value \"%s\" specified for boot banner. Setting no color.", InChoice);
+		snprintf(TmpBuf, sizeof TmpBuf, "Bad color value \"%s\" specified for boot banner. Setting no color.", InChoice);
 		SpitWarning(TmpBuf);
+		return;
 	}
+	
+	strncpy(BootBanner.BannerColor, Color, sizeof BootBanner.BannerColor - 1);
+	BootBanner.BannerColor[sizeof BootBanner.BannerColor - 1] = '\0';
 }
 
 /*Creates the status report.*/
