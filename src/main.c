@@ -1088,7 +1088,7 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 		
 		CArg = argv[2];
 		snprintf(TOut, sizeof TOut, (Enabling ? "Enabling %s" : "Disabling %s"), CArg);
-		RenderReturnCodeReport(TOut);
+		BeginStatusReport(TOut);
 		
 		RV = ObjControl(CArg, (Enabling ? MEMBUS_CODE_OBJENABLE : MEMBUS_CODE_OBJDISABLE));
 		CompleteStatusReport(TOut, RV, false);
@@ -1144,7 +1144,7 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 			const char *ActionString = StartMode == START ? "Starting" : "Stopping";
 			
 			snprintf(TOut, sizeof TOut, "%s %s", ActionString, argv[2]);
-			RenderReturnCodeReport(TOut);
+			BeginStatusReport(TOut);
 			
 			RV = ObjControl(argv[2], (StartMode == START ? MEMBUS_CODE_OBJSTART : MEMBUS_CODE_OBJSTOP));
 			
@@ -1154,7 +1154,7 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 		{
 			snprintf(TOut, sizeof TOut, "Stopping %s", argv[2]);
 			
-			RenderReturnCodeReport(TOut);
+			BeginStatusReport(TOut);
 			RV = ObjControl(argv[2], MEMBUS_CODE_OBJSTOP);
 			CompleteStatusReport(TOut, RV, false);
 			
@@ -1166,7 +1166,7 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 			
 			snprintf(TOut, sizeof TOut, "Starting %s", argv[2]);
 			
-			RenderReturnCodeReport(TOut);
+			BeginStatusReport(TOut);
 			RV = ObjControl(argv[2], MEMBUS_CODE_OBJSTART);
 			CompleteStatusReport(TOut, RV, false);
 		}
@@ -1212,7 +1212,7 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 		snprintf(PossibleResponses[3], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_BADPARAM, OutBuf);
 		
 		snprintf(StatusBuf, MAX_LINE_SIZE, "Reloading %s", argv[2]);
-		RenderReturnCodeReport(StatusBuf);
+		BeginStatusReport(StatusBuf);
 		
 		MemBus_Write(OutBuf, false);
 		

@@ -15,12 +15,20 @@
 
 /*The banner we show upon startup.*/
 struct _BootBanner BootBanner;
+
+/*Specifies how we show our status reports to the world.*/
+struct _StatusReportFormat StatusReportFormat =
+		{
+			CONSOLE_COLOR_CYAN "* " CONSOLE_ENDCOLOR "!TITLE! " CONSOLE_CTL_SAVESTATE "(" CONSOLE_COLOR_CYAN "...." CONSOLE_ENDCOLOR ")",
+			CONSOLE_CTL_RESTORESTATE "(!STATUS!)\n",
+			{
+				CONSOLE_COLOR_RED "FAIL" CONSOLE_ENDCOLOR,
+				CONSOLE_COLOR_GREEN "Done" CONSOLE_ENDCOLOR, 
+				CONSOLE_COLOR_YELLOW "WARN" CONSOLE_ENDCOLOR 
+			}
+		};
 /*Should we Disable CTRL-ALT-DEL instant reboots?*/
 Bool DisableCAD = true;
-
-static const char *const ExitStrings[] = { CONSOLE_COLOR_RED "FAIL" CONSOLE_ENDCOLOR,
-							CONSOLE_COLOR_GREEN "Done" CONSOLE_ENDCOLOR, 
-							CONSOLE_COLOR_YELLOW "WARN" CONSOLE_ENDCOLOR };
 							
 void PrintBootBanner(void)
 { /*Real simple stuff.*/
@@ -120,27 +128,49 @@ void SetBannerColor(const char *InChoice)
 }
 
 /*Creates the status report.*/
-void RenderReturnCodeReport(const char *InReport)
-{							
-	printf(CONSOLE_COLOR_CYAN "* " CONSOLE_ENDCOLOR" %s " CONSOLE_CTL_SAVESTATE "(" CONSOLE_COLOR_CYAN "...." CONSOLE_ENDCOLOR ")", InReport);
-	fflush(stdout);
-}
+void BeginStatusReport(const char *InReport)
+{
+	struct _StatusReportFormat TempStats = StatusReportFormat;
+	char *TitleBegin = strstr(TempStats.StartFormat, "!TITLE!");
+	char *TitleEnd = TitleBegin ? TitleBegin + sizeof "!TITLE!" - 1 : NULL;
+	char Halves[2][sizeof TempStats.StartFormat] = { { '\0' } };
 	
+	if (TitleBegin) *TitleBegin = '\0'; /*So we can just copy it in with no fiddling..*/
+
+	strcpy(Halves[0], TempStats.StartFormat); /*Copy it in whether or not we found the beginning.*/
+	
+	if (TitleEnd) strcpy(Halves[1], TitleEnd);
+	
+	printf("%s%s%s", Halves[0], InReport, Halves[1]); fflush(stdout);
+	
+}
+
 void CompleteStatusReport(const char *InReport, ReturnCode ExitStatus, Bool LogReport)
 {
+	struct _StatusReportFormat TempStats = StatusReportFormat;
+	char *StatusBegin = strstr(TempStats.FinishFormat, "!STATUS!");
+	char *StatusEnd = StatusBegin ? StatusBegin + sizeof "!STATUS!" - 1 : NULL;
+	char Halves[2][sizeof TempStats.FinishFormat] = { { '\0' } };
 	char OBuf[MAX_LINE_SIZE];
 	
-	snprintf(OBuf, sizeof OBuf, "%s (%s)", InReport, ExitStrings[ExitStatus]);
+	if (StatusBegin) *StatusBegin = '\0';
 	
-	printf(CONSOLE_CTL_RESTORESTATE "(%s)\n", ExitStrings[ExitStatus]);
+	strcpy(Halves[0], TempStats.FinishFormat);
+	
+	if (StatusEnd) strcpy(Halves[1], StatusEnd);
+	
+	
+	printf("%s%s%s", Halves[0], StatusReportFormat.StatusFormats[ExitStatus], Halves[1]); fflush(stdout);
 	
 	fflush(stdout);
+
+	/*Write status result to the logs.*/
+	snprintf(OBuf, sizeof OBuf, "%s (%s)", InReport, StatusReportFormat.StatusFormats[ExitStatus]);
 	
 	if (LogReport && InReport != NULL && EnableLogging)
 	{	
 		WriteLogLine(OBuf, true);
 	}
-		
 }
 	
 /*Three little error handling functions. Yay!*/

@@ -814,6 +814,245 @@ ReturnCode InitConfig(const char *CurConfigFile)
 			}
 			continue;
 		}
+		else if (!strncmp(Worker, (CurrentAttribute = "StartingStatusFormat"), sizeof "StartingStatusFormat" - 1))
+		{ /*The first half of our status format, before we get to Done or FAIL or something.*/
+			if (CurObj != NULL)
+			{ /*What the warning says. It'd get all weird if we allowed that.*/
+				ConfigProblem(CurConfigFile, CONFIG_EAFTER, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!strncmp(DelimCurr, "FILE", sizeof "FILE" - 1))
+			{
+				const char *TW = DelimCurr + sizeof "FILE" - 1;
+				char Filename[MAX_LINE_SIZE];
+				FILE *Desc = NULL;
+				struct stat FileStat;
+				unsigned ReadSize = 0;
+				
+				while (*TW == ' ' || *TW == '\t') ++TW;
+				
+				if (!*TW)
+				{
+					ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+					continue;
+				}
+				
+				/*Copy in the filename.*/
+				strncpy(Filename, TW, sizeof Filename - 1);
+				Filename[sizeof Filename - 1] = '\0';
+				
+				if (stat(Filename, &FileStat) != 0 || !(Desc = fopen(Filename, "r")))
+				{
+					snprintf(ErrBuf, sizeof ErrBuf, "Unable to open file %s for attribute %s!", Filename, CurrentAttribute);
+					SpitWarning(ErrBuf);
+					continue;
+				}
+				
+				/*Read it in.*/
+				if (FileStat.st_size >= sizeof StatusReportFormat.StartFormat)
+				{
+					ReadSize = sizeof StatusReportFormat.StartFormat - 1;
+				}
+				else
+				{
+					ReadSize = FileStat.st_size;
+				}
+				
+				fread(StatusReportFormat.StartFormat, 1, ReadSize, Desc);
+				StatusReportFormat.StartFormat[ReadSize] = '\0';
+				
+				fclose(Desc);
+				continue;
+			}
+			strncpy(StatusReportFormat.StartFormat, DelimCurr, sizeof StatusReportFormat.StartFormat - 1);
+			StatusReportFormat.StartFormat[sizeof StatusReportFormat.StartFormat - 1] = '\0';
+			
+			continue;
+		}
+		else if (!strncmp(Worker, (CurrentAttribute = "FinishedStatusFormat"), sizeof "FinishedStatusFormat" - 1))
+		{ /*The second half of our status report format, e.g. [ DONE ] (but the Done part is defined in the next one*/
+			if (CurObj != NULL)
+			{ /*What the warning says. It'd get all weird if we allowed that.*/
+				ConfigProblem(CurConfigFile, CONFIG_EAFTER, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!strncmp(DelimCurr, "FILE", sizeof "FILE" - 1))
+			{
+				const char *TW = DelimCurr + sizeof "FILE" - 1;
+				char Filename[MAX_LINE_SIZE];
+				FILE *Desc = NULL;
+				struct stat FileStat;
+				unsigned ReadSize = 0;
+				
+				while (*TW == ' ' || *TW == '\t') ++TW;
+				
+				if (!*TW)
+				{
+					ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+					continue;
+				}
+				
+				/*Copy in the filename.*/
+				strncpy(Filename, TW, sizeof Filename - 1);
+				Filename[sizeof Filename - 1] = '\0';
+				
+				if (stat(Filename, &FileStat) != 0 || !(Desc = fopen(Filename, "r")))
+				{
+					snprintf(ErrBuf, sizeof ErrBuf, "Unable to open file %s for attribute %s!", Filename, CurrentAttribute);
+					SpitWarning(ErrBuf);
+					continue;
+				}
+				
+				/*Read it in.*/
+				if (FileStat.st_size >= sizeof StatusReportFormat.FinishFormat)
+				{
+					ReadSize = sizeof StatusReportFormat.FinishFormat - 1;
+				}
+				else
+				{
+					ReadSize = FileStat.st_size;
+				}
+				
+				fread(StatusReportFormat.FinishFormat, 1, ReadSize, Desc);
+				StatusReportFormat.FinishFormat[ReadSize] = '\0';
+				
+				fclose(Desc);
+				continue;
+			}
+			
+			strncpy(StatusReportFormat.FinishFormat, DelimCurr, sizeof StatusReportFormat.FinishFormat - 2);
+			StatusReportFormat.FinishFormat[sizeof StatusReportFormat.FinishFormat - 2] = '\0'; /*Minus two so we can fit a newline.*/
+			
+			/*So it doesn't all pile up on one line all weirdy and stuff.*/
+			strcat(StatusReportFormat.FinishFormat, "\n");
+			
+			continue;
+		}
+		else if (!strncmp(Worker, (CurrentAttribute = "StatusNames"), sizeof "StatusNames" - 1))
+		{ /*We specify our status names here, e.g. FAIL, Done, WARN.*/
+			unsigned TInc = 0, Lines = 1;
+			char *TW2 = NULL;
+			
+			if (CurObj != NULL)
+			{ /*What the warning says. It'd get all weird if we allowed that.*/
+				ConfigProblem(CurConfigFile, CONFIG_EAFTER, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+			}
+			
+			if (!strncmp(DelimCurr, "FILE", sizeof "FILE" - 1))
+			{
+				const char *TW = DelimCurr + sizeof "FILE" - 1;
+				char Filename[MAX_LINE_SIZE];
+				FILE *Desc = NULL;
+				struct stat FileStat;
+				char *FileBuf = NULL;
+
+				
+				while (*TW == ' ' || *TW == '\t') ++TW;
+				
+				if (!*TW)
+				{
+					ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+					continue;
+				}
+				
+				/*Copy in the filename.*/
+				strncpy(Filename, TW, sizeof Filename - 1);
+				Filename[sizeof Filename - 1] = '\0';
+				
+				if (stat(Filename, &FileStat) != 0 || !(Desc = fopen(Filename, "r")))
+				{
+					snprintf(ErrBuf, sizeof ErrBuf, "Unable to open file %s for attribute %s!", Filename, CurrentAttribute);
+					SpitWarning(ErrBuf);
+					continue;
+				}
+				
+				/*Allocate space for the file's contents*/
+				FileBuf = malloc(FileStat.st_size + 1);
+				
+				/*Read the contents in now.*/
+				fread(FileBuf, 1, FileStat.st_size, Desc);
+				FileBuf[FileStat.st_size] = '\0';
+				
+				fclose(Desc);
+				
+				/*Remove trailing whitespace.*/
+				for (TInc = FileStat.st_size - 1; TInc > 0 && FileBuf[TInc] == '\n'; --TInc)
+				{
+					FileBuf[TInc] = '\0';
+				}
+				
+				/*Count lines, make sure they equal three.*/
+				for (TW2 = FileBuf; (TW2 = strchr(TW2, '\n')); ++Lines) ++TW2;
+				
+				if (Lines != 3)
+				{ /*Nope.*/
+					free(FileBuf); FileBuf = NULL;
+					ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+					continue;
+				}
+				
+				/*Now actually get that data.*/
+				Lines = 0; TInc = 0; TW2 = FileBuf;
+				do
+				{
+					while (*TW2 == '\n') ++TW2;
+					
+					for (TInc = 0; *TW2 != '\n' && *TW2 != '\0' && TInc < sizeof StatusReportFormat.StatusFormats[Lines] - 1; ++TInc, ++TW2)
+					{
+						StatusReportFormat.StatusFormats[Lines][TInc] = *TW2;
+					}
+					StatusReportFormat.StatusFormats[Lines][TInc] = '\0';
+				} while (++Lines, (TW2 = strchr(TW2, '\n')));
+				
+				free(FileBuf); FileBuf = NULL;
+				continue;
+			}
+			
+			/*Count number of commas.*/
+			for (TW2 = DelimCurr; (TW2 = strchr(TW2, ',')); ++Lines) ++TW2;
+			
+			if (Lines != 3)
+			{ /*Needs to be three.*/
+				ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+				continue;
+			}
+			
+			/*Get the data.*/
+			Lines = 0; TW2 = DelimCurr;
+			do
+			{
+				if (*TW2 == ',') ++TW2;
+				
+				for (TInc = 0; *TW2 != ',' && *TW2 != '\0' && TInc < sizeof StatusReportFormat.StatusFormats[Lines] - 1; ++TInc, ++TW2)
+				{
+					StatusReportFormat.StatusFormats[Lines][TInc] = *TW2;
+				}
+				StatusReportFormat.StatusFormats[Lines][TInc] = '\0';
+			} while (++Lines, (TW2 = strchr(TW2, ',')));
+
+			continue;
+		}
 		else if (!strncmp(Worker, (CurrentAttribute = "ObjectID"), sizeof "ObjectID" - 1))
 		{ /*ASCII value used to identify this object internally, and also a kind of short name for it.*/
 			char *Temp = NULL;

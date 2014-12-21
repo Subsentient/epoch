@@ -278,7 +278,14 @@ struct _EnvVarList
 	struct _EnvVarList *Next;
 	struct _EnvVarList *Prev;
 };
-	
+
+struct _StatusReportFormat
+{
+	char StartFormat[MAX_LINE_SIZE]; /*e.g. " * Starting object..." */
+	char FinishFormat[MAX_LINE_SIZE]; /*e.g. " (<status>)\n" */
+	char StatusFormats[3][MAX_LINE_SIZE]; /*For FAILURE, Done, and WARNING, and whatnot. You specify what to show.*/
+};
+
 /**Globals go here.**/
 
 extern ObjTable *ObjectTable;
@@ -303,6 +310,7 @@ extern char *ConfigFileList[MAX_CONFIG_FILES];
 extern int NumConfigFiles;
 extern struct _EnvVarList *GlobalEnvVars;
 extern Bool AreInit;
+extern struct _StatusReportFormat StatusReportFormat;
 
 /**Function forward declarations.*/
 
@@ -363,7 +371,7 @@ extern unsigned MemBus_BinRead(void *OutStream_, unsigned MaxOutSize, Bool Serve
 /*console.c*/
 extern void PrintBootBanner(void);
 extern void SetBannerColor(const char *InChoice);
-extern void RenderReturnCodeReport(const char *InReport);
+extern void BeginStatusReport(const char *InReport);
 extern void CompleteStatusReport(const char *InReport, ReturnCode ExitStatus, Bool LogReport);
 extern void SpitWarning(const char *INWarning);
 extern void SpitError(const char *INErr);
