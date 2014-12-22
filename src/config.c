@@ -514,14 +514,6 @@ ReturnCode InitConfig(const char *CurConfigFile)
 			
 			continue;
 		}
-		else if (!strncmp(Worker, (CurrentAttribute = "AlignStatusReports"), sizeof "AlignStatusReports" - 1))
-		{ /*Deprecated.*/
-			snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "Attribute AlignStatusReports is deprecated and no inter has any effect.\n"
-					"%s line %u", CurConfigFile, LineNum);
-			SpitWarning(ErrBuf);
-			WriteLogLine(ErrBuf, true);
-			continue;
-		}
 		/*This will mount /dev, /proc, /sys, /dev/pts, and /dev/shm on boot time, upon request.*/
 		else if (!strncmp(Worker, (CurrentAttribute = "MountVirtual"), strlen("MountVirtual")))
 		{
