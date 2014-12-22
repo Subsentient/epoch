@@ -22,9 +22,9 @@ struct _StatusReportFormat StatusReportFormat =
 			"!TITLE!" CONSOLE_COLOR_CYAN " ... " CONSOLE_ENDCOLOR,
 			"!STATUS!\n",
 			{
-				CONSOLE_COLOR_RED "FAILURE" CONSOLE_ENDCOLOR,
+				CONSOLE_COLOR_RED "FAIL" CONSOLE_ENDCOLOR,
 				CONSOLE_COLOR_GREEN "Done" CONSOLE_ENDCOLOR, 
-				CONSOLE_COLOR_YELLOW "WARNING" CONSOLE_ENDCOLOR 
+				CONSOLE_COLOR_YELLOW "WARN" CONSOLE_ENDCOLOR 
 			}
 		};
 /*Should we Disable CTRL-ALT-DEL instant reboots?*/
@@ -154,19 +154,63 @@ void BeginStatusReport(const char *InReport)
 void CompleteStatusReport(const char *InReport, ReturnCode ExitStatus, Bool LogReport)
 {
 	struct _StatusReportFormat TempStats = StatusReportFormat;
-	char *StatusBegin = strstr(TempStats.FinishFormat, "!STATUS!");
-	char *StatusEnd = StatusBegin ? StatusBegin + sizeof "!STATUS!" - 1 : NULL;
-	char Halves[2][sizeof TempStats.FinishFormat] = { { '\0' } };
+	char *Worker = TempStats.FinishFormat;
 	char OBuf[MAX_LINE_SIZE];
+	char *SubEnd = NULL, *SubBegin = NULL;
 	
-	if (StatusBegin) *StatusBegin = '\0';
-	
-	strcpy(Halves[0], TempStats.FinishFormat);
-	
-	if (StatusEnd) strcpy(Halves[1], StatusEnd);
-	
-	
-	printf("%s%s%s", Halves[0], StatusReportFormat.StatusFormats[ExitStatus], Halves[1]);
+	do
+	{
+		char *Find1 = NULL, *Find2 = NULL;
+		
+		/*Set back to NULL for this iteration.*/
+		SubEnd = NULL;
+		
+		Find1 = strstr(Worker, "!TITLE!");
+		Find2 = strstr(Worker, "!STATUS!");
+
+		if (Find1 && Find2)
+		{ /*If both are found, deal with the first one first.*/
+			if (Find2 > Find1)
+			{
+				SubBegin = Find1;
+				SubEnd = Find1 + sizeof "!TITLE!" - 1;
+			}
+			else
+			{
+				SubBegin = Find2;
+				SubEnd = Find2 + sizeof "!STATUS!" - 1;
+			}
+		}
+		else
+		{ /*Only one.*/
+			if (Find1)
+			{
+				SubBegin = Find1;
+				SubEnd = Find1 + sizeof "!TITLE!" - 1;
+			}
+			else if (Find2)
+			{
+				SubBegin = Find2;
+				SubEnd = Find2 + sizeof "!STATUS!" - 1;
+			}
+		}
+		
+		/*So we only print what we know about.*/
+		if (SubBegin) *SubBegin = '\0';
+		
+		/*Now print it.*/
+		if (*Worker) printf("%s", Worker);
+		
+		/*Now we deal with whatever we found.*/
+		if (Find1 && SubBegin == Find1)
+		{ /*They want the title for the report.*/
+			printf("%s", InReport);
+		}
+		else if (Find2 && SubBegin == Find2)
+		{ /*They want the status result for the report.*/
+			printf("%s", StatusReportFormat.StatusFormats[ExitStatus]);
+		}
+	} while((Worker = SubEnd) != NULL);		
 
 	/*Write status result to the logs.*/
 	snprintf(OBuf, sizeof OBuf, "%s (%s)", InReport, StatusReportFormat.StatusFormats[ExitStatus]);
