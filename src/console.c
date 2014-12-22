@@ -19,12 +19,12 @@ struct _BootBanner BootBanner;
 /*Specifies how we show our status reports to the world.*/
 struct _StatusReportFormat StatusReportFormat =
 		{
-			CONSOLE_COLOR_CYAN "* " CONSOLE_ENDCOLOR "!TITLE! " CONSOLE_CTL_SAVESTATE "(" CONSOLE_COLOR_CYAN "...." CONSOLE_ENDCOLOR ")",
-			CONSOLE_CTL_RESTORESTATE "(!STATUS!)\n",
+			"!TITLE!" CONSOLE_COLOR_CYAN " ... " CONSOLE_ENDCOLOR,
+			"!STATUS!\n",
 			{
-				CONSOLE_COLOR_RED "FAIL" CONSOLE_ENDCOLOR,
+				CONSOLE_COLOR_RED "FAILURE" CONSOLE_ENDCOLOR,
 				CONSOLE_COLOR_GREEN "Done" CONSOLE_ENDCOLOR, 
-				CONSOLE_COLOR_YELLOW "WARN" CONSOLE_ENDCOLOR 
+				CONSOLE_COLOR_YELLOW "WARNING" CONSOLE_ENDCOLOR 
 			}
 		};
 /*Should we Disable CTRL-ALT-DEL instant reboots?*/
