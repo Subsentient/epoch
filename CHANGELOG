@@ -1,0 +1,13 @@
+Changes since 1.1.1:
+
+* Cleaned up a huge amount of code that was just fugly as hell. This is the big change.
+* Removed unsigned long abuse caused by my (at the time) severe OCD.
+* New service status output format. Looks cleaner.
+* Extremely deprecated AlignStatusReports attribute completely removed. I doubt even one person will be affected by this.
+* Add three new attributes: StartingStatusFormat, FinishedStatusFormat, and
+StatusNames to manually specify an alternate service status output format.
+
+* Specific bugfixes:
+	* Don't set a config problem check to WARNING after we already found a FAILURE.
+	* Fix overwriting service messages, caused by our old status format.
+	* Fix inaccurate reporting of scheduled shutdown times, now report seconds too.
