@@ -781,9 +781,9 @@ void ParseMemBus(void)
 		{
 			char MsgBuf[MAX_LINE_SIZE];
 			const char *HType = NULL;
-			const Bool H = HaltParams.TargetHour >= 10;
-			const Bool M = HaltParams.TargetMin >= 10;
-			const Bool S = HaltParams.TargetSec >= 10;
+			Bool H;
+			Bool M;
+			Bool S;
 			
 			if (HaltParams.HaltMode != -1)
 			{/*Don't let us schedule two shutdowns.*/
@@ -804,6 +804,10 @@ void ParseMemBus(void)
 				
 				return;
 			}
+			
+			H = HaltParams.TargetHour >= 10;
+			M = HaltParams.TargetMin >= 10;
+			S = HaltParams.TargetSec >= 10;
 			
 			++HaltParams.JobID;
 			HaltParams.HaltMode = Signal;

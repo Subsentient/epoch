@@ -1101,16 +1101,9 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 		char TOut[MAX_LINE_SIZE];
 		
 
-		if (argc != 3)
+		if (argc < 3)
 		{
-			if (argc > 3)
-			{
-				puts("Too many arguments.\n");
-			}
-			else
-			{
-				puts("Too few arguments.\n");
-			}
+			puts("Too few arguments.\n");
 			
 			PrintEpochHelp(argv[0], "start");
 			return FAILURE;
