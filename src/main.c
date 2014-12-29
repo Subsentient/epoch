@@ -1061,17 +1061,12 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 		ReturnCode RV = SUCCESS;
 		Bool Enabling = ArgIs("enable");
 		char TOut[MAX_LINE_SIZE];
+		unsigned Inc = 2;
 		
-		if (argc != 3)
+		if (argc < 3)
 		{
-			if (argc > 3)
-			{
-				puts("Too many arguments.\n");
-			}
-			else
-			{
-				puts("Too few arguments.\n");
-			}
+
+			puts("Too few arguments.\n");
 			
 			PrintEpochHelp(argv[0], "enable");
 			return FAILURE;
@@ -1083,12 +1078,15 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 			return FAILURE;
 		}
 		
-		CArg = argv[2];
-		snprintf(TOut, sizeof TOut, (Enabling ? "Enabling %s" : "Disabling %s"), CArg);
-		BeginStatusReport(TOut);
-		
-		RV = ObjControl(CArg, (Enabling ? MEMBUS_CODE_OBJENABLE : MEMBUS_CODE_OBJDISABLE));
-		CompleteStatusReport(TOut, RV, false);
+		/*Iterate through all specified objects.*/
+		for (Inc = 2; Inc < argc; ++Inc)
+		{
+			snprintf(TOut, sizeof TOut, (Enabling ? "Enabling %s" : "Disabling %s"), argv[Inc]);
+			BeginStatusReport(TOut);
+			
+			RV = ObjControl(argv[Inc], (Enabling ? MEMBUS_CODE_OBJENABLE : MEMBUS_CODE_OBJDISABLE));
+			CompleteStatusReport(TOut, RV, false);
+		}
 		
 		ShutdownMemBus(false);
 		return RV;
@@ -1099,7 +1097,7 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 		short StartMode = 0;
 		enum { START = 1, STOP, RESTART };
 		char TOut[MAX_LINE_SIZE];
-		
+		unsigned Inc = 2;
 
 		if (argc < 3)
 		{
@@ -1128,43 +1126,44 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 			StartMode = RESTART;
 		}
 		
-		
-		if (StartMode < RESTART)
+		/*Iterate through all provided arguments.*/
+		for (Inc = 2; Inc < argc; ++Inc)
 		{
-			const char *ActionString = StartMode == START ? "Starting" : "Stopping";
-			
-			snprintf(TOut, sizeof TOut, "%s %s", ActionString, argv[2]);
-			BeginStatusReport(TOut);
-			
-			RV = ObjControl(argv[2], (StartMode == START ? MEMBUS_CODE_OBJSTART : MEMBUS_CODE_OBJSTOP));
-			
-			CompleteStatusReport(TOut, RV, false);
-		}
-		else
-		{
-			snprintf(TOut, sizeof TOut, "Stopping %s", argv[2]);
-			
-			BeginStatusReport(TOut);
-			RV = ObjControl(argv[2], MEMBUS_CODE_OBJSTOP);
-			CompleteStatusReport(TOut, RV, false);
-			
-			if (!RV)
-			{ /*Stop failed so...*/
-				ShutdownMemBus(false);
-				return FAILURE;
+			if (StartMode < RESTART)
+			{
+				const char *ActionString = StartMode == START ? "Starting" : "Stopping";
+				
+				snprintf(TOut, sizeof TOut, "%s %s", ActionString, argv[Inc]);
+				BeginStatusReport(TOut);
+				
+				RV = ObjControl(argv[Inc], (StartMode == START ? MEMBUS_CODE_OBJSTART : MEMBUS_CODE_OBJSTOP));
+				
+				CompleteStatusReport(TOut, RV, false);
 			}
-			
-			snprintf(TOut, sizeof TOut, "Starting %s", argv[2]);
-			
-			BeginStatusReport(TOut);
-			RV = ObjControl(argv[2], MEMBUS_CODE_OBJSTART);
-			CompleteStatusReport(TOut, RV, false);
+			else
+			{
+				snprintf(TOut, sizeof TOut, "Stopping %s", argv[Inc]);
+				
+				BeginStatusReport(TOut);
+				RV = ObjControl(argv[Inc], MEMBUS_CODE_OBJSTOP);
+				CompleteStatusReport(TOut, RV, false);
+				
+				if (!RV)
+				{ /*Stop failed so...*/
+					continue;
+				}
+				
+				snprintf(TOut, sizeof TOut, "Starting %s", argv[Inc]);
+				
+				BeginStatusReport(TOut);
+				RV = ObjControl(argv[Inc], MEMBUS_CODE_OBJSTART);
+				CompleteStatusReport(TOut, RV, false);
+			}	
 		}
 		
-		
-		
+		/*Now that we're done, shut down the membus.*/
 		ShutdownMemBus(false);
-		return RV;
+		return SUCCESS;
 	}
 	else if (ArgIs("reload"))
 	{
@@ -1172,18 +1171,11 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 		char InBuf[MEMBUS_MSGSIZE], OutBuf[MEMBUS_MSGSIZE];
 		char PossibleResponses[4][MEMBUS_MSGSIZE];
 		char StatusBuf[MAX_LINE_SIZE];
-		Bool Botched = false;
+		unsigned Inc = 2;
 		
-		if (argc != 3)
+		if (argc < 3)
 		{
-			if (argc > 3)
-			{
-				puts("Too many arguments.\n");
-			}
-			else
-			{
-				puts("Too few arguments.\n");
-			}
+			puts("Too few arguments.\n");
 			
 			PrintEpochHelp(argv[0], "reload");
 			return FAILURE;
@@ -1194,49 +1186,52 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 			return FAILURE;
 		}
 		
-		snprintf(OutBuf, sizeof OutBuf, "%s %s", MEMBUS_CODE_OBJRELOAD, argv[2]);
-		
-		snprintf(PossibleResponses[0], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, OutBuf);
-		snprintf(PossibleResponses[1], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_WARNING, OutBuf);
-		snprintf(PossibleResponses[2], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_FAILURE, OutBuf);
-		snprintf(PossibleResponses[3], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_BADPARAM, OutBuf);
-		
-		snprintf(StatusBuf, MAX_LINE_SIZE, "Reloading %s", argv[2]);
-		BeginStatusReport(StatusBuf);
-		
-		MemBus_Write(OutBuf, false);
-		
-		while (!MemBus_Read(InBuf, false)) usleep(1000);
-		
-		if (!strcmp(InBuf, PossibleResponses[0]))
+		/*Iterate through all objects they specified.*/
+		for (Inc = 2; Inc < argc; ++Inc)
 		{
-			RV = SUCCESS;
-		}
-		else if (!strcmp(InBuf, PossibleResponses[1]))
-		{
-			RV = WARNING;
-		}
-		else if (!strcmp(InBuf, PossibleResponses[2]))
-		{
-			RV = FAILURE;
-		}
-		else if (!strcmp(InBuf, PossibleResponses[3]))
-		{
-			CompleteStatusReport(StatusBuf, (RV = FAILURE), false);
-			SpitError("We are being told that we sent a bad parameter over membus.\n"
-						"This is probably a bug. Please report to Epoch!");
-			Botched = true;
-		}
-		else
-		{
-			CompleteStatusReport(StatusBuf, (RV = FAILURE), false);
-			SpitError("Bad parameter received over membus! This is probably a bug.\n"
-						"Please report to Epoch!");
-			Botched = true;
-		}
-		
-		if (!Botched)
-		{
+			snprintf(OutBuf, sizeof OutBuf, "%s %s", MEMBUS_CODE_OBJRELOAD, argv[Inc]);
+			
+			snprintf(PossibleResponses[0], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, OutBuf);
+			snprintf(PossibleResponses[1], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_WARNING, OutBuf);
+			snprintf(PossibleResponses[2], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_FAILURE, OutBuf);
+			snprintf(PossibleResponses[3], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_BADPARAM, OutBuf);
+			
+			snprintf(StatusBuf, MAX_LINE_SIZE, "Reloading %s", argv[Inc]);
+			BeginStatusReport(StatusBuf);
+			
+			MemBus_Write(OutBuf, false);
+			
+			while (!MemBus_Read(InBuf, false)) usleep(1000);
+			
+			if (!strcmp(InBuf, PossibleResponses[0]))
+			{
+				RV = SUCCESS;
+			}
+			else if (!strcmp(InBuf, PossibleResponses[1]))
+			{
+				RV = WARNING;
+			}
+			else if (!strcmp(InBuf, PossibleResponses[2]))
+			{
+				RV = FAILURE;
+			}
+			else if (!strcmp(InBuf, PossibleResponses[3]))
+			{
+				CompleteStatusReport(StatusBuf, (RV = FAILURE), false);
+				SpitError("We are being told that we sent a bad parameter over membus.\n"
+							"This is probably a bug. Please report to Epoch!");
+				ShutdownMemBus(false);
+				return FAILURE;
+			}
+			else
+			{
+				CompleteStatusReport(StatusBuf, (RV = FAILURE), false);
+				SpitError("Bad parameter received over membus! This is probably a bug.\n"
+							"Please report to Epoch!");
+				ShutdownMemBus(false);
+				return FAILURE;
+			}
+			
 			CompleteStatusReport(StatusBuf, RV, false);
 		}
 		
