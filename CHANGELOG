@@ -1,3 +1,14 @@
+Changes since 1.2.1:
+* Fix bug in ugly time format for shutdown command, ironically a result
+of a previous attempt to clean it up.
+* Allow using the 'epoch' command's start, stop, restart, reload, and 
+status subcommands to accept multiple objects in one command.
+So instead of:
+epoch restart durr;epoch restart hurr
+
+You can now do:
+epoch restart durr hurr
+
 Changes since 1.1.1:
 
 * Cleaned up a huge amount of code that was just fugly as hell. This is the big change.
