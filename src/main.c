@@ -635,290 +635,293 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 		char *Worker = NULL;
 		const char *const YN[2] = { CONSOLE_COLOR_RED "No" CONSOLE_ENDCOLOR,
 									CONSOLE_COLOR_GREEN "Yes" CONSOLE_ENDCOLOR };
-		
-		if (argc > 3)
-		{
-			puts("Too many arguments.");
-			PrintEpochHelp(argv[0], "status");
-			return FAILURE;
-		}
+		unsigned Inc = 2;
+		int Stopper = argc > 2 ? argc : 3;
 		
 		if (!InitMemBus(false))
 		{
 			return FAILURE;
 		}
 		
-		/*Send the activation code.*/
-		if (argc == 3)
+		for (; Inc < Stopper; ++Inc)
 		{
-			snprintf(OutBuf, sizeof OutBuf, "%s %s", MEMBUS_CODE_LSOBJS, argv[2]);
-		}
-		else
-		{
-			strncpy(OutBuf, MEMBUS_CODE_LSOBJS, strlen(MEMBUS_CODE_LSOBJS) + 1);
-		}
-		
-		MemBus_Write(OutBuf, false);
-		
-		while (!MemBus_BinRead(InBuf, MEMBUS_MSGSIZE, false)) usleep(100);
-
-		if (!strcmp(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_LSOBJS, InBuf))
-		{
-			puts(argc == 2 ? "No objects found!" : "Specified object not found.");
-			ShutdownMemBus(false);
-			return FAILURE;
-		}
-		
-		while (strcmp(InBuf, MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_LSOBJS) != 0)
-		{
-			Bool FoundRL = false;
-			unsigned PID = 0;
-			Bool Started = false, Running = false, Enabled = false, PivotRoot = false, Persistent = false, Exec = false;
-			enum _StopMode StopMode;
-			unsigned char TermSignal = 0, ReloadCommandSignal = 0, *BinWorker = NULL;
-			unsigned StartedSince, UserID, GroupID, Inc = 0, StopTimeout;
-			Bool HaltCmdOnly = false, IsService = false, AutoRestart = false, NoStopWait = false, NoTrack = false;
-			Bool ForceShell = false, RawDescription = false, Fork = false, RunOnce = false, ForkScanOnce = false;
-			Bool StartFailIsCritical = false, StopFailIsCritical = false, OptNewline = false;
-			char RLExpect[MEMBUS_MSGSIZE], ObjectID[MAX_DESCRIPT_SIZE], ObjectDescription[MAX_DESCRIPT_SIZE];
 			
-			Worker = InBuf + strlen(MEMBUS_CODE_LSOBJS " ");
-			
-			/*Version matters.*/
-			if (strncmp(Worker, MEMBUS_LSOBJS_VERSION, strlen(MEMBUS_LSOBJS_VERSION)) != 0)
+			/*Send the activation code.*/
+			if (argc > 2)
 			{
-				SpitError("LSOBJS protocol version mismatch. Expected \"" MEMBUS_LSOBJS_VERSION "\".");
-				
-				while (strcmp(InBuf, MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_LSOBJS) != 0)
-				{ /*Don't mess up the membus, let it empty.*/
-					while (!MemBus_Read(InBuf, false)) usleep(10);
-				}
-				
+				snprintf(OutBuf, sizeof OutBuf, "%s %s", MEMBUS_CODE_LSOBJS, argv[Inc]);
+			}
+			else
+			{
+				strncpy(OutBuf, MEMBUS_CODE_LSOBJS, strlen(MEMBUS_CODE_LSOBJS) + 1);
+			}
+			
+			MemBus_Write(OutBuf, false);
+			
+			while (!MemBus_BinRead(InBuf, MEMBUS_MSGSIZE, false)) usleep(100);
+	
+			if (!strcmp(MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_LSOBJS, InBuf))
+			{
+				puts(argc < 3 ? "No objects found!" : "Specified object not found.");
 				ShutdownMemBus(false);
 				return FAILURE;
 			}
 			
-			Worker += strlen(MEMBUS_LSOBJS_VERSION) + 1;
-			
-			BinWorker = (void*)Worker;
-			
-			Started = *BinWorker++;
-			Running = *BinWorker++;
-			Enabled = *BinWorker++;
-			TermSignal = *BinWorker++;
-			ReloadCommandSignal = *BinWorker++;
-
-			/*Remove this line when we make use of ReloadCommandSignal.*/
-			(void)ReloadCommandSignal;
-			
-			memcpy(&UserID, BinWorker, sizeof(int));
-			memcpy(&GroupID, (BinWorker += sizeof(int)), sizeof(int));
-			
-			memcpy(&StopMode, (BinWorker += sizeof(int)), sizeof(enum _StopMode));
-			memcpy(&PID, (BinWorker += sizeof(enum _StopMode)), sizeof(int));
-			
-			memcpy(&StartedSince, (BinWorker += sizeof(int)), sizeof(int));
-			memcpy(&StopTimeout, BinWorker + sizeof(int), sizeof(int));
-
-			while (!MemBus_BinRead(InBuf, MEMBUS_MSGSIZE, false)) usleep(100);
-			
-			for (Worker = InBuf, Inc = 0; Worker[Inc] != ' '; ++Inc)
-			{ /*Get ObjectID*/
-				ObjectID[Inc] = Worker[Inc];
-			}
-			ObjectID[Inc] = '\0';
-			
-			Worker += Inc + 1;
-			
-			/*Get ObjectDescription.*/
-			strncpy(ObjectDescription, Worker, strlen(Worker) + 1);
-			
-			/*Retrieve the options.*/
-			while (!MemBus_BinRead(InBuf, MEMBUS_MSGSIZE, false)) usleep(100);
-			
-			for (Worker = InBuf; *Worker != 0; ++Worker)
+			while (strcmp(InBuf, MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_LSOBJS) != 0)
 			{
-				if (*(unsigned char*)Worker >= COPT_MAX) continue; /*If we don't understand.*/
-
-				switch (*(unsigned char*)Worker)
+				Bool FoundRL = false;
+				unsigned PID = 0;
+				Bool Started = false, Running = false, Enabled = false, PivotRoot = false, Persistent = false, Exec = false;
+				enum _StopMode StopMode;
+				unsigned char TermSignal = 0, ReloadCommandSignal = 0, *BinWorker = NULL;
+				unsigned StartedSince, UserID, GroupID, Inc = 0, StopTimeout;
+				Bool HaltCmdOnly = false, IsService = false, AutoRestart = false, NoStopWait = false, NoTrack = false;
+				Bool ForceShell = false, RawDescription = false, Fork = false, RunOnce = false, ForkScanOnce = false;
+				Bool StartFailIsCritical = false, StopFailIsCritical = false, OptNewline = false;
+				char RLExpect[MEMBUS_MSGSIZE], ObjectID[MAX_DESCRIPT_SIZE], ObjectDescription[MAX_DESCRIPT_SIZE];
+				
+				Worker = InBuf + strlen(MEMBUS_CODE_LSOBJS " ");
+				
+				/*Version matters.*/
+				if (strncmp(Worker, MEMBUS_LSOBJS_VERSION, strlen(MEMBUS_LSOBJS_VERSION)) != 0)
 				{
-					case COPT_HALTONLY:
-						HaltCmdOnly = true;
-						break;
-					case COPT_PERSISTENT:
-						Persistent = true;
-						break;
-					case COPT_FORK:
-						Fork = true;
-						break;
-					case COPT_FORKSCANONCE:
-						ForkScanOnce = true;
-						break;
-					case COPT_SERVICE:
-						IsService = true;
-						break;
-					case COPT_RAWDESCRIPTION:
-						RawDescription = true;
-						break;
-					case COPT_AUTORESTART:
-						AutoRestart = true;
-						break;
-					case COPT_FORCESHELL:
-						ForceShell = true;
-						break;
-					case COPT_NOSTOPWAIT:
-						NoStopWait = true;
-						break;
-					case COPT_NOTRACK:
-						NoTrack = true;
-						break;
-					case COPT_STARTFAILCRITICAL:
-						StartFailIsCritical = true;
-						break;
-					case COPT_STOPFAILCRITICAL:
-						StopFailIsCritical = true;
-						break;
-					case COPT_EXEC:
-						Exec = true;
-						break;
-					case COPT_PIVOTROOT:
-						PivotRoot = true;
-						break; 
-					case COPT_RUNONCE:
-						RunOnce = true;
-						break;
-					default:
-						break;
-				}
-			}
-		
-		
-			printf("ObjectID: %s\nObjectDescription: %s\nEnabled: %s | Started: %s | Running: %s | Stop mode: ",
-					ObjectID, ObjectDescription, YN[Enabled],
-					HaltCmdOnly || PivotRoot || Exec ? CONSOLE_COLOR_YELLOW "N/A" CONSOLE_ENDCOLOR : YN[Started],
-					HaltCmdOnly || PivotRoot || Exec ? CONSOLE_COLOR_YELLOW "N/A" CONSOLE_ENDCOLOR : YN[Running]);
-			
-			if (StopMode == STOP_COMMAND) printf("Command");
-			else if (StopMode == STOP_NONE) printf("None");
-			else if (StopMode == STOP_PID) printf("PID");
-			else if (StopMode == STOP_PIDFILE) printf("PID File");
-			
-			if (Running)
-			{
-				printf(" | PID: %u\n", PID);
-			}
-			else
-			{
-				putchar('\n');
-			}
-			
-			if (Started)
-			{
-				time_t SS = (time_t)StartedSince, CTime = time(NULL);
-				struct tm TStruct;
-				char TimeBuf[64] = { '\0' };
-				unsigned Offset = (CTime - StartedSince) / 60;
-				localtime_r(&SS, &TStruct);
-				
-				asctime_r(&TStruct, TimeBuf);
-				
-				TimeBuf[strlen(TimeBuf) - 1] = '\0'; /*Nuke newline.*/
-				printf("Started since %s, for total of %u mins.\n", TimeBuf, Offset);
-			}
-			
-			if (IsService || AutoRestart || HaltCmdOnly || Persistent || Fork || StopTimeout != 10 || NoTrack ||
-				ForceShell || RawDescription || NoStopWait || PivotRoot || RunOnce || TermSignal != SIGTERM || Exec ||
-				StartFailIsCritical || StopFailIsCritical)
-			{
-				printf("Options:");
-				
-				if (IsService) printf(" SERVICE");
-				if (AutoRestart) printf(" AUTORESTART");
-				if (HaltCmdOnly) printf(" HALTONLY");
-				if (Persistent) printf(" PERSISTENT");
-				if (ForceShell) printf(" FORCESHELL");
-				if (Fork)
-				{
-					if (ForkScanOnce) printf(" FORKN");
-					else printf(" FORK");
-				}
-				if (RawDescription) printf(" RAWDESCRIPTION");
-				if (TermSignal != SIGTERM) printf(" TERMSIGNAL=%u", TermSignal);
-				if (NoStopWait) printf(" NOSTOPWAIT");
-				if (PivotRoot) printf(" PIVOT");
-				if (Exec) printf(" EXEC");
-				if (RunOnce) printf(" RUNONCE");
-				if (NoTrack) printf(" NOTRACK");
-				if (StartFailIsCritical) printf( "STARTFAILCRITICAL");
-				if (StopFailIsCritical) printf( "STOPFAILCRITICAL");
-				if (StopTimeout != 10) printf(" STOPTIMEOUT=%u", StopTimeout);
-				
-				OptNewline = true;
-			}
-
-			/*Get exit status mappings.*/
-			while (!MemBus_BinRead(InBuf, MEMBUS_MSGSIZE, false)) usleep(100);
-
-			BinWorker = (void*)(InBuf + sizeof MEMBUS_CODE_LSOBJS " MXS");
-			Inc = *BinWorker++; /*Get the count.*/
-			
-			if (Inc > 0) OptNewline = true;
-			
-			for (; Inc; --Inc)
-			{
-				const char *Stringy = NULL;
-				unsigned char Value = *BinWorker++, ExitStatus = *BinWorker++;
-				
-				if (Value == SUCCESS) Stringy = "SUCCESS";
-				else if (Value == WARNING) Stringy = "WARNING";
-				else if (Value == FAILURE) Stringy = "FAILURE";
-				else Stringy = "<BAD>";
-				
-				printf(" MAPEXITSTATUS=%d,%s", ExitStatus, Stringy);
-			}
-			
-			if (OptNewline) putchar('\n');
-			
-			snprintf(RLExpect, sizeof RLExpect, "%s %s %s", MEMBUS_CODE_LSOBJS, MEMBUS_LSOBJS_VERSION, ObjectID);
-			
-			/*Done with this, now read runlevels.*/
-			while (!MemBus_BinRead(InBuf, MEMBUS_MSGSIZE, false)) usleep(100);
-			
-			while (!strncmp(InBuf, RLExpect, strlen(RLExpect)))
-			{ /*Also causes the next object to be read.*/
-				if (!FoundRL && !HaltCmdOnly)
-				{
-					printf("Runlevels:");
-					FoundRL = true;
+					SpitError("LSOBJS protocol version mismatch. Expected \"" MEMBUS_LSOBJS_VERSION "\".");
+					
+					while (strcmp(InBuf, MEMBUS_CODE_ACKNOWLEDGED " " MEMBUS_CODE_LSOBJS) != 0)
+					{ /*Don't mess up the membus, let it empty.*/
+						while (!MemBus_Read(InBuf, false)) usleep(10);
+					}
+					
+					ShutdownMemBus(false);
+					return FAILURE;
 				}
 				
-				Worker = InBuf + strlen(MEMBUS_CODE_LSOBJS " " MEMBUS_LSOBJS_VERSION " ") + strlen(ObjectID) + 1;
+				Worker += strlen(MEMBUS_LSOBJS_VERSION) + 1;
 				
-				if (!HaltCmdOnly)
-				{
-					printf(" %s", Worker);
-				}
+				BinWorker = (void*)Worker;
 				
+				Started = *BinWorker++;
+				Running = *BinWorker++;
+				Enabled = *BinWorker++;
+				TermSignal = *BinWorker++;
+				ReloadCommandSignal = *BinWorker++;
+	
+				/*Remove this line when we make use of ReloadCommandSignal.*/
+				(void)ReloadCommandSignal;
+				
+				memcpy(&UserID, BinWorker, sizeof(int));
+				memcpy(&GroupID, (BinWorker += sizeof(int)), sizeof(int));
+				
+				memcpy(&StopMode, (BinWorker += sizeof(int)), sizeof(enum _StopMode));
+				memcpy(&PID, (BinWorker += sizeof(enum _StopMode)), sizeof(int));
+				
+				memcpy(&StartedSince, (BinWorker += sizeof(int)), sizeof(int));
+				memcpy(&StopTimeout, BinWorker + sizeof(int), sizeof(int));
+	
 				while (!MemBus_BinRead(InBuf, MEMBUS_MSGSIZE, false)) usleep(100);
-			}
-			
-			if (FoundRL) putchar('\n');
-			
-			if (UserID || GroupID)
-			{
-				struct passwd *UserStruct = getpwuid(UserID);
-				struct group *GroupStruct = getgrgid(GroupID);
 				
-				if (UserStruct) printf("User: %s\n", UserStruct->pw_name);
-				if (GroupStruct && GroupID != 0) printf("Group: %s\n", GroupStruct->gr_name);
+				for (Worker = InBuf, Inc = 0; Worker[Inc] != ' '; ++Inc)
+				{ /*Get ObjectID*/
+					ObjectID[Inc] = Worker[Inc];
+				}
+				ObjectID[Inc] = '\0';
+				
+				Worker += Inc + 1;
+				
+				/*Get ObjectDescription.*/
+				strncpy(ObjectDescription, Worker, strlen(Worker) + 1);
+				
+				/*Retrieve the options.*/
+				while (!MemBus_BinRead(InBuf, MEMBUS_MSGSIZE, false)) usleep(100);
+				
+				for (Worker = InBuf; *Worker != 0; ++Worker)
+				{
+					if (*(unsigned char*)Worker >= COPT_MAX) continue; /*If we don't understand.*/
+	
+					switch (*(unsigned char*)Worker)
+					{
+						case COPT_HALTONLY:
+							HaltCmdOnly = true;
+							break;
+						case COPT_PERSISTENT:
+							Persistent = true;
+							break;
+						case COPT_FORK:
+							Fork = true;
+							break;
+						case COPT_FORKSCANONCE:
+							ForkScanOnce = true;
+							break;
+						case COPT_SERVICE:
+							IsService = true;
+							break;
+						case COPT_RAWDESCRIPTION:
+							RawDescription = true;
+							break;
+						case COPT_AUTORESTART:
+							AutoRestart = true;
+							break;
+						case COPT_FORCESHELL:
+							ForceShell = true;
+							break;
+						case COPT_NOSTOPWAIT:
+							NoStopWait = true;
+							break;
+						case COPT_NOTRACK:
+							NoTrack = true;
+							break;
+						case COPT_STARTFAILCRITICAL:
+							StartFailIsCritical = true;
+							break;
+						case COPT_STOPFAILCRITICAL:
+							StopFailIsCritical = true;
+							break;
+						case COPT_EXEC:
+							Exec = true;
+							break;
+						case COPT_PIVOTROOT:
+							PivotRoot = true;
+							break; 
+						case COPT_RUNONCE:
+							RunOnce = true;
+							break;
+						default:
+							break;
+					}
+				}
+			
+			
+				printf("ObjectID: %s\nObjectDescription: %s\nEnabled: %s | Started: %s | Running: %s | Stop mode: ",
+						ObjectID, ObjectDescription, YN[Enabled],
+						HaltCmdOnly || PivotRoot || Exec ? CONSOLE_COLOR_YELLOW "N/A" CONSOLE_ENDCOLOR : YN[Started],
+						HaltCmdOnly || PivotRoot || Exec ? CONSOLE_COLOR_YELLOW "N/A" CONSOLE_ENDCOLOR : YN[Running]);
+				
+				if (StopMode == STOP_COMMAND) printf("Command");
+				else if (StopMode == STOP_NONE) printf("None");
+				else if (StopMode == STOP_PID) printf("PID");
+				else if (StopMode == STOP_PIDFILE) printf("PID File");
+				
+				if (Running)
+				{
+					printf(" | PID: %u\n", PID);
+				}
+				else
+				{
+					putchar('\n');
+				}
+				
+				if (Started)
+				{
+					time_t SS = (time_t)StartedSince, CTime = time(NULL);
+					struct tm TStruct;
+					char TimeBuf[64] = { '\0' };
+					unsigned Offset = (CTime - StartedSince) / 60;
+					localtime_r(&SS, &TStruct);
+					
+					asctime_r(&TStruct, TimeBuf);
+					
+					TimeBuf[strlen(TimeBuf) - 1] = '\0'; /*Nuke newline.*/
+					printf("Started since %s, for total of %u mins.\n", TimeBuf, Offset);
+				}
+				
+				if (IsService || AutoRestart || HaltCmdOnly || Persistent || Fork || StopTimeout != 10 || NoTrack ||
+					ForceShell || RawDescription || NoStopWait || PivotRoot || RunOnce || TermSignal != SIGTERM || Exec ||
+					StartFailIsCritical || StopFailIsCritical)
+				{
+					printf("Options:");
+					
+					if (IsService) printf(" SERVICE");
+					if (AutoRestart) printf(" AUTORESTART");
+					if (HaltCmdOnly) printf(" HALTONLY");
+					if (Persistent) printf(" PERSISTENT");
+					if (ForceShell) printf(" FORCESHELL");
+					if (Fork)
+					{
+						if (ForkScanOnce) printf(" FORKN");
+						else printf(" FORK");
+					}
+					if (RawDescription) printf(" RAWDESCRIPTION");
+					if (TermSignal != SIGTERM) printf(" TERMSIGNAL=%u", TermSignal);
+					if (NoStopWait) printf(" NOSTOPWAIT");
+					if (PivotRoot) printf(" PIVOT");
+					if (Exec) printf(" EXEC");
+					if (RunOnce) printf(" RUNONCE");
+					if (NoTrack) printf(" NOTRACK");
+					if (StartFailIsCritical) printf( "STARTFAILCRITICAL");
+					if (StopFailIsCritical) printf( "STOPFAILCRITICAL");
+					if (StopTimeout != 10) printf(" STOPTIMEOUT=%u", StopTimeout);
+					
+					OptNewline = true;
+				}
+	
+				/*Get exit status mappings.*/
+				while (!MemBus_BinRead(InBuf, MEMBUS_MSGSIZE, false)) usleep(100);
+	
+				BinWorker = (void*)(InBuf + sizeof MEMBUS_CODE_LSOBJS " MXS");
+				Inc = *BinWorker++; /*Get the count.*/
+				
+				if (Inc > 0) OptNewline = true;
+				
+				for (; Inc; --Inc)
+				{
+					const char *Stringy = NULL;
+					unsigned char Value = *BinWorker++, ExitStatus = *BinWorker++;
+					
+					if (Value == SUCCESS) Stringy = "SUCCESS";
+					else if (Value == WARNING) Stringy = "WARNING";
+					else if (Value == FAILURE) Stringy = "FAILURE";
+					else Stringy = "<BAD>";
+					
+					printf(" MAPEXITSTATUS=%d,%s", ExitStatus, Stringy);
+				}
+				
+				if (OptNewline) putchar('\n');
+				
+				snprintf(RLExpect, sizeof RLExpect, "%s %s %s", MEMBUS_CODE_LSOBJS, MEMBUS_LSOBJS_VERSION, ObjectID);
+				
+				/*Done with this, now read runlevels.*/
+				while (!MemBus_BinRead(InBuf, MEMBUS_MSGSIZE, false)) usleep(100);
+				
+				while (!strncmp(InBuf, RLExpect, strlen(RLExpect)))
+				{ /*Also causes the next object to be read.*/
+					if (!FoundRL && !HaltCmdOnly)
+					{
+						printf("Runlevels:");
+						FoundRL = true;
+					}
+					
+					Worker = InBuf + strlen(MEMBUS_CODE_LSOBJS " " MEMBUS_LSOBJS_VERSION " ") + strlen(ObjectID) + 1;
+					
+					if (!HaltCmdOnly)
+					{
+						printf(" %s", Worker);
+					}
+					
+					while (!MemBus_BinRead(InBuf, MEMBUS_MSGSIZE, false)) usleep(100);
+				}
+				
+				if (FoundRL) putchar('\n');
+				
+				if (UserID || GroupID)
+				{
+					struct passwd *UserStruct = getpwuid(UserID);
+					struct group *GroupStruct = getgrgid(GroupID);
+					
+					if (UserStruct) printf("User: %s\n", UserStruct->pw_name);
+					if (GroupStruct && GroupID != 0) printf("Group: %s\n", GroupStruct->gr_name);
+				}
+				
+				if (argc == 2)
+				{
+					puts("-------");
+				}
 			}
 			
-			if (argc == 2)
+			if (argc > 3)
 			{
 				puts("-------");
 			}
 		}
-		
 		ShutdownMemBus(false);
 		return SUCCESS;
 	}
@@ -1061,17 +1064,12 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 		ReturnCode RV = SUCCESS;
 		Bool Enabling = ArgIs("enable");
 		char TOut[MAX_LINE_SIZE];
+		unsigned Inc = 2;
 		
-		if (argc != 3)
+		if (argc < 3)
 		{
-			if (argc > 3)
-			{
-				puts("Too many arguments.\n");
-			}
-			else
-			{
-				puts("Too few arguments.\n");
-			}
+
+			puts("Too few arguments.\n");
 			
 			PrintEpochHelp(argv[0], "enable");
 			return FAILURE;
@@ -1083,12 +1081,15 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 			return FAILURE;
 		}
 		
-		CArg = argv[2];
-		snprintf(TOut, sizeof TOut, (Enabling ? "Enabling %s" : "Disabling %s"), CArg);
-		BeginStatusReport(TOut);
-		
-		RV = ObjControl(CArg, (Enabling ? MEMBUS_CODE_OBJENABLE : MEMBUS_CODE_OBJDISABLE));
-		CompleteStatusReport(TOut, RV, false);
+		/*Iterate through all specified objects.*/
+		for (Inc = 2; Inc < argc; ++Inc)
+		{
+			snprintf(TOut, sizeof TOut, (Enabling ? "Enabling %s" : "Disabling %s"), argv[Inc]);
+			BeginStatusReport(TOut);
+			
+			RV = ObjControl(argv[Inc], (Enabling ? MEMBUS_CODE_OBJENABLE : MEMBUS_CODE_OBJDISABLE));
+			CompleteStatusReport(TOut, RV, false);
+		}
 		
 		ShutdownMemBus(false);
 		return RV;
@@ -1099,18 +1100,11 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 		short StartMode = 0;
 		enum { START = 1, STOP, RESTART };
 		char TOut[MAX_LINE_SIZE];
-		
+		unsigned Inc = 2;
 
-		if (argc != 3)
+		if (argc < 3)
 		{
-			if (argc > 3)
-			{
-				puts("Too many arguments.\n");
-			}
-			else
-			{
-				puts("Too few arguments.\n");
-			}
+			puts("Too few arguments.\n");
 			
 			PrintEpochHelp(argv[0], "start");
 			return FAILURE;
@@ -1135,43 +1129,44 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 			StartMode = RESTART;
 		}
 		
-		
-		if (StartMode < RESTART)
+		/*Iterate through all provided arguments.*/
+		for (Inc = 2; Inc < argc; ++Inc)
 		{
-			const char *ActionString = StartMode == START ? "Starting" : "Stopping";
-			
-			snprintf(TOut, sizeof TOut, "%s %s", ActionString, argv[2]);
-			BeginStatusReport(TOut);
-			
-			RV = ObjControl(argv[2], (StartMode == START ? MEMBUS_CODE_OBJSTART : MEMBUS_CODE_OBJSTOP));
-			
-			CompleteStatusReport(TOut, RV, false);
-		}
-		else
-		{
-			snprintf(TOut, sizeof TOut, "Stopping %s", argv[2]);
-			
-			BeginStatusReport(TOut);
-			RV = ObjControl(argv[2], MEMBUS_CODE_OBJSTOP);
-			CompleteStatusReport(TOut, RV, false);
-			
-			if (!RV)
-			{ /*Stop failed so...*/
-				ShutdownMemBus(false);
-				return FAILURE;
+			if (StartMode < RESTART)
+			{
+				const char *ActionString = StartMode == START ? "Starting" : "Stopping";
+				
+				snprintf(TOut, sizeof TOut, "%s %s", ActionString, argv[Inc]);
+				BeginStatusReport(TOut);
+				
+				RV = ObjControl(argv[Inc], (StartMode == START ? MEMBUS_CODE_OBJSTART : MEMBUS_CODE_OBJSTOP));
+				
+				CompleteStatusReport(TOut, RV, false);
 			}
-			
-			snprintf(TOut, sizeof TOut, "Starting %s", argv[2]);
-			
-			BeginStatusReport(TOut);
-			RV = ObjControl(argv[2], MEMBUS_CODE_OBJSTART);
-			CompleteStatusReport(TOut, RV, false);
+			else
+			{
+				snprintf(TOut, sizeof TOut, "Stopping %s", argv[Inc]);
+				
+				BeginStatusReport(TOut);
+				RV = ObjControl(argv[Inc], MEMBUS_CODE_OBJSTOP);
+				CompleteStatusReport(TOut, RV, false);
+				
+				if (!RV)
+				{ /*Stop failed so...*/
+					continue;
+				}
+				
+				snprintf(TOut, sizeof TOut, "Starting %s", argv[Inc]);
+				
+				BeginStatusReport(TOut);
+				RV = ObjControl(argv[Inc], MEMBUS_CODE_OBJSTART);
+				CompleteStatusReport(TOut, RV, false);
+			}	
 		}
 		
-		
-		
+		/*Now that we're done, shut down the membus.*/
 		ShutdownMemBus(false);
-		return RV;
+		return SUCCESS;
 	}
 	else if (ArgIs("reload"))
 	{
@@ -1179,18 +1174,11 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 		char InBuf[MEMBUS_MSGSIZE], OutBuf[MEMBUS_MSGSIZE];
 		char PossibleResponses[4][MEMBUS_MSGSIZE];
 		char StatusBuf[MAX_LINE_SIZE];
-		Bool Botched = false;
+		unsigned Inc = 2;
 		
-		if (argc != 3)
+		if (argc < 3)
 		{
-			if (argc > 3)
-			{
-				puts("Too many arguments.\n");
-			}
-			else
-			{
-				puts("Too few arguments.\n");
-			}
+			puts("Too few arguments.\n");
 			
 			PrintEpochHelp(argv[0], "reload");
 			return FAILURE;
@@ -1201,49 +1189,52 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 			return FAILURE;
 		}
 		
-		snprintf(OutBuf, sizeof OutBuf, "%s %s", MEMBUS_CODE_OBJRELOAD, argv[2]);
-		
-		snprintf(PossibleResponses[0], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, OutBuf);
-		snprintf(PossibleResponses[1], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_WARNING, OutBuf);
-		snprintf(PossibleResponses[2], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_FAILURE, OutBuf);
-		snprintf(PossibleResponses[3], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_BADPARAM, OutBuf);
-		
-		snprintf(StatusBuf, MAX_LINE_SIZE, "Reloading %s", argv[2]);
-		BeginStatusReport(StatusBuf);
-		
-		MemBus_Write(OutBuf, false);
-		
-		while (!MemBus_Read(InBuf, false)) usleep(1000);
-		
-		if (!strcmp(InBuf, PossibleResponses[0]))
+		/*Iterate through all objects they specified.*/
+		for (Inc = 2; Inc < argc; ++Inc)
 		{
-			RV = SUCCESS;
-		}
-		else if (!strcmp(InBuf, PossibleResponses[1]))
-		{
-			RV = WARNING;
-		}
-		else if (!strcmp(InBuf, PossibleResponses[2]))
-		{
-			RV = FAILURE;
-		}
-		else if (!strcmp(InBuf, PossibleResponses[3]))
-		{
-			CompleteStatusReport(StatusBuf, (RV = FAILURE), false);
-			SpitError("We are being told that we sent a bad parameter over membus.\n"
-						"This is probably a bug. Please report to Epoch!");
-			Botched = true;
-		}
-		else
-		{
-			CompleteStatusReport(StatusBuf, (RV = FAILURE), false);
-			SpitError("Bad parameter received over membus! This is probably a bug.\n"
-						"Please report to Epoch!");
-			Botched = true;
-		}
-		
-		if (!Botched)
-		{
+			snprintf(OutBuf, sizeof OutBuf, "%s %s", MEMBUS_CODE_OBJRELOAD, argv[Inc]);
+			
+			snprintf(PossibleResponses[0], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_ACKNOWLEDGED, OutBuf);
+			snprintf(PossibleResponses[1], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_WARNING, OutBuf);
+			snprintf(PossibleResponses[2], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_FAILURE, OutBuf);
+			snprintf(PossibleResponses[3], MEMBUS_MSGSIZE, "%s %s", MEMBUS_CODE_BADPARAM, OutBuf);
+			
+			snprintf(StatusBuf, MAX_LINE_SIZE, "Reloading %s", argv[Inc]);
+			BeginStatusReport(StatusBuf);
+			
+			MemBus_Write(OutBuf, false);
+			
+			while (!MemBus_Read(InBuf, false)) usleep(1000);
+			
+			if (!strcmp(InBuf, PossibleResponses[0]))
+			{
+				RV = SUCCESS;
+			}
+			else if (!strcmp(InBuf, PossibleResponses[1]))
+			{
+				RV = WARNING;
+			}
+			else if (!strcmp(InBuf, PossibleResponses[2]))
+			{
+				RV = FAILURE;
+			}
+			else if (!strcmp(InBuf, PossibleResponses[3]))
+			{
+				CompleteStatusReport(StatusBuf, (RV = FAILURE), false);
+				SpitError("We are being told that we sent a bad parameter over membus.\n"
+							"This is probably a bug. Please report to Epoch!");
+				ShutdownMemBus(false);
+				return FAILURE;
+			}
+			else
+			{
+				CompleteStatusReport(StatusBuf, (RV = FAILURE), false);
+				SpitError("Bad parameter received over membus! This is probably a bug.\n"
+							"Please report to Epoch!");
+				ShutdownMemBus(false);
+				return FAILURE;
+			}
+			
 			CompleteStatusReport(StatusBuf, RV, false);
 		}
 		
