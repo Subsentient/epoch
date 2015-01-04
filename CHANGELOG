@@ -1,4 +1,4 @@
-Changes since 1.2.1:
+Changes since 1.2.0:
 * Fix bug in ugly time format for shutdown command, ironically a result
 of a previous attempt to clean it up.
 * Allow using the 'epoch' command's start, stop, restart, reload, and 
