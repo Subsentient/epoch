@@ -1,3 +1,9 @@
+Changes since 1.2.1:
+* Fix bug where attempting to edit config file via epoch subcommands
+on a readonly filesystem caused a segfault rather than a graceful 
+failure.
+* Fix bug where 'epoch objrl' wrote truncated runlevels back to disk.
+
 Changes since 1.2.0:
 * Fix bug in ugly time format for shutdown command, ironically a result
 of a previous attempt to clean it up.
