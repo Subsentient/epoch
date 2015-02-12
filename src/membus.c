@@ -684,7 +684,7 @@ void ParseMemBus(void)
 			
 			for (RLWorker = CurObj->ObjectRunlevels; RLWorker->Next; RLWorker = RLWorker->Next)
 			{
-				strncat(RunlevelText, RLWorker->RL, 1);
+				strncat(RunlevelText, RLWorker->RL, RequiredRLTLength - 1);
 				strncat(RunlevelText, " ", 1);
 			}
 			
