@@ -2283,7 +2283,17 @@ ReturnCode EditConfigValue(const char *File, const char *ObjectID, const char *A
 	free(HalfTwo);
 	
 	/*Write the configuration back to disk.*/
-	Descriptor = fopen(File, "w");
+	if (!(Descriptor = fopen(File, "w")))
+	{
+		char ErrBuf[2048];
+		snprintf(ErrBuf, sizeof ErrBuf, "Failed to edit attribute %s for object %s in file %s. File unchanged.",
+				Attribute, ObjectID, File);
+		
+		SpitWarning(ErrBuf);
+		free(MasterStream);
+		return FAILURE;
+	}
+	
 	fwrite(MasterStream, 1, strlen(MasterStream), Descriptor);
 	fclose(Descriptor);
 	
