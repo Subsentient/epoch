@@ -60,7 +60,7 @@
 #endif
 
 /*Version.*/
-#define VERSIONSTRING "Epoch Init System 1.2.1 \"Peroxide\""
+#define VERSIONSTRING "Epoch Init System 1.2.2 \"Peroxide\""
 
 /*Power control magic.*/
 #define OSCTL_REBOOT 0x1234567
