@@ -216,39 +216,39 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 { /*Used for help for the epoch command.*/
 	const char *HelpMsgs[] =
 	{ 
-		("[poweroff/halt/reboot]:\n\t" CONSOLE_ENDCOLOR
+		("[poweroff/halt/reboot]:\n\t"
 		
 		 "Enter poweroff, halt, or reboot to do the obvious."
 		),
 		
-		( "shutdown [-r/-p/-h] <time>:\n\t" CONSOLE_ENDCOLOR
+		( "shutdown [-r/-p/-h] <time>:\n\t"
 		  "Wrapper for the 'shutdown' command. See 'shutdown --help' for more."
 		),
 		
-		( "[disable/enable] objectid:\n\t" CONSOLE_ENDCOLOR
+		( "[disable/enable] objectid:\n\t"
 		  "Enter disable or enable followed by an object ID to disable or enable\n\tthat object."
 		),
 		
-		( "[start/stop/restart] objectid:\n\t" CONSOLE_ENDCOLOR
+		( "[start/stop/restart] objectid:\n\t"
 		  "Enter start, stop, or restart followed by an object ID to control\n\tthat object."
 		),
 		
-		( "reload objectid:\n\t" CONSOLE_ENDCOLOR
+		( "reload objectid:\n\t"
 		  "If a reload command exists for the object specified,\n\tthe object is reloaded."
 		),
 		
-		( "objrl objectid [del/add/check] runlevel:\n\t" CONSOLE_ENDCOLOR
+		( "objrl objectid [del/add/check] runlevel:\n\t"
 		
 		  "runlevel del and add do pretty much what it sounds like,\n\t"
 		  "and check will tell you if that object is enabled for that runlevel."
 		),
 		
-		( "status [objectid]:\n\t" CONSOLE_ENDCOLOR
+		( "status [objectid]:\n\t"
 		
 		  "Prints information about the object specified.\n\t"
 		  "If an object is not specified, it prints info on all known objects."
 		),
-		( "setcad [on/off]:\n\t" CONSOLE_ENDCOLOR
+		( "setcad [on/off]:\n\t"
 		
 		  "Sets Ctrl-Alt-Del instant reboot modes. If set to on,\n\t"
 		  "striking Ctrl-Alt-Del at a console will instantly reboot the system\n\t"
@@ -256,39 +256,39 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		  "perform a normal reboot when Ctrl-Alt-Del is pressed."
 		),
 		
-		( "configreload:\n\t" CONSOLE_ENDCOLOR
+		( "configreload:\n\t"
 		
 		  "Enter configreload to reload the configuration file from disk.\n\t"
 		  "This is useful for when you change it\n\t"
 		  "to add or remove services, change runlevels, and more."
 		),
 		
-		( "reexec:\n\t" CONSOLE_ENDCOLOR
+		( "reexec:\n\t"
 		
 		  "Enter reeexec to partially restart Epoch from disk.\n\t"
 		  "This is necessary for updating the Epoch binary to prevent\n\t"
 		  "a failure with unmounting the filesystem the binary is on."
 		),
 		
-		( "runlevel:\n\t" CONSOLE_ENDCOLOR
+		( "runlevel:\n\t"
 		
 		  "Enter runlevel without any arguments to print the current runlevel,\n\t"
 		  "or enter an argument as the new runlevel."
 		),
 		
-		( "getpid objectid:\n\t" CONSOLE_ENDCOLOR
+		( "getpid objectid:\n\t"
 		
 		  "Retrieves the PID Epoch has on record for the given object.\n\t"
 		  "If a PID file is specified, then the PID will be gotten from there."
 		),
 		
-		( "kill objectid:\n\t" CONSOLE_ENDCOLOR
+		( "kill objectid:\n\t"
 		
 		  "Sends SIGKILL to the object specified. If a PID file is specified,\n\t"
 		  "the PID will be retrieved from that."
 		),
 		
-		( "version:\n\t" CONSOLE_ENDCOLOR
+		( "version:\n\t"
 		
 		  "Prints the current version of the Epoch Init System."
 		)
@@ -302,81 +302,81 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 	{
 		short Inc = 0;
 		
-		puts(CONSOLE_COLOR_RED "Printing all help.\n" CONSOLE_ENDCOLOR "-----\n");
+		puts("Printing all help.\n-----\n");
 		
 		for (; Inc < ENUM_MAX; ++Inc)
 		{
-			printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[Inc]);
+			printf("%s %s\n\n", RootCommand, HelpMsgs[Inc]);
 		}
 	}
 	else if (!strcmp(InCmd, "poweroff") || !strcmp(InCmd, "halt") || !strcmp(InCmd, "reboot"))
 	{
-		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[HCMD]);
+		printf("%s %s\n\n", RootCommand, HelpMsgs[HCMD]);
 		return;
 	}
 	else if (!strcmp(InCmd, "shutdown"))
 	{
-		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[SHTDN]);
+		printf("%s %s\n\n", RootCommand, HelpMsgs[SHTDN]);
 		return;
 	}
 	else if (!strcmp(InCmd, "disable") || !strcmp(InCmd, "enable"))
 	{
-		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[ENDIS]);
+		printf("%s %s\n\n", RootCommand, HelpMsgs[ENDIS]);
 		return;
 	}
 	else if (!strcmp(InCmd, "start") || !strcmp(InCmd, "stop") || !strcmp(InCmd, "restart"))
 	{
-		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[STAP]);
+		printf("%s %s\n\n", RootCommand, HelpMsgs[STAP]);
 		return;
 	}
 	else if (!strcmp(InCmd, "objrl"))
 	{
-		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[OBJRL]);
+		printf("%s %s\n\n", RootCommand, HelpMsgs[OBJRL]);
 		return;
 	}
 	else if (!strcmp(InCmd, "status"))
 	{
-		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[STATUS]);
+		printf("%s %s\n\n", RootCommand, HelpMsgs[STATUS]);
 		return;
 	}
 	else if (!strcmp(InCmd, "setcad"))
 	{
-		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[SETCAD]);
+		printf("%s %s\n\n", RootCommand, HelpMsgs[SETCAD]);
 		return;
 	}
 	else if (!strcmp(InCmd, "configreload"))
 	{
-		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[CONFRL]);
+		printf("%s %s\n\n", RootCommand, HelpMsgs[CONFRL]);
 		return;
 	}
 	else if (!strcmp(InCmd, "reexec"))
 	{
-		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[REEXEC]);
+		printf("%s %s\n\n", RootCommand, HelpMsgs[REEXEC]);
 		return;
 	}
 	else if (!strcmp(InCmd, "reload"))
 	{
-		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[REL]);
+		printf("%s %s\n\n", RootCommand, HelpMsgs[REL]);
 		return;
 	}
 	else if (!strcmp(InCmd, "runlevel"))
 	{
-		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[RLCTL]);
+		printf("%s %s\n\n", RootCommand, HelpMsgs[RLCTL]);
 		return;
 	}
 	else if (!strcmp(InCmd, "getpid"))
 	{
-		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[GETPID]);
+		printf("%s %s\n\n", RootCommand, HelpMsgs[GETPID]);
 		return;
 	}
 	else if (!strcmp(InCmd, "kill"))
 	{
-		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[KILLOBJ]);
+		printf("%s %s\n\n", RootCommand, HelpMsgs[KILLOBJ]);
 		return;
 	}
 	else if (!strcmp(InCmd, "version"))
 	{
-		printf(CONSOLE_COLOR_GREEN "%s %s\n\n", RootCommand, HelpMsgs[VER]);
+		printf("%s %s\n\n", RootCommand, HelpMsgs[VER]);
 		return;
 	}
 	else
