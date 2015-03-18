@@ -713,7 +713,7 @@ void LaunchBootup(void)
 	
 	setsid();
 	
-	printf("\n%s\nCompiled %s\n\n", VERSIONSTRING, __DATE__ " " __TIME__);
+	puts("--- " VERSIONSTRING " ---");
 	
 	/*Set environment variables.*/
 	setenv("USER", ENVVAR_USER, true);

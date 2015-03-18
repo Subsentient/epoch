@@ -75,11 +75,11 @@ void PrintBootBanner(void)
 	
 	if (*BootBanner.BannerColor)
 	{
-		printf("%s%s%s\n\n", BootBanner.BannerColor, BootBanner.BannerText, CONSOLE_ENDCOLOR);
+		printf("\n%s%s%s\n\n", BootBanner.BannerColor, BootBanner.BannerText, CONSOLE_ENDCOLOR);
 	}
 	else
 	{
-		printf("%s\n\n", BootBanner.BannerText);
+		printf("\n%s\n\n", BootBanner.BannerText);
 	}
 }
 
