@@ -520,8 +520,7 @@ ReturnCode InitConfig(const char *CurConfigFile)
 			const char *TWorker = DelimCurr;
 			unsigned Inc = 0;
 			char CurArg[MAX_DESCRIPT_SIZE];
-			const char *VirtualID[2][5] = { { "procfs", "sysfs", "devfs", "devpts", "devshm" },
-											{ "procfs+", "sysfs+", "devfs+", "devpts+", "devshm+" } };
+			const char *VirtualID[5] = { "procfs", "sysfs", "devfs", "devpts", "devshm" };
 			
 			if (!GetLineDelim(Worker, DelimCurr))
 			{
@@ -544,9 +543,21 @@ ReturnCode InitConfig(const char *CurConfigFile)
 				
 				for (Inc = 0; Inc < 5; ++Inc)
 				{ /*Search through the argument to see what it matches.*/
-					if (!strncmp(VirtualID[0][Inc], CurArg, strlen(VirtualID[0][Inc])))
-					{
-						AutoMountOpts[Inc] = (!strcmp(VirtualID[1][Inc], CurArg) ? 2 : true);
+					unsigned char Options = 0;
+					const char *Arg = CurArg;
+					
+					if (*Arg == '~')
+					{ /*Don't report an error if it fails to mount, just silently continue.*/
+						Options |= MOUNTVIRTUAL_NOERROR;
+						++Arg;
+					}
+					
+					/*Create the directory for mount if it doesn't exist.*/
+					if (Arg[strlen(Arg) - 1] == '+') Options |= MOUNTVIRTUAL_MKDIR;
+					
+					if (!strncmp(VirtualID[Inc], Arg, strlen(VirtualID[Inc])))
+					{						
+						AutoMountOpts[Inc] = true | Options;
 						FoundSomething = true;
 						break;
 					}

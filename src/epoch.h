@@ -133,6 +133,8 @@
 #define MEMBUS_LSOBJS_VERSION "V4"
 /**Types, enums, structs and whatnot**/
 
+#define MOUNTVIRTUAL_MKDIR 2
+#define MOUNTVIRTUAL_NOERROR 4
 
 /**Enums go here.*/
 
@@ -296,7 +298,7 @@ extern Bool DisableCAD;
 extern char Hostname[256];
 extern char Domainname[256];
 extern struct _HaltParams HaltParams;
-extern Bool AutoMountOpts[5];
+extern unsigned char AutoMountOpts[5];
 extern Bool EnableLogging;
 extern Bool LogInMemory;
 extern Bool BlankLogOnBoot;

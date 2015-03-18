@@ -28,7 +28,7 @@ static void ApplyGlobalEnvVars(void);
 
 /*Globals.*/
 struct _HaltParams HaltParams = { -1 };
-Bool AutoMountOpts[5];
+unsigned char AutoMountOpts[5];
 static Bool ContinuePrimaryLoop = true;
 struct _EnvVarList *GlobalEnvVars;
 
@@ -48,7 +48,7 @@ static void MountVirtuals(void)
 	{
 		if (AutoMountOpts[Inc])
 		{
-			if (AutoMountOpts[Inc] == 2)
+			if (AutoMountOpts[Inc] & MOUNTVIRTUAL_MKDIR)
 			{ /*If we need to create a directory, do it.*/
 				if (mkdir(MountLocations[Inc], PermissionSet[HeavyPermissions[Inc]] != 0))
 				{
@@ -62,10 +62,18 @@ static void MountVirtuals(void)
 			if (mount(FSTypes[Inc], MountLocations[Inc], FSTypes[Inc], 0, (Inc == MVIRT_PTS ? PTSArg : NULL)) != 0)
 			{
 				char TmpBuf[1024];
-				
-				snprintf(TmpBuf, sizeof TmpBuf, "Failed to mount virtual filesystem %s!", MountLocations[Inc]);
-				SpitWarning(TmpBuf);
-				WriteLogLine(TmpBuf, true);
+
+				if (AutoMountOpts[Inc] & MOUNTVIRTUAL_NOERROR)
+				{
+					snprintf(TmpBuf, sizeof TmpBuf, "Failed to mount virtual filesystem %s, but not an error.", MountLocations[Inc]);
+					WriteLogLine(TmpBuf, true);
+				}
+				else
+				{
+					snprintf(TmpBuf, sizeof TmpBuf, "Failed to mount virtual filesystem %s!", MountLocations[Inc]);
+					SpitWarning(TmpBuf);
+					WriteLogLine(TmpBuf, true);
+				}
 				continue;
 			}
 			else
