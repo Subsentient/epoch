@@ -203,13 +203,13 @@ typedef struct _EpochObjectTable
 	{
 		enum _StopMode StopMode; /*If we use a stop command, set this to 1, otherwise, set to 0 to use PID.*/
 		unsigned StopTimeout; /*The number of seconds we wait for a task we're stopping's PID to become unavailable.*/
+		unsigned short AutoRestart; /*Autorestarts a service whenever it terminates.*/
 		
 		/*This saves a tiny bit of memory to use bitfields here.*/
 		unsigned Persistent : 1; /*Allowed to stop this without starting a shutdown?*/
 		unsigned HaltCmdOnly : 1; /*Run just the stop command when we halt, not the start command?*/
 		unsigned IsService : 1; /*If true, we assume it's going to fork itself and one-up it's PID.*/
 		unsigned RawDescription : 1; /*This inhibits insertion of "Starting", "Stopping", etc in front of descriptions.*/
-		unsigned AutoRestart : 1; /*Autorestarts a service whenever it terminates.*/
 		unsigned ForceShell : 1; /*Forces us to start /bin/sh to run an object, even if it looks like we don't need to.*/
 		unsigned HasPIDFile : 1; /*If StopMode == STOP_PIDFILE, we also stop it just by sending a signal to the PID in the file.*/
 		unsigned NoStopWait : 1; /*Used to tell us not to wait for an object to actually quit.*/

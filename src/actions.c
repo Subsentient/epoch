@@ -180,7 +180,7 @@ static void PrimaryLoop(void)
 						}
 						
 						/*Don't let us enter a restart loop.*/
-						if (Worker->StartedSince + 5 > time(NULL))
+						if (Worker->StartedSince + (Worker->Opts.AutoRestart >> 1) > time(NULL))
 						{
 							snprintf(TmpBuf, sizeof TmpBuf,
 									"AUTORESTART: "CONSOLE_COLOR_RED "PROBLEM:\n"

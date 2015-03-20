@@ -1231,9 +1231,22 @@ ReturnCode InitConfig(const char *CurConfigFile)
 				{
 					CurObj->Opts.IsService = true;
 				}
-				else if (!strcmp(CurArg, "AUTORESTART"))
+				else if (!strncmp(CurArg, "AUTORESTART", sizeof "AUTORESTART" - 1))
 				{
+					
 					CurObj->Opts.AutoRestart = true;
+
+					if (CurArg[sizeof "AUTORESTART" - 1] == '=' && CurArg[sizeof "AUTORESTART"] != '\0')
+					{
+						const char *Arg = CurArg + sizeof "AUTORESTART=" - 1;
+						unsigned short MinimumRestartTime = atoi(Arg);
+						
+						CurObj->Opts.AutoRestart |= MinimumRestartTime << 1;
+					}
+					else
+					{
+						CurObj->Opts.AutoRestart |= 5 << 1;
+					}
 				}
 				else if (!strcmp(CurArg, "NOTRACK"))
 				{
