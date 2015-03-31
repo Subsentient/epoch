@@ -316,7 +316,7 @@ static ReturnCode ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 			
 			while ((Worker = WhitespaceArg(Worker))) ++NumSpaces;
 			
-			ArgV = malloc(sizeof(char*) * NumSpaces + 1);
+			ArgV = calloc(NumSpaces + 1, sizeof(char*));
 			
 			for (Worker = NCmd, Inc = 0; Inc < NumSpaces && Worker != NULL; ++Inc)
 			{
