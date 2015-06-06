@@ -1,0 +1,2 @@
+all:
+	./buildepoch.sh
