@@ -713,7 +713,8 @@ void LaunchBootup(void)
 	
 	setsid();
 	
-	puts("--- " VERSIONSTRING " ---");
+	/*Print our version to the console*/
+	puts(CONSOLE_COLOR_CYAN VERSIONSTRING CONSOLE_ENDCOLOR);
 	
 	/*Set environment variables.*/
 	setenv("USER", ENVVAR_USER, true);
