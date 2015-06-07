@@ -33,6 +33,8 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd);
 static ReturnCode HandleEpochCommand(int argc, char **argv);
 static void SigHandler(int Signal);
 static void SetDefaultProcessTitle(int argc, char **argv);
+static Bool KCmdLineObjCmd_Add(const char *ObjectID, Bool StartMode);
+///static Bool KCmdLineObjCmd_Del(const char *ObjectID, Bool StartMode);
 
 /*
  * Actual functions.
@@ -40,6 +42,61 @@ static void SetDefaultProcessTitle(int argc, char **argv);
  
  
 Bool AreInit;
+struct _StartupCustomObjCommands StartupCustomObjCommands;
+
+static Bool KCmdLineObjCmd_Add(const char *ObjectID, Bool StartMode)
+{
+	const int Sizer = sizeof StartupCustomObjCommands.Start / sizeof StartupCustomObjCommands.Start[0];
+	char (*Worker)[sizeof *StartupCustomObjCommands.Start] = StartMode ? StartupCustomObjCommands.Start : StartupCustomObjCommands.Skip;
+
+	int Inc = 0;
+	
+	for (; **Worker && Inc < Sizer; ++Inc, ++Worker);
+	
+	if (Inc == Sizer) return false;
+	
+	snprintf(*Worker, sizeof *Worker, "%s", ObjectID);
+	
+	return true;
+	
+}
+
+Bool KCmdLineObjCmd_Check(const char *ObjectID, Bool StartMode)
+{
+	const int Sizer = sizeof StartupCustomObjCommands.Start / sizeof StartupCustomObjCommands.Start[0];
+	char (*Worker)[sizeof *StartupCustomObjCommands.Start] = StartMode ? StartupCustomObjCommands.Start : StartupCustomObjCommands.Skip;
+	
+	int Inc = 0;
+	
+	for (; **Worker && Inc < Sizer; ++Inc, ++Worker)
+	{
+		if (!strcmp(*Worker, ObjectID)) return true;
+	}
+	
+	return false;
+}
+
+/**Not useful at this time, but keep it here in case.**/
+/**
+static Bool KCmdLineObjCmd_Del(const char *ObjectID, Bool StartMode)
+{
+	const int Sizer = sizeof StartupCustomObjCommands.Start / sizeof StartupCustomObjCommands.Start[0];
+	char (*Worker)[sizeof *StartupCustomObjCommands.Start] = StartMode ? StartupCustomObjCommands.Start : StartupCustomObjCommands.Skip;
+	
+	int Inc = 0;
+	
+	for (; **Worker && Inc < Sizer; ++Inc, ++Worker)
+	{
+		if (!strcmp(*Worker, ObjectID))
+		{
+			memset(*Worker, 0, sizeof *Worker);
+			return true;
+		}
+	}
+	
+	return false;
+}
+**/
 
 static Bool __CmdIs(const char *CArg, const char *InCmd)
 { /*Check if we are or end in the command name specified.*/
@@ -1613,6 +1670,59 @@ int main(int argc, char **argv)
 		{ /*Sets the default runlevel we use on bootup.*/
 			snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", TRunlevel);
 		}
+		
+		//Objects we skip and start specified on the kernel command line.
+		const char *SkipObjects = getenv("skipobj");
+		const char *StartObjects = getenv("startobj");
+		
+		if (SkipObjects)
+		{			
+			int Inc = 0;
+			const char *Worker = SkipObjects;
+			char TmpBuf[MAX_LINE_SIZE];
+
+			do
+			{
+				if (*Worker == ',') ++Worker;
+				
+				if (!*Worker) break;
+				
+				//Get the object name.
+				for (Inc = 0; Worker[Inc] != ',' && Worker[Inc] && Inc < sizeof TmpBuf - 1; ++Inc)
+				{
+					TmpBuf[Inc] = Worker[Inc];
+				}
+				TmpBuf[Inc] = '\0';
+				
+				//Add to skip list.
+				KCmdLineObjCmd_Add(TmpBuf, false);
+			} while ((Worker = strchr(Worker, ',')));
+		}
+		
+		if (StartObjects)
+		{			
+			int Inc = 0;
+			const char *Worker = StartObjects;
+			char TmpBuf[MAX_LINE_SIZE];
+
+			do
+			{
+				if (*Worker == ',') ++Worker;
+				
+				if (!*Worker) break;
+				
+				//Get the object name.
+				for (Inc = 0; Worker[Inc] != ',' && Worker[Inc] && Inc < sizeof TmpBuf - 1; ++Inc)
+				{
+					TmpBuf[Inc] = Worker[Inc];
+				}
+				TmpBuf[Inc] = '\0';
+				
+				//Add to start list.
+				KCmdLineObjCmd_Add(TmpBuf, true);
+			} while ((Worker = strchr(Worker, ',')));
+		}
+		
 		
 		SetDefaultProcessTitle(argc, argv);
 		

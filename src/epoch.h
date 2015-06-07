@@ -288,6 +288,14 @@ struct _StatusReportFormat
 	char StatusFormats[3][MAX_LINE_SIZE]; /*For FAILURE, Done, and WARNING, and whatnot. You specify what to show.*/
 };
 
+struct _StartupCustomObjCommands
+{ //Used for startobj= and skipobj= on the kernel command line.
+	char Start[16][MAX_DESCRIPT_SIZE];
+	char Skip[16][MAX_DESCRIPT_SIZE];
+	/*there are places in the code where there is a reliance on the
+	 number of elements of both of these being the same.*/
+};
+
 /**Globals go here.**/
 
 extern ObjTable *ObjectTable;
@@ -313,7 +321,7 @@ extern int NumConfigFiles;
 extern struct _EnvVarList *GlobalEnvVars;
 extern Bool AreInit;
 extern struct _StatusReportFormat StatusReportFormat;
-
+extern struct _StartupCustomObjCommands StartupCustomObjCommands;
 /**Function forward declarations.*/
 
 /*config.c*/
@@ -393,5 +401,8 @@ extern unsigned ReadPIDFile(const ObjTable *InObj);
 extern ReturnCode WriteLogLine(const char *InStream, Bool AddDate);
 extern unsigned AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID);
 extern Bool ProcAvailable(void);
+
+/*main.c*/
+extern Bool KCmdLineObjCmd_Check(const char *ObjectID, Bool StartMode);
 
 #endif /* __EPOCH_H__ */

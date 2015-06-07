@@ -3000,7 +3000,7 @@ ObjTable *GetObjectByPriority(const char *ObjectRunlevel, ObjTable *LastNode, Bo
 		WorkerPriority = (WantStartPriority ? Worker->ObjectStartPriority : Worker->ObjectStopPriority);
 		
 		if ((ObjectRunlevel == NULL || ((WantStartPriority || !Worker->Opts.HaltCmdOnly) &&
-			ObjRL_CheckRunlevel(ObjectRunlevel, Worker, true))) && WorkerPriority == ObjectPriority)
+			(ObjRL_CheckRunlevel(ObjectRunlevel, Worker, true) || (CurrentBootMode == BOOT_BOOTUP && KCmdLineObjCmd_Check(Worker->ObjectID, true))) )) && WorkerPriority == ObjectPriority)
 		{
 			return Worker;
 		}

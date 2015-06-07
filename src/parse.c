@@ -975,8 +975,21 @@ ReturnCode RunAllObjects(Bool IsStartingMode)
 				return FAILURE;
 			}
 			
+			//Disabled in config but enabled from kernel cli
+			if (!CurObj->Enabled && IsStartingMode && CurrentBootMode == BOOT_BOOTUP && KCmdLineObjCmd_Check(CurObj->ObjectID, true))
+			{
+				goto NextLogic;
+			}
+			
 			if (!CurObj->Enabled && (IsStartingMode || CurObj->Opts.HaltCmdOnly))
 			{ /*Stop even disabled objects, but not disabled HALTONLY objects.*/
+				continue;
+			}
+			
+		NextLogic:
+			//Enabled in config but disabled from kernel cli
+			if (IsStartingMode && CurrentBootMode == BOOT_BOOTUP && KCmdLineObjCmd_Check(CurObj->ObjectID, false))
+			{
 				continue;
 			}
 		

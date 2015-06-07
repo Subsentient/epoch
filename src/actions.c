@@ -734,6 +734,38 @@ void LaunchBootup(void)
 		printf("Booting to runlevel \"%s\".\n\n", CurRunlevel);
 	}
 
+	if (*StartupCustomObjCommands.Start[0])
+	{
+		printf("Objects specified to start if found: ");
+		
+		int Inc = 0;
+		char (*Arr)[sizeof *StartupCustomObjCommands.Start] = StartupCustomObjCommands.Start;
+		
+		for (; *Arr[Inc]; ++Inc)
+		{
+			printf("%s ", Arr[Inc]);
+		}
+		
+		//Whitespace
+		putchar('\n'); putchar('\n');
+	}
+	
+	if (*StartupCustomObjCommands.Skip[0])
+	{
+		printf("Objects specified to skip if found: ");
+		
+		int Inc = 0;
+		char (*Arr)[sizeof *StartupCustomObjCommands.Skip] = StartupCustomObjCommands.Skip;
+		
+		for (; *Arr[Inc]; ++Inc)
+		{
+			printf("%s ", Arr[Inc]);
+		}
+		
+		//Whitespace
+		putchar('\n'); putchar('\n');
+	}
+	
 	if (!InitConfig(ConfigFile))
 	{ /*That is very very bad if we fail here.*/
 		EmergencyShell();
