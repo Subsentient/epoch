@@ -300,10 +300,11 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		  "and check will tell you if that object is enabled for that runlevel."
 		),
 		
-		( "status [objectid]:\n\t"
+		( "status [objectid]:\n"
+			"(statusnc [objectid]:)\n\t"
 		
 		  "Prints information about the object specified.\n\t"
-		  "If an object is not specified, it prints info on all known objects."
+		  "If an object is not specified, it prints info on all known objects. statusnc excludes any color output."
 		),
 		( "setcad [on/off]:\n\t"
 		
@@ -391,7 +392,7 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		printf("%s %s\n\n", RootCommand, HelpMsgs[OBJRL]);
 		return;
 	}
-	else if (!strcmp(InCmd, "status"))
+	else if (!strcmp(InCmd, "status") || !strcmp(InCmd, "statusnc"))
 	{
 		printf("%s %s\n\n", RootCommand, HelpMsgs[STATUS]);
 		return;
@@ -686,14 +687,17 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 			return FAILURE;
 		}
 	}
-	else if (ArgIs("status"))
+	else if (ArgIs("status") || ArgIs("statusnc"))
 	{
 		char OutBuf[MEMBUS_MSGSIZE], InBuf[MEMBUS_MSGSIZE];
 		char *Worker = NULL;
-		const char *const YN[2] = { CONSOLE_COLOR_RED "No" CONSOLE_ENDCOLOR,
-									CONSOLE_COLOR_GREEN "Yes" CONSOLE_ENDCOLOR };
+		const char *const YN[2][3] = { { "No", "Yes", "N/A" },
+									{ CONSOLE_COLOR_RED "No" CONSOLE_ENDCOLOR,
+									CONSOLE_COLOR_GREEN "Yes" CONSOLE_ENDCOLOR,
+									CONSOLE_COLOR_YELLOW "N/A" CONSOLE_ENDCOLOR } };
 		unsigned Inc = 2;
 		int Stopper = argc > 2 ? argc : 3;
+		const Bool UseColor = ArgIs("status");
 		
 		if (!InitMemBus(false))
 		{
@@ -849,9 +853,9 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 			
 			
 				printf("ObjectID: %s\nObjectDescription: %s\nEnabled: %s | Started: %s | Running: %s | Stop mode: ",
-						ObjectID, ObjectDescription, YN[Enabled],
-						HaltCmdOnly || PivotRoot || Exec ? CONSOLE_COLOR_YELLOW "N/A" CONSOLE_ENDCOLOR : YN[Started],
-						HaltCmdOnly || PivotRoot || Exec ? CONSOLE_COLOR_YELLOW "N/A" CONSOLE_ENDCOLOR : YN[Running]);
+						ObjectID, ObjectDescription, YN[UseColor][Enabled],
+						HaltCmdOnly || PivotRoot || Exec ? YN[UseColor][2] : YN[UseColor][Started],
+						HaltCmdOnly || PivotRoot || Exec ? YN[UseColor][2] : YN[UseColor][Running]);
 				
 				if (StopMode == STOP_COMMAND) printf("Command");
 				else if (StopMode == STOP_NONE) printf("None");
