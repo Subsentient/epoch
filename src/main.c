@@ -300,8 +300,7 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		  "and check will tell you if that object is enabled for that runlevel."
 		),
 		
-		( "status [objectid]:\n"
-			"(statusnc [objectid]:)\n\t"
+		( "[status/statusnc] [objectid]:\n\t"
 		
 		  "Prints information about the object specified.\n\t"
 		  "If an object is not specified, it prints info on all known objects. statusnc excludes any color output."
