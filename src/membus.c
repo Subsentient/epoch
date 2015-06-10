@@ -41,7 +41,16 @@ ReturnCode InitMemBus(Bool ServerSide)
 	if ((MemDescriptor = shmget((key_t)MemBusKey, MEMBUS_SIZE + sizeof(long) * 2, (ServerSide ? (IPC_CREAT | 0660) : 0660))) < 0)
 	{
 		if (ServerSide) SpitError("InitMemBus(): Failed to allocate memory bus."); /*should probably use perror*/
-		else SpitError("InitMemBus(): Failed to connect to memory bus. Permissions?");
+		else SpitError("InitMemBus(): Failed to connect to memory bus.\n\n"
+						CONSOLE_COLOR_RED " ** " CONSOLE_ENDCOLOR
+						"If you are attempting to use power control commands\n"
+						"or the 'epoch' command and are seeing this,\n"
+						"make sure that your user belongs to group 0 (wheel or root on most systems),"
+						"which is what gives you permission to use such commands.\n\n"
+						CONSOLE_COLOR_RED " ** " CONSOLE_ENDCOLOR
+						"If you are root/using sudo and are seeing this, either Epoch is not running,\n"
+						"or something else is wrong, in which case, please let the developer(s)\n"
+						"of Epoch know.");
 		return FAILURE;
 	}
 	
