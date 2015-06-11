@@ -44,6 +44,7 @@ static Bool NoKArgsFileExists(void);
  
  
 Bool AreInit;
+Bool InteractiveBoot;
 struct _StartupCustomObjCommands StartupCustomObjCommands;
 
 static Bool KCmdLineObjCmd_Add(const char *ObjectID, Bool StartMode)
@@ -1666,7 +1667,7 @@ int main(int argc, char **argv)
 		else if (argc > 1)
 		{
 			short ArgCount = (short)argc, Inc = 1;
-			const char *Arguments[] = { "shell" }; /*I'm sick of repeating myself with literals.*/
+			const char *Arguments[] = { "shell", "interactiveboot" }; /*I'm sick of repeating myself with literals.*/
 			
 			if (!NoKArgs) //If we said no kernel args, that includes stuff not passed as an environment variable.
 			{
@@ -1676,6 +1677,10 @@ int main(int argc, char **argv)
 					{
 						puts(CONSOLE_COLOR_GREEN "Now launching a simple shell as per your request." CONSOLE_ENDCOLOR);
 						EmergencyShell(); /*Drop everything we're doing and start an emergency shell.*/
+					}
+					else if (!strcmp(argv[Inc], Arguments[1]))
+					{
+						InteractiveBoot = true;
 					}
 				}
 			}

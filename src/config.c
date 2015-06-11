@@ -1202,6 +1202,10 @@ ReturnCode InitConfig(const char *CurConfigFile)
 				{
 					CurObj->Opts.StopFailIsCritical = true;
 				}
+				else if (!strcmp(CurArg, "INTERACTIVE"))
+				{
+					CurObj->Opts.Interactive = true;
+				}
 				else if (!strncmp(CurArg, "FORK", sizeof "FORK" - 1))
 				{
 			#ifndef NOMMU

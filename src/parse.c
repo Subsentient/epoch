@@ -1000,6 +1000,29 @@ ReturnCode RunAllObjects(Bool IsStartingMode)
 			
 			if ((IsStartingMode ? !CurObj->Started : CurObj->Started))
 			{
+				if (InteractiveBoot && CurrentBootMode == BOOT_BOOTUP && CurObj->Opts.Interactive)
+				{ //We are being requested to prompt for everything we do on bootup.
+					printf("\nStart bootup object %s?\n[y/N] ", CurObj->ObjectID);
+					
+
+
+					char Char = getchar();
+					
+				ReGet:
+					switch (tolower(Char))
+					{
+						case 'y':
+							ProcessConfigObject(CurObj, IsStartingMode, true);
+							continue;
+						case '\n':
+							Char = getchar();
+							goto ReGet;
+						default:
+							continue;
+					}
+				}
+				
+				//Not interactive, just do it.
 				ProcessConfigObject(CurObj, IsStartingMode, true);
 			}
 		}

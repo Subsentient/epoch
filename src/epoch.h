@@ -226,6 +226,7 @@ typedef struct _EpochObjectTable
 #ifndef NOMMU
 		unsigned Fork : 1; /*Essentially do the same thing (with an Epoch twist) as Command& in sh.*/
 		unsigned ForkScanOnce : 1; /*Same as Fork, but only scans through the PID once.*/
+		unsigned Interactive : 1; //Says that this object is allowed to prompt for y/N to start or not on boot.
 #endif
 	} Opts;
 	
@@ -326,6 +327,7 @@ extern struct _EnvVarList *GlobalEnvVars;
 extern Bool AreInit;
 extern struct _StatusReportFormat StatusReportFormat;
 extern struct _StartupCustomObjCommands StartupCustomObjCommands;
+extern Bool InteractiveBoot;
 /**Function forward declarations.*/
 
 /*config.c*/

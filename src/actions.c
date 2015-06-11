@@ -766,6 +766,13 @@ void LaunchBootup(void)
 		putchar('\n'); putchar('\n');
 	}
 	
+	if (InteractiveBoot)
+	{
+		const char *const Msg = "Booting in interactive mode.\n";
+		puts(Msg);
+		WriteLogLine(Msg, true);
+	}
+	
 	if (!InitConfig(ConfigFile))
 	{ /*That is very very bad if we fail here.*/
 		EmergencyShell();
