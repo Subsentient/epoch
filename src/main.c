@@ -1756,7 +1756,7 @@ int main(int argc, char **argv)
 		return !HandleEpochCommand(argc, argv);
 	}
 	else if (CmdIs("init"))
-	{ /*This is a bit int winded here, however, it's better than devoting a function for it.*/
+	{ /*This is a bit long winded here, however, it's better than devoting a function for it.*/
 		if (argc == 2)
 		{
 			char TmpBuf[MEMBUS_MSGSIZE];
@@ -1765,7 +1765,7 @@ int main(int argc, char **argv)
 			
 			if (strlen(argv[1]) >= MEMBUS_MSGSIZE)
 			{
-				SpitError("Runlevel name too int. Please specify a runlevel with a sane name.");
+				SpitError("Runlevel name too long. Please specify a runlevel with a sane name.");
 				return 1;
 			}
 			

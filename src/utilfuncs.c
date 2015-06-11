@@ -20,7 +20,7 @@
 
 /**Constants**/
 Bool EnableLogging = true;
-Bool LogInMemory = true; /*This is necessary so int as we have a readonly filesystem.*/
+Bool LogInMemory = true; /*This is necessary so long as we have a readonly filesystem.*/
 Bool BlankLogOnBoot = true;
 char *MemLogBuffer;
 

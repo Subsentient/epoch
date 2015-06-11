@@ -230,7 +230,7 @@ ReturnCode MemBus_Write(const char *InStream, Bool ServerSide)
 		++WaitCount;
 		
 		if (WaitCount == 10000)
-		{ /*Been 10 seconds! Does it take that int to copy a string?*/
+		{ /*Been 10 seconds! Does it take that long to copy a string?*/
 			return FAILURE;
 		}
 	}

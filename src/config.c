@@ -124,7 +124,7 @@ static void ConfigProblem(const char *File, short Type, const char *Attribute, c
 			break;
 		case CONFIG_ETRUNCATED:
 			snprintf(TmpBuf, 1024, "Attribute %s in %s line %u has\n"
-					"abnormally int value and may have been truncated.", Attribute, File, LineNum);
+					"abnormally long value and may have been truncated.", Attribute, File, LineNum);
 			break;
 		case CONFIG_EAFTER:
 			snprintf(TmpBuf, 1024, "Attribute %s cannot be set after an ObjectID attribute; "
