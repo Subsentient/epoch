@@ -59,6 +59,10 @@
 #define SHELLDISSOLVES true
 #endif
 
+#ifndef NOKARGSFILE
+#define NOKARGSFILE "/.epochnokargs"
+#endif
+
 /*Version.*/
 #define VERSIONSTRING "Epoch Init System (git/master)"
 

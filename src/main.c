@@ -16,6 +16,7 @@
 #include <pwd.h>
 #include <sys/reboot.h>
 #include <sys/shm.h>
+#include <sys/stat.h>
 
 #ifndef NO_EXECINFO
 #include <execinfo.h>
@@ -34,6 +35,7 @@ static ReturnCode HandleEpochCommand(int argc, char **argv);
 static void SigHandler(int Signal);
 static void SetDefaultProcessTitle(int argc, char **argv);
 static Bool KCmdLineObjCmd_Add(const char *ObjectID, Bool StartMode);
+static Bool NoKArgsFileExists(void);
 ///static Bool KCmdLineObjCmd_Del(const char *ObjectID, Bool StartMode);
 
 /*
@@ -59,6 +61,15 @@ static Bool KCmdLineObjCmd_Add(const char *ObjectID, Bool StartMode)
 	
 	return true;
 	
+}
+
+
+//Used to check if /.epochnokargs exists.
+static Bool NoKArgsFileExists(void)
+{
+	struct stat FileStat;
+	
+	return !stat(NOKARGSFILE, &FileStat);
 }
 
 Bool KCmdLineObjCmd_Check(const char *ObjectID, Bool StartMode)
@@ -1634,8 +1645,9 @@ int main(int argc, char **argv)
 	
 	if (AreInit)
 	{ /*Just us, as init. That means, begin bootup.*/
-		const char *TRunlevel = NULL, *TConfigFile = getenv("epochconfig");
-
+		const Bool NoKArgs = NoKArgsFileExists();
+		const char *TConfigFile = NoKArgs ? NULL : getenv("epochconfig");
+		
 		if (TConfigFile != NULL)
 		{ /*Someone specified a config file from disk?*/
 			snprintf(ConfigFile, MAX_LINE_SIZE, "%s", TConfigFile);
@@ -1656,27 +1668,32 @@ int main(int argc, char **argv)
 			short ArgCount = (short)argc, Inc = 1;
 			const char *Arguments[] = { "shell" }; /*I'm sick of repeating myself with literals.*/
 			
-			for (; Inc < ArgCount; ++Inc)
+			if (!NoKArgs) //If we said no kernel args, that includes stuff not passed as an environment variable.
 			{
-				if (!strcmp(argv[Inc], Arguments[0]))
+				for (; Inc < ArgCount; ++Inc)
 				{
-					puts(CONSOLE_COLOR_GREEN "Now launching a simple shell as per your request." CONSOLE_ENDCOLOR);
-					EmergencyShell(); /*Drop everything we're doing and start an emergency shell.*/
+					if (!strcmp(argv[Inc], Arguments[0]))
+					{
+						puts(CONSOLE_COLOR_GREEN "Now launching a simple shell as per your request." CONSOLE_ENDCOLOR);
+						EmergencyShell(); /*Drop everything we're doing and start an emergency shell.*/
+					}
 				}
 			}
 		}
 		
 		signal(SIGUSR2, SigHandler); /**If we receive this, we reexecute. Mostly in case something is wrong.**/
 		
+		const char *TRunlevel = NoKArgs ? NULL : getenv("runlevel");
+		
 		/*Need we set a default runlevel?*/
-		if ((TRunlevel = getenv("runlevel")) != NULL)
+		if (TRunlevel != NULL)
 		{ /*Sets the default runlevel we use on bootup.*/
 			snprintf(CurRunlevel, MAX_DESCRIPT_SIZE, "%s", TRunlevel);
 		}
 		
 		//Objects we skip and start specified on the kernel command line.
-		const char *SkipObjects = getenv("skipobj");
-		const char *StartObjects = getenv("startobj");
+		const char *SkipObjects = NoKArgs ? NULL : getenv("skipobj");
+		const char *StartObjects = NoKArgs ? NULL : getenv("startobj");
 		
 		if (SkipObjects)
 		{			

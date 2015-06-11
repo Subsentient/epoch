@@ -48,6 +48,7 @@ ShowHelp()
 	printf "\twhen we use 'sh -c', but most including bash, dash, ksh, csh, tcsh,\n"
 	printf "\tand zsh do not. You are encouraged to make sure this is set for\n"
 	printf "\tbusybox etc, because this option is used to assist tracking PIDs.\n"
+	printf $Green"--nokargsfile"$EndGreen":\n\tThe file that Epoch will check for to see if it should ignore kernel arg options.\n"
 	printf $Green"--cflags value"$EndGreen":\n\tSets \$CFLAGS to the desired value.\n"
 	printf $Green"--ldflags value"$EndGreen":\n\tSets \$LDFLAGS to the desired value.\n"
 	printf $Green"--cc value"$EndGreen":\n\tSets \$CC to be the compiler for Epoch.\n"
@@ -93,7 +94,9 @@ if [ "$#" != "0" ]; then
 		elif [ "$1" = "--env-shell" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DENVVAR_SHELL=\"$1\""
-	
+		elif [ "$1" = "--nokargsfile" ]; then
+			shift
+			CFLAGS=$CFLAGS" -DNOKARGSFILE=\"$1\""
 		elif [ "$1" = "--env-path" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DENVVAR_PATH=\"$1\""
