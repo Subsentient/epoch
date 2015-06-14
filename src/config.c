@@ -63,6 +63,7 @@ static void PriorityAlias_Shutdown(void);
 static void RLInheritance_Add(const char *Inheriter, const char *Inherited);
 static Bool RLInheritance_Check(const char *Inheriter, const char *Inherited);
 static void RLInheritance_Shutdown(void);
+static unsigned PriorityOfLookup(const char *const ObjectID, Bool IsStartingMode);
 
 /*Used for error handling in InitConfig() by ConfigProblem(CurConfigFile, ).*/
 enum { CONFIG_EMISSINGVAL = 1, CONFIG_EBADVAL, CONFIG_ETRUNCATED, CONFIG_EAFTER,
@@ -493,6 +494,12 @@ ReturnCode InitConfig(const char *CurConfigFile)
 				Alias[TInc] = *TWorker;
 			}
 			Alias[TInc] = '\0';
+			
+			if (!ValidIdentifierName(Alias))
+			{ //We have to check if this contains odd characters we might want to do something with in config ourselves, and disallow it.
+				ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, Alias, LineNum);
+				continue;
+			}
 			
 			if (*TWorker == '\0')
 			{
@@ -1074,6 +1081,17 @@ ReturnCode InitConfig(const char *CurConfigFile)
 				WriteLogLine(ErrBuf, true);
 				*Temp = '\0';
 			}
+			
+			if (!ValidIdentifierName(DelimCurr))
+			{ //We have to check if this contains odd characters we might want to do something with in config ourselves, and disallow it.
+				snprintf(DelimCurr, sizeof DelimCurr, "object%u%u%u_badid", rand(), rand(), rand()); //Generate a new ID since this one is bad.
+				
+				//Now alert them.
+				snprintf(ErrBuf, sizeof ErrBuf, CONFIGWARNTXT "ObjectID contains invalid character. Generating new ID: \"%s\".", DelimCurr);
+				SpitWarning(ErrBuf);
+				WriteLogLine(ErrBuf, true);
+			}
+
 			
 			DelimCurr[MAX_DESCRIPT_SIZE - 1] = '\0'; /*Chop it off to prevent overflow.*/
 			
@@ -1680,13 +1698,34 @@ ReturnCode InitConfig(const char *CurConfigFile)
 			if (!AllNumeric(DelimCurr)) /*Make sure we are getting a number, not Shakespeare.*/
 			{ /*No number? We're probably looking at an alias.*/
 				unsigned TmpTarget = 0;
+				signed int Change = 0;
+				Bool PositiveChange = false;
 				
-				if (!(TmpTarget = PriorityAlias_Lookup(DelimCurr)))
+				char *Lookup = strpbrk(DelimCurr, "-+");
+				if (Lookup != NULL && AllNumeric(Lookup + 1))
+				{ //They provided an increment or decrement.
+					PositiveChange = *Lookup == '+';
+					*Lookup = '\0';
+					Change = atoi(Lookup + 1);
+				}
+				
+				if (!(TmpTarget = PriorityAlias_Lookup(DelimCurr)) && !(TmpTarget = PriorityOfLookup(DelimCurr, true)))
 				{
 					ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 					continue;
 				}
 				
+				if (Change)
+				{ //They incremented or decremented.
+					if (PositiveChange)
+					{
+						TmpTarget += Change;
+					}
+					else
+					{
+						TmpTarget -= Change;
+					}
+				}
 				CurObj->ObjectStartPriority = TmpTarget;
 				continue;
 			}
@@ -1718,11 +1757,34 @@ ReturnCode InitConfig(const char *CurConfigFile)
 			if (!AllNumeric(DelimCurr))
 			{
 				unsigned TmpTarget = 0;
+				signed int Change = 0;
+				Bool PositiveChange = false;
 				
-				if (!(TmpTarget = PriorityAlias_Lookup(DelimCurr)))
+				char *Lookup = strpbrk(DelimCurr, "-+");
+				if (Lookup != NULL && AllNumeric(Lookup + 1))
+				{ //They provided an increment or decrement.
+					PositiveChange = *Lookup == '+';
+					*Lookup = '\0';
+					Change = atoi(Lookup + 1);
+				}
+				
+				
+				if (!(TmpTarget = PriorityAlias_Lookup(DelimCurr)) && !(TmpTarget = PriorityOfLookup(DelimCurr, false)))
 				{
 					ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
 					continue;
+				}
+				
+				if (Change)
+				{ //They incremented or decremented.
+					if (PositiveChange)
+					{
+						TmpTarget += Change;
+					}
+					else
+					{
+						TmpTarget -= Change;
+					}
 				}
 				
 				CurObj->ObjectStopPriority = TmpTarget;
@@ -2635,6 +2697,25 @@ ObjTable *LookupObjectInTable(const char *ObjectID)
 
 	return NULL;
 }
+
+static unsigned PriorityOfLookup(const char *const ObjectID, Bool IsStartingMode)
+{
+	ObjTable *Worker = ObjectTable;
+	
+	if (!ObjectTable) return 0;
+	
+	for (; Worker->Next; Worker = Worker->Next)
+	{
+		if (!strcmp(ObjectID, Worker->ObjectID))
+		{
+			return IsStartingMode ? Worker->ObjectStartPriority : Worker->ObjectStopPriority;
+		}
+	}
+	
+	return 0;
+}
+
+
 
 /*Get the max priority number we need to scan.*/
 unsigned GetHighestPriority(Bool WantStartPriority)

@@ -407,6 +407,7 @@ extern unsigned ReadPIDFile(const ObjTable *InObj);
 extern ReturnCode WriteLogLine(const char *InStream, Bool AddDate);
 extern unsigned AdvancedPIDFind(ObjTable *InObj, Bool UpdatePID);
 extern Bool ProcAvailable(void);
+extern Bool ValidIdentifierName(const char *const Identifier);
 
 /*main.c*/
 extern Bool KCmdLineObjCmd_Check(const char *ObjectID, Bool StartMode);

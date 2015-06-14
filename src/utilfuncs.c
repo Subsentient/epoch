@@ -438,3 +438,17 @@ Bool ProcAvailable(void)
 	
 	return !stat("/proc/cmdline", &FileStat);
 }
+
+Bool ValidIdentifierName(const char *const Identifier)
+{
+	const char *Worker = Identifier;
+	
+	for (; *Worker; ++Worker)
+	{
+		if (!isalnum(*Worker) && *Worker != '_') return false;
+	}
+	
+	return true;
+}
+
+
