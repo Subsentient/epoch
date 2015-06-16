@@ -26,6 +26,7 @@ char *MemLogBuffer;
 
 /*Days in the month, for time stuff.*/
 static const unsigned char MDays[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+char LogFile[MAX_LINE_SIZE] = LOGFILE;
 
 Bool AllNumeric(const char *InStream)
 { /*Is the string all numbers?*/
@@ -56,7 +57,7 @@ ReturnCode WriteLogLine(const char *InStream, Bool AddDate)
 		return SUCCESS;
 	}
 	
-	if (!LogInMemory && !(Descriptor = fopen(LOGDIR LOGFILE_NAME, "a")))
+	if (!LogInMemory && !(Descriptor = fopen(LogFile, "a")))
 	{
 		if (!FailedBefore)
 		{

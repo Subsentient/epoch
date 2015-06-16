@@ -685,7 +685,7 @@ void FinaliseLogStartup(Bool BlankLog)
 	{ /*Switch logging out of memory mode and write it's memory buffer to disk.*/		
 		if (EnableLogging)
 		{
-			FILE *Descriptor = fopen(LOGDIR LOGFILE_NAME, (BlankLog ? "w" : "a"));
+			FILE *Descriptor = fopen(LogFile, (BlankLog ? "w" : "a"));
 
 			LogInMemory = false;
 

@@ -31,12 +31,12 @@
 #define CONFIGDIR "/etc/epoch/"
 #endif
 
-#ifndef LOGDIR
-#define LOGDIR "/var/log/"
+#ifndef LOGFILE
+#define LOGFILE "/var/log/system.log"
 #endif
 
 #define CONF_NAME "epoch.conf"
-#define LOGFILE_NAME "system.log"
+
 
 /*Environment variables.*/
 #ifndef ENVVAR_HOME
@@ -223,10 +223,10 @@ typedef struct _EpochObjectTable
 		unsigned StartFailIsCritical : 1; /*Starting this object is so important we're going to drop you to a shell if it fails.*/
 		unsigned StopFailIsCritical : 1; /*Same but for stopping.*/
 		unsigned NoTrack : 1; /*Don't track the PID with AdvancedPIDFind().*/
+		unsigned Interactive : 1; //Says that this object is allowed to prompt for y/N to start or not on boot.
 #ifndef NOMMU
 		unsigned Fork : 1; /*Essentially do the same thing (with an Epoch twist) as Command& in sh.*/
 		unsigned ForkScanOnce : 1; /*Same as Fork, but only scans through the PID once.*/
-		unsigned Interactive : 1; //Says that this object is allowed to prompt for y/N to start or not on boot.
 #endif
 	} Opts;
 	
@@ -328,6 +328,10 @@ extern Bool AreInit;
 extern struct _StatusReportFormat StatusReportFormat;
 extern struct _StartupCustomObjCommands StartupCustomObjCommands;
 extern Bool InteractiveBoot;
+extern char LogFile[MAX_LINE_SIZE];
+//End of globals
+
+
 /**Function forward declarations.*/
 
 /*config.c*/

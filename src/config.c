@@ -652,6 +652,19 @@ ReturnCode InitConfig(const char *CurConfigFile)
 			
 			continue;
 		}
+		else if (!strncmp(Worker, (CurrentAttribute = "LogFile"), sizeof "LogFile" - 1))
+		{ //Specify a log file to use.
+			if (!GetLineDelim(Worker, DelimCurr))
+			{
+				ConfigProblem(CurConfigFile, CONFIG_EMISSINGVAL, CurrentAttribute, NULL, LineNum);
+				continue;
+
+			}
+			
+			DelimCurr[MAX_LINE_SIZE - 1] = '\0';
+			strcpy(LogFile, DelimCurr);
+			continue;
+		}
 		else if (!strncmp(Worker, (CurrentAttribute = "Hostname"), sizeof "Hostname" - 1))
 		{
 			if (CurObj != NULL)
@@ -1915,10 +1928,9 @@ ReturnCode InitConfig(const char *CurConfigFile)
 			
 			if (!strcmp(DelimCurr, "LOG"))
 			{
-				const char *LogPath = LOGDIR LOGFILE_NAME;
-				CurObj->ObjectStdout = malloc(strlen(LogPath) + 1);
+				CurObj->ObjectStdout = malloc(strlen(LogFile) + 1);
 
-				strncpy(CurObj->ObjectStdout, LOGDIR LOGFILE_NAME, strlen(LogPath) + 1);
+				strncpy(CurObj->ObjectStdout, LogFile, strlen(LogFile) + 1);
 			}
 			else
 			{
@@ -1950,10 +1962,9 @@ ReturnCode InitConfig(const char *CurConfigFile)
 			
 			if (!strcmp(DelimCurr, "LOG"))
 			{
-				const char *LogPath = LOGDIR LOGFILE_NAME;
-				CurObj->ObjectStderr = malloc(strlen(LogPath) + 1);
+				CurObj->ObjectStderr = malloc(strlen(LogFile) + 1);
 
-				strncpy(CurObj->ObjectStderr, LOGDIR LOGFILE_NAME, strlen(LogPath) + 1);
+				strncpy(CurObj->ObjectStderr, LogFile, strlen(LogFile) + 1);
 			}
 			else
 			{
