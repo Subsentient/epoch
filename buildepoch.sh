@@ -22,7 +22,7 @@ ShowHelp()
 	printf $Green"--nommu"$EndGreen":\n\tUse this to build Epoch for a CPU with no MMU.\n"
 	printf $Green"--configdir dir"$EndGreen":\n\tSets the directory Epoch will search for epoch.conf.\n"
 	printf "\tDefault is /etc/epoch.\n"
-	printf $Green"--logdir dir"$EndGreen":\n\tSets the directory Epoch will write system.log to.\n"
+	printf $Green"--logfile file"$EndGreen":\n\tSets the file Epoch will use as its logfile.\n"
 	printf "\tDefault is /var/log.\n"
 	printf $Green"--binarypath path"$EndGreen":\n\tThe direct path to the Epoch binary. Default is /sbin/epoch.\n"
 	printf $Green"--env-home value"$EndGreen":\n\tDesired environment variable for \$HOME.\n"
@@ -79,9 +79,9 @@ if [ "$#" != "0" ]; then
 			shift
 			CFLAGS=$CFLAGS" -DEPOCH_BINARY_PATH=\"$1\""
 	
-		elif [ "$1" = "--logdir" ]; then
+		elif [ "$1" = "--logfile" ]; then
 			shift
-			CFLAGS=$CFLAGS" -DLOGDIR=\"$1\""
+			CFLAGS=$CFLAGS" -DLOGFILE=\"$1\""
 		
 		elif [ "$1" = "--env-home" ]; then
 			shift
