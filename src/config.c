@@ -2213,25 +2213,22 @@ ReturnCode MergeImportLine(const char *LineData)
 		snprintf(NewData, sizeof NewData, "Import=%s\n", LineData);
 	}
 	
-	const char *HalfOne = strdup(MasterStream);
-	
 	//Write the file back to disk.
 	Descriptor = fopen(ConfigFile, "wb");
 	
 	if (!Descriptor)
 	{
-		free((void*)HalfOne);
 		if (HalfTwo) free((void*)HalfTwo);
 		free((void*)MasterStream);
 		return FAILURE;
 	}
 	
-	fwrite(HalfOne, 1, strlen(HalfOne), Descriptor);
+	fwrite(MasterStream, 1, strlen(MasterStream), Descriptor);
 	fwrite(NewData, 1, strlen(NewData), Descriptor);
 	if (HalfTwo) fwrite(HalfTwo, 1, strlen(HalfTwo), Descriptor);
 	fclose(Descriptor);
 	
-	free((void*)HalfOne);
+	free((void*)MasterStream);
 	if (HalfTwo) free((void*)HalfTwo);
 	
 	return SUCCESS;
