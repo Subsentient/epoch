@@ -131,6 +131,9 @@
 #define MEMBUS_CODE_KILLOBJ "KILLOBJ"
 #define MEMBUS_CODE_SENDPID "SENDPID"
 #define MEMBUS_CODE_LSOBJS "LSOBJS"
+#define MEMBUS_CODE_CFMERGE "CFMERGE"
+#define MEMBUS_CODE_CFUMERGE "CFUMERGE"
+
 #define MEMBUS_CODE_RXD "RXD"
 #define MEMBUS_CODE_RXD_OPTS "ORXD"
 
@@ -144,7 +147,7 @@
 
 /*Our own boolean type.*/
 enum { false, true }; /*I don't want to use stdbool.*/
-typedef signed char Bool;
+typedef signed char Bool; //Don't change this. Some code relies on this being signed 8 bits.
 
 /*How objects are stopped on shutdown.*/
 enum _StopMode { STOP_NONE, STOP_COMMAND, STOP_PID, STOP_PIDFILE, STOP_INVALID };
@@ -353,6 +356,8 @@ extern void EnvVarList_Shutdown(struct _EnvVarList **const List);
 extern void EnvVarList_Add(const char *Var, struct _EnvVarList **const List);
 extern Bool EnvVarList_Del(const char *const Check, struct _EnvVarList **const List);
 extern void EnvVarList_Shutdown(struct _EnvVarList **const List);
+extern ReturnCode UnmergeImportLine(const char *Filename);
+extern ReturnCode MergeImportLine(const char *LineData);
 
 /*parse.c*/
 extern ReturnCode ProcessConfigObject(ObjTable *CurObj, Bool IsStartingMode, Bool PrintStatus);

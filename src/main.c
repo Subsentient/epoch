@@ -357,13 +357,22 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 		  "the PID will be retrieved from that."
 		),
 		
+		( "[merge/unmerge] filename:\n\t"
+		
+		  "Removes or adds an \"Import\" attribute in config containing the\n\t"
+		  "specified file path.\n\t"
+		  "Note that you will need to reload configuration or\n\t"
+		  "reexecute to make any data in the new config file load.\n\t"
+		  "This command simply edits the configuration file on-disk."
+		),
+		  
 		( "version:\n\t"
 		
 		  "Prints the current version of the Epoch Init System."
 		)
 	};
 	enum { HCMD, SHTDN, ENDIS, STAP, REL, OBJRL, STATUS, SETCAD, CONFRL, REEXEC,
-		RLCTL, GETPID, KILLOBJ, VER, ENUM_MAX };
+		RLCTL, GETPID, KILLOBJ, MERGECMD, VER, ENUM_MAX };
 	
 	printf("%s\nCompiled %s %s\n\n", VERSIONSTRING, __DATE__, __TIME__);
 	
@@ -441,6 +450,11 @@ static void PrintEpochHelp(const char *RootCommand, const char *InCmd)
 	else if (!strcmp(InCmd, "kill"))
 	{
 		printf("%s %s\n\n", RootCommand, HelpMsgs[KILLOBJ]);
+		return;
+	}
+	else if (!strcmp(InCmd, "merge") || !strcmp(InCmd, "unmerge"))
+	{
+		printf("%s %s\n\n", RootCommand, HelpMsgs[MERGECMD]);
 		return;
 	}
 	else if (!strcmp(InCmd, "version"))
@@ -1074,6 +1088,89 @@ static ReturnCode HandleEpochCommand(int argc, char **argv)
 		ShutdownMemBus(false);
 		return RV;
 	}
+	else if (ArgIs("merge") || ArgIs("unmerge"))
+	{
+		const char *const ArgType = ArgIs("merge") ? "merge" : "unmerge";
+		
+		if (argc != 3)
+		{
+			if (argc > 3)
+			{
+				puts("Too many arguments.\n");
+			}
+			else
+			{
+				puts("Too few arguments.\n");
+			}
+			
+			PrintEpochHelp(argv[0], ArgType);
+			return FAILURE;
+		}
+		
+		if (!InitMemBus(false))
+		{
+			return FAILURE;
+		}
+		
+		CArg = argv[2]; //For convenience.
+		
+		char FinalArg[MEMBUS_MSGSIZE];
+		char Msg[MEMBUS_MSGSIZE];
+		
+		if (*CArg != '/')
+		{
+			snprintf(FinalArg, sizeof FinalArg, CONFIGDIR "%s", CArg);
+		}
+		else
+		{
+			strncpy(FinalArg, CArg, sizeof FinalArg - 1);
+			FinalArg[sizeof FinalArg - 1] = '\0';
+		}
+		
+		CArg = argv[1];
+		snprintf(Msg, sizeof Msg, "%s %s", ArgIs("merge") ? MEMBUS_CODE_CFMERGE : MEMBUS_CODE_CFUMERGE, FinalArg);
+		
+		if (!MemBus_Write(Msg, false))
+		{
+			SpitError("Failed to write data to membus.");
+			ShutdownMemBus(false); //I don't give a damn if it fails.
+			return FAILURE;
+		}
+		
+		while (!MemBus_Read(Msg, false)) usleep(1000);
+		
+		ShutdownMemBus(false); //We're done with membus now.
+		
+		char Compare[WARNING + 1][MEMBUS_MSGSIZE] = { MEMBUS_CODE_FAILURE " ", MEMBUS_CODE_ACKNOWLEDGED " ", MEMBUS_CODE_WARNING " "};
+		
+		for (int Inc = 0; Inc < sizeof Compare / sizeof *Compare; ++Inc)
+		{
+			strcat(Compare[Inc], ArgIs("merge") ? MEMBUS_CODE_CFMERGE : MEMBUS_CODE_CFUMERGE);
+			strcat(Compare[Inc], " ");
+			strcat(Compare[Inc], FinalArg);
+		} 
+		
+		if (!strcmp(Msg, Compare[FAILURE]))
+		{
+			puts("Config (un)merge operation failed.");
+			return FAILURE;
+		}
+		else if (!strcmp(Msg, Compare[SUCCESS]))
+		{
+			puts("Config (un)merge operation succeeded.");
+			return SUCCESS;
+		}
+		else if (!strcmp(Msg, Compare[WARNING]))
+		{
+			puts("Config (un)merge operation returned a warning. Check logs.");
+			return WARNING;
+		}
+		else
+		{
+			printf("Invalid data \"%s\"\n", Msg);
+			return FAILURE;
+		}
+	}	
 	else if (ArgIs("setcad"))
 	{
 		const char *MCode = NULL, *ReportLump = NULL;

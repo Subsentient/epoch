@@ -2171,6 +2171,132 @@ static ReturnCode GetLineDelim(const char *InStream, char *OutStream)
 	return SUCCESS;
 }
 
+ReturnCode MergeImportLine(const char *LineData)
+{ //I'm so tired of bugs in my config writing functions that I wrote this one with nice, safe, pointer black magic. I hope it helps.
+	char NewData[MAX_LINE_SIZE];
+	
+	//Build the new line.
+
+	
+	struct stat FileStat;
+	
+	if (stat(ConfigFile, &FileStat) != 0) return FAILURE;
+
+	FILE *Descriptor = fopen(ConfigFile, "rb");
+	
+	if (!Descriptor) return FAILURE;
+	
+	const char *const MasterStream = calloc(FileStat.st_size + 1, 1);
+	
+	//Read in the config file.
+	fread((char*)MasterStream, 1, FileStat.st_size, Descriptor);
+	((char*)MasterStream)[FileStat.st_size] = '\0';
+	fclose(Descriptor);
+	
+	//Search for ObjectIDs, because we'll write the line before the first of those.
+	char *EndSearch = strstr(MasterStream, "ObjectID");
+	const char *HalfTwo = NULL;
+	
+	if (EndSearch)
+	{
+		HalfTwo = strdup(EndSearch);
+		*(char*)EndSearch = '\0';
+	}
+	
+		
+	if (MasterStream[strlen(MasterStream) - 1] != '\n')
+	{
+		snprintf(NewData, sizeof NewData, "\nImport=%s\n", LineData);
+	}
+	else
+	{
+		snprintf(NewData, sizeof NewData, "Import=%s\n", LineData);
+	}
+	
+	const char *HalfOne = strdup(MasterStream);
+	
+	//Write the file back to disk.
+	Descriptor = fopen(ConfigFile, "wb");
+	
+	if (!Descriptor)
+	{
+		free((void*)HalfOne);
+		if (HalfTwo) free((void*)HalfTwo);
+		free((void*)MasterStream);
+		return FAILURE;
+	}
+	
+	fwrite(HalfOne, 1, strlen(HalfOne), Descriptor);
+	fwrite(NewData, 1, strlen(NewData), Descriptor);
+	if (HalfTwo) fwrite(HalfTwo, 1, strlen(HalfTwo), Descriptor);
+	fclose(Descriptor);
+	
+	free((void*)HalfOne);
+	if (HalfTwo) free((void*)HalfTwo);
+	
+	return SUCCESS;
+}
+
+ReturnCode UnmergeImportLine(const char *Filename)
+{
+	struct stat FileStat;
+	
+	if (stat(ConfigFile, &FileStat) != 0) return FAILURE;
+	
+	FILE *Descriptor = fopen(ConfigFile, "rb");
+	
+	if (!Descriptor) return FAILURE;
+	
+	//Read in the contents.
+	const char *MasterStream = calloc(1, FileStat.st_size + 1);
+	fread((char*)MasterStream, 1, FileStat.st_size, Descriptor);
+	fclose(Descriptor);
+	((char*)MasterStream)[FileStat.st_size] = '\0';
+	
+	const char *Worker = MasterStream;
+	const char *HalfTwo = NULL;
+	
+	do
+	{
+		if (!strncmp("Import", Worker, sizeof "Import" - 1))
+		{
+			char ID[MAX_LINE_SIZE];
+			if (!GetLineDelim(Worker, ID))
+			{
+				free((void*)MasterStream);
+				return FAILURE;
+			}
+			
+			if (!strcmp(ID, Filename))
+			{
+				//Isolate half two.
+				HalfTwo = strchr(Worker, '\n');
+				if (HalfTwo) ++HalfTwo; //Skip past the newline.
+				
+				//Chop off the offending chunk of data.
+				*((char*)Worker) = '\0';
+				
+				//Write it to disk.
+				if ((Descriptor = fopen(ConfigFile, "wb")) == NULL)
+				{
+					free((void*)MasterStream);
+					return FAILURE;
+				}
+				
+				fwrite(MasterStream, 1, strlen(MasterStream), Descriptor);
+				if (HalfTwo) fwrite(HalfTwo, 1, strlen(HalfTwo), Descriptor);
+				fclose(Descriptor);
+				
+				return SUCCESS;
+			}
+				
+		}
+	} while ((Worker = NextLine(Worker)));
+	
+	WriteLogLine(Filename, true);
+	return FAILURE;
+}
+
 ReturnCode EditConfigValue(const char *File, const char *ObjectID, const char *Attribute, const char *Value)
 { /*Looks up the attribute for the passed ID and replaces the value for that attribute.*/
 	char *MasterStream = NULL, *HalfTwo = NULL;

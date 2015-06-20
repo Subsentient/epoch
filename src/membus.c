@@ -383,6 +383,32 @@ void ParseMemBus(void)
 		
 		MemBus_Write(TmpBuf, true);
 	}
+	else if (BusDataIs(MEMBUS_CODE_CFMERGE) || BusDataIs(MEMBUS_CODE_CFUMERGE))
+	{
+		const char *const MainCode = BusDataIs(MEMBUS_CODE_CFMERGE) ? MEMBUS_CODE_CFMERGE : MEMBUS_CODE_CFUMERGE;
+		const char *MemBusReturnCode = NULL;
+		const int LOffset = strlen(MainCode) + (sizeof " " - 1);
+		const char *Filename = BusData + LOffset;
+		
+		switch (BusDataIs(MEMBUS_CODE_CFMERGE) ? MergeImportLine(Filename) : UnmergeImportLine(Filename))
+		{
+			case SUCCESS:
+				MemBusReturnCode = MEMBUS_CODE_ACKNOWLEDGED;
+				break;
+			case WARNING:
+				MemBusReturnCode = MEMBUS_CODE_WARNING;
+				break;
+			default:
+				MemBusReturnCode = MEMBUS_CODE_FAILURE;
+				break;
+		}
+		
+		char OutBuf[MEMBUS_MSGSIZE];
+		snprintf(OutBuf, sizeof OutBuf, "%s %s %s", MemBusReturnCode, MainCode, Filename);
+		
+		MemBus_Write(OutBuf, true);
+		
+	}
 	else if (BusDataIs(MEMBUS_CODE_LSOBJS))
 	{ /*Done for mostly third party stuff.*/
 		int Inc = 0;
