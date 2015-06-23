@@ -1,27 +1,11 @@
-Epoch is an init system (analogous to systemd or upstart)
-for Linux by Subsentient. It is intended as a lightweight
-solution for lightweight distributions
-that don't want a huge mess just to boot up.
+Epoch is a single-threaded init system for Linux 2.6+, designed to be useful yet small
+and unintrusive. It uses a declarative configuration style.
 
-It has one unified configuration file, is very small in size,
-and it has no external dependencies besides glibc or similar,
-and although installing a shell for /bin/sh is strongly recommended,
-Epoch can be built without it by passing the argument
---disable-shell to buildepoch.sh.
-(this comes at the cost of support for any
-shell symbols like '&' and any types of quotes.)
+It has no dependencies whatsoever other than glibc, and /bin/sh is strongly recommended
+but can be disabled with --disable-shell.
 
-The build process only requires an ANSI C89 compliant compiler
-that provides snprintf(), (or bring your own)
-glibc or similar with headers, kernel headers,
-and a bash-compatible shell.
-
-Epoch is public domain software.
-Please visit unlicense.org for more information.
-
-To build the Epoch Init System, execute ./buildepoch.sh, or,
-if you wish, see ./buildepoch.sh --help for a list of flags
-and options you can use.
+It supports process supervision, service status, autorestarting, stderr/stdout redirection,
+user/group setting, and much more.
 
 For instructions on creating a configuration file for Epoch,
 please visit http://universe2.us/epochconfig.html.
