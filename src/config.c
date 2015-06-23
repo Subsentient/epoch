@@ -509,11 +509,42 @@ ReturnCode InitConfig(const char *CurConfigFile)
 			
 			TWorker = WhitespaceArg(TWorker); /*I abuse this delightful little function. It was meant for do-while loops.*/
 			
-			if (!AllNumeric(TWorker))
-			{
-				ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+			if (!AllNumeric(TWorker)) /*Make sure we are getting a number, not Shakespeare.*/
+			{ /*No number? We're probably looking at an alias.*/
+				unsigned TmpTarget = 0;
+				signed int Change = 0;
+				Bool PositiveChange = false;
+				
+				char *Lookup = strpbrk(TWorker, "-+");
+				if (Lookup != NULL && AllNumeric(Lookup + 1))
+				{ //They provided an increment or decrement.
+					PositiveChange = *Lookup == '+';
+					*Lookup = '\0';
+					Change = atoi(Lookup + 1);
+				}
+				
+				if (!(TmpTarget = PriorityAlias_Lookup(TWorker)))
+				{
+					ConfigProblem(CurConfigFile, CONFIG_EBADVAL, CurrentAttribute, DelimCurr, LineNum);
+					continue;
+				}
+				
+				if (Change)
+				{ //They incremented or decremented.
+					if (PositiveChange)
+					{
+						TmpTarget += Change;
+					}
+					else
+					{
+						TmpTarget -= Change;
+					}
+				}
+				PriorityAlias_Add(Alias, TmpTarget);
+				
 				continue;
 			}
+			
 			
 			Target = atol(TWorker);
 			
