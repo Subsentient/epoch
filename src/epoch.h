@@ -64,7 +64,7 @@
 #endif
 
 /*Version.*/
-#define VERSIONSTRING "Epoch Init System (git/master)"
+#define VERSIONSTRING "Epoch Init System 1.3.0 \"Fluoxetine\""
 
 /*Power control magic.*/
 #define OSCTL_REBOOT 0x1234567
