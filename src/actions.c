@@ -55,7 +55,11 @@ static void MountVirtuals(void)
 					char TmpBuf[1024];
 					
 					snprintf(TmpBuf, sizeof TmpBuf, "Failed to create directory for %s!", MountLocations[Inc]);
-					SpitWarning(TmpBuf);
+					WriteLogLine(TmpBuf, true);
+					if (!(AutoMountOpts[Inc] & MOUNTVIRTUAL_NOERROR))
+					{
+						SpitWarning(TmpBuf);
+					}
 				} /*No continue statement because it might already exist*/
 			}	/*and we might be able to mount it anyways.*/
 			
