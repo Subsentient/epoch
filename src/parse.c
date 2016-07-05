@@ -271,6 +271,8 @@ static ReturnCode ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 		if (CurCmd == InObj->ObjectStartCommand)
 		{ /*Set user and group if desired.*/
 
+			if (InObj->GroupID != 0) setgid(InObj->GroupID);
+
 			if (InObj->UserID != 0)
 			{
 				struct passwd *UserStruct = getpwuid(InObj->UserID);
@@ -290,10 +292,9 @@ static ReturnCode ExecuteConfigObject(ObjTable *InObj, const char *CurCmd)
 				
 				if (!InObj->ObjectWorkingDirectory) chdir(UserStruct->pw_dir);
 				
-				
+
 			}
 			
-			if (InObj->GroupID != 0) setgid(InObj->GroupID);
 		}
 			
 #ifndef NOSHELL
