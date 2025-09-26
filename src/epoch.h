@@ -146,7 +146,7 @@
 /**Enums go here.*/
 
 /*Our own boolean type.*/
-enum { false, true }; /*I don't want to use stdbool.*/
+#include <stdbool.h>
 typedef signed char Bool; //Don't change this. Some code relies on this being signed 8 bits.
 
 /*How objects are stopped on shutdown.*/
